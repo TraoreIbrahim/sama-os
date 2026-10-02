@@ -5,6 +5,8 @@ kde-plasma-desktop
 sddm
 plasma-nm
 plasma-pa
+# Accueil du premier démarrage (Bienvenue.qml)
+qml-qt6
 powerdevil
 kscreen
 bluedevil

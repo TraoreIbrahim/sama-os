@@ -24,11 +24,18 @@ PlasmoidItem {
         "École":   { teinte: "#3D5A99", encre: "#2D4682", fond: "#DFE5F2", fondSombre: "#523D5A99",
                      epingles: ["applications:samaos-griot.desktop", "applications:samaos-sugu.desktop",
                                 "applications:samaos-fichiers.desktop", "applications:samaos-docs.desktop"] },
+        // Espace unique quand l'utilisateur n'a pas encore choisi ses Espaces (« Plus tard » à l'accueil)
+        "Accueil": { teinte: "#B5532F", encre: "#93401F", fond: "#F2E1D5", fondSombre: "#3DB5532F",
+                     epingles: ["applications:samaos-griot.desktop", "applications:samaos-docs.desktop",
+                                "applications:samaos-fichiers.desktop", "applications:samaos-sugu.desktop"] },
         "Maison":  { teinte: "#2F6B57", encre: "#1F5544", fond: "#DBEAE2", fondSombre: "#522F6B57",
                      epingles: ["applications:samaos-griot.desktop", "applications:samaos-fichiers.desktop",
                                 "applications:samaos-photos.desktop", "applications:samaos-sugu.desktop"] }
     })
-    readonly property var espaceParDefaut: ({ teinte: "#8A8277", encre: "#665E54", fond: "#EDE6DC", fondSombre: "#338A8277", epingles: [] })
+    // Espaces créés par l'utilisateur (Boutique, Association…) : teinte neutre, applications de base
+    readonly property var espaceParDefaut: ({ teinte: "#8A8277", encre: "#665E54", fond: "#EDE6DC", fondSombre: "#338A8277",
+                                              epingles: ["applications:samaos-griot.desktop", "applications:samaos-docs.desktop",
+                                                         "applications:samaos-fichiers.desktop"] })
 
     function infosEspace(nom) {
         return espacesSama[nom] || espaceParDefaut
@@ -74,7 +81,7 @@ PlasmoidItem {
 
     // Liste des Espaces dans l'ordre de Sama (Travail, École, Maison, puis les autres)
     property var espacesOrdonnes: []
-    readonly property var rangEspaces: ({ "Travail": 0, "École": 1, "Maison": 2 })
+    readonly property var rangEspaces: ({ "Accueil": 0, "Travail": 0, "École": 1, "Maison": 2 })
 
     function reordonner() {
         var liste = []

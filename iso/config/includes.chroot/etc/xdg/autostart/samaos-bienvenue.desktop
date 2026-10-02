@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Bienvenue sur Sama
+Comment=Présente les Espaces au premier démarrage et crée ceux que l'utilisateur choisit
+Exec=/usr/libexec/samaos/bienvenue.sh
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=2

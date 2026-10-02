@@ -1,14 +1,15 @@
 #!/bin/sh
 # Construit l'ISO live de Sama OS dans un conteneur Debian (Docker).
 #
-# Usage : scripts/construire-iso.sh [amd64|arm64]
-#   amd64 : la cible principale (PC). Sur un Mac Apple Silicon, elle passe par l'émulation : compter plusieurs heures.
-#   arm64 : pour tester vite dans une machine virtuelle sur un Mac Apple Silicon.
+# Usage : scripts/construire-iso.sh [arm64|amd64]
+#   arm64 (par défaut) : pour tester dans la machine virtuelle UTM du Mac Apple Silicon.
+#   amd64 : pour PC. Sur un Mac Apple Silicon, elle passe par l'émulation : compter plusieurs heures
+#           (préférer la construction GitHub, lancée à la main : gh workflow run iso-pc.yml).
 #
 # L'ISO est déposée dans sortie/.
 set -eu
 
-ARCH="${1:-amd64}"
+ARCH="${1:-arm64}"
 racine="$(cd "$(dirname "$0")/.." && pwd)"
 inclus="$racine/iso/config/includes.chroot"
 

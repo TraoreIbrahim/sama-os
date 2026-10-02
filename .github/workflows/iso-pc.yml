@@ -1,12 +1,12 @@
 # Construit l'ISO live de Sama OS pour PC (amd64) sur les serveurs de GitHub.
-# Déclenchement : à chaque envoi sur la branche principale, ou à la main depuis l'onglet « Actions ».
+# Déclenchement : à la main seulement, depuis l'onglet « Actions » ou avec gh workflow run iso-pc.yml.
 # L'ISO est téléchargeable pendant 14 jours dans les « artefacts » de l'exécution.
 
 name: ISO PC (amd64)
 
+# Lancée à la main seulement (gh workflow run iso-pc.yml) : on teste sur Mac au quotidien,
+# l'ISO PC n'est construite que lorsqu'on en a besoin.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

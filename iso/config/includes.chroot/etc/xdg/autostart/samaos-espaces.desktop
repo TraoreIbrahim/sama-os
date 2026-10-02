@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Espaces Sama
-Comment=Crée les Espaces Travail, École et Maison au premier démarrage
-Exec=/usr/libexec/samaos/espaces-premier-demarrage.sh
-OnlyShowIn=KDE;
-NoDisplay=true
-X-KDE-autostart-phase=2
