@@ -21,9 +21,11 @@ cp "$racine"/branding/demarrage/*.svg "$inclus/usr/share/samaos/demarrage/"
 mkdir -p "$inclus/usr/share/samaos/installateur"
 cp "$racine"/branding/installateur/*.svg "$inclus/usr/share/samaos/installateur/"
 cp "$racine"/branding/icones/*.svg "$inclus/usr/share/samaos/icones/"
-for widget in org.samaos.natte org.samaos.pouls; do
+# Widgets de Sama : la barre (natte/) et les cartes du bureau (bureau/)
+for dossier in "$racine"/natte/org.samaos.* "$racine"/bureau/org.samaos.*; do
+	widget=$(basename "$dossier")
 	rm -rf "$inclus/usr/share/plasma/plasmoids/$widget"
-	cp -R "$racine/natte/$widget" "$inclus/usr/share/plasma/plasmoids/"
+	cp -R "$dossier" "$inclus/usr/share/plasma/plasmoids/"
 done
 
 echo "==> Préparation de l'environnement de construction ($ARCH)"

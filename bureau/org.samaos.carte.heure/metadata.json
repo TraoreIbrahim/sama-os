@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPlugin": {
+        "Id": "org.samaos.carte.heure",
+        "Name": "Heure et salutation",
+        "Description": "Carte du bureau de Sama OS : l'heure, la date et une salutation avec votre prénom",
+        "Category": "Date and Time",
+        "Icon": "preferences-system-time",
+        "Authors": [{ "Name": "Projet Sama OS" }],
+        "License": "GPL-3.0-or-later",
+        "Version": "0.1"
+    }
+}

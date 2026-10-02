@@ -29,4 +29,10 @@ for (var i = 0; i < bureaux.length; i++) {
     bureau.wallpaperPlugin = "org.kde.image";
     bureau.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
     bureau.writeConfig("Image", "file:///usr/share/wallpapers/SamaAube/");
+
+    // Cartes du bureau, en haut à gauche : heure et salutation, puis data consommée
+    var marge = Math.round(gridUnit * 1.5);
+    var largeur = Math.round(gridUnit * 17);
+    bureau.addWidget("org.samaos.carte.heure", marge, marge, largeur, Math.round(gridUnit * 9));
+    bureau.addWidget("org.samaos.carte.data", marge, marge + Math.round(gridUnit * 9.8), largeur, Math.round(gridUnit * 6.5));
 }
