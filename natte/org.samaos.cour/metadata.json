@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPlugin": {
+        "Id": "org.samaos.cour",
+        "Name": "La Cour",
+        "Description": "Lanceur plein écran de Sama OS : toutes les applications et une recherche unifiée (applications, fichiers, réglages, calculs)",
+        "Category": "Application Launchers",
+        "Icon": "start-here",
+        "Authors": [{ "Name": "Projet Sama OS" }],
+        "License": "GPL-3.0-or-later",
+        "Version": "0.1"
+    }
+}

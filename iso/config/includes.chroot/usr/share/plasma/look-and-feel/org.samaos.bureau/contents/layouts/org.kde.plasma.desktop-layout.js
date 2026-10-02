@@ -10,11 +10,8 @@ natte.lengthMode = "fit";
 natte.hiding = "none";
 natte.height = Math.round(gridUnit * 3.2);
 
-// La Cour : lanceur avec recherche (applications, fichiers, réglages).
-// Provisoire : le lanceur standard de Plasma, en attendant la Cour plein écran de Sama.
-var cour = natte.addWidget("org.kde.plasma.kickoff");
-cour.currentConfigGroup = ["General"];
-cour.writeConfig("icon", "/usr/share/samaos/logo-cour.svg");
+// La Cour : lanceur plein écran de Sama (toutes les applications et recherche unifiée)
+natte.addWidget("org.samaos.cour");
 
 // Les Espaces de Sama, leurs applications et la Corbeille
 natte.addWidget("org.samaos.natte");

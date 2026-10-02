@@ -27,6 +27,8 @@ for dossier in "$racine"/natte/org.samaos.* "$racine"/bureau/org.samaos.*; do
 	rm -rf "$inclus/usr/share/plasma/plasmoids/$widget"
 	cp -R "$dossier" "$inclus/usr/share/plasma/plasmoids/"
 done
+# Composants QML partagés (indicateur de chargement…)
+cp "$racine"/branding/qml/*.qml "$inclus/usr/share/plasma/plasmoids/org.samaos.natte/contents/ui/"
 
 echo "==> Préparation de l'environnement de construction ($ARCH)"
 docker build --platform "linux/$ARCH" -t "samaos-construction:$ARCH" "$racine/docker"

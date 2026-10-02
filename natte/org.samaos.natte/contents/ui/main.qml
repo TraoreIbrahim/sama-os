@@ -176,6 +176,7 @@ PlasmoidItem {
                                     height: width
                                     radius: width * 0.3
                                     color: tuile.tuileSama ? "transparent" : Kirigami.Theme.backgroundColor
+                                    opacity: model.IsStartup === true ? 0.15 : 1
                                     scale: tuile.containsMouse ? 1.06 : 1
                                     Behavior on scale { NumberAnimation { duration: Kirigami.Units.shortDuration } }
 
@@ -185,6 +186,18 @@ PlasmoidItem {
                                         height: width
                                         source: model.decoration
                                     }
+                                }
+
+                                // Application en cours d'ouverture : la trompe se balance par-dessus la tuile
+                                ChargementSama {
+                                    visible: model.IsStartup === true
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.top: parent.top
+                                    anchors.topMargin: Kirigami.Units.smallSpacing
+                                    width: racine.tailleTuile
+                                    height: width
+                                    couleur: espace.infos.teinte
+                                    fond: Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1E2233" : espace.infos.fond
                                 }
 
                                 // Point sous les applications ouvertes
