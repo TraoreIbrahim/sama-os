@@ -19,3 +19,6 @@ iso/config/common
 iso/config/source
 
 .DS_Store
+
+# Mode direct (adresse locale de la machine virtuelle)
+.mode-direct-adresse
