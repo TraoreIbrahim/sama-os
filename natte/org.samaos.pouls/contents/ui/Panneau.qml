@@ -1,6 +1,6 @@
 // Panneau de contrôle du Pouls (première version du centre de contrôle de Sama).
-// Tuiles Wi-Fi, mode sombre, réseau, réglages ; volume ; langue.
-// Les notifications et l'économie de data réelle viendront dans une version suivante.
+// Notifications ; tuiles Wi-Fi, mode sombre, réseau, réglages ; volume ; langue.
+// L'économie de data réelle viendra dans une version suivante.
 
 import QtQuick
 import QtQuick.Layouts
@@ -121,6 +121,19 @@ Item {
         anchors.fill: parent
         anchors.margins: Kirigami.Units.largeSpacing
         spacing: Kirigami.Units.largeSpacing
+
+        // Notifications (chargées à part : le panneau reste utilisable si elles manquent)
+        Loader {
+            Layout.fillWidth: true
+            source: "ListeNotifications.qml"
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Kirigami.Theme.textColor
+            opacity: 0.08
+        }
 
         GridLayout {
             Layout.fillWidth: true

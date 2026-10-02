@@ -36,6 +36,12 @@ PlasmoidItem {
     Loader { id: clavier; source: "Clavier.qml" }
     Loader { id: reseau; source: "Reseau.qml" }
     Loader { id: batterie; source: "Batterie.qml" }
+    Loader { id: notifs; source: "Notifications.qml" }
+
+    readonly property bool aNonLues: notifs.item ? notifs.item.nonLues > 0 : false
+
+    // Ouvrir le panneau marque les notifications comme lues
+    onExpandedChanged: if (expanded && notifs.item) notifs.item.marquerLues()
 
     function icone(nom) {
         return Qt.resolvedUrl("../icons/" + nom + ".svg")
@@ -123,6 +129,15 @@ PlasmoidItem {
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
                 font.weight: Font.DemiBold
                 color: racine.encre
+            }
+
+            // Point latérite : notification non lue
+            Rectangle {
+                visible: racine.aNonLues
+                Layout.preferredWidth: 7
+                Layout.preferredHeight: 7
+                radius: 3.5
+                color: racine.laterite
             }
         }
     }
