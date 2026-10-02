@@ -1,13 +1,98 @@
 #!/bin/sh
-# Écran de chargement de Sama OS (Plymouth) : images générées depuis les SVG, puis thème par défaut.
+# Écran de démarrage animé de Sama OS (Plymouth).
+# Les animations de la trompe sont calculées ici image par image (Plymouth ne lit pas le SVG animé) :
+#   salut-N.png        : la trompe se lève puis redescend (démarrage)
+#   balancement-N.png  : la trompe se balance (extinction, redémarrage)
+#   trace-N.png        : la trompe se dessine en or de 0 à 100 % (mises à jour)
 set -e
 
 THEME=/usr/share/plymouth/themes/samaos
-SOURCES=/usr/share/samaos/demarrage
+IVOIRE="#E6DAC2"
+NUIT="#151A2B"
+OR="#F2C879"
+SOCLE="#2B3555"
 
-rsvg-convert --height 760 "$SOURCES/logo-chargement.svg" -o "$THEME/logo.png"
+# Tête et oreilles de l'éléphant (identiques sur toutes les images), avec « Sama » dessous
+tete() {
+	cat <<FIN
+  <circle cx="25" cy="40" r="21" fill="$IVOIRE"/>
+  <circle cx="75" cy="40" r="21" fill="$IVOIRE"/>
+  <ellipse cx="50" cy="40" rx="19" ry="23" fill="$IVOIRE" stroke="$NUIT" stroke-width="4"/>
+  <circle cx="43" cy="36" r="2.6" fill="$NUIT"/>
+  <circle cx="57" cy="36" r="2.6" fill="$NUIT"/>
+FIN
+}
 
-# Barre de progression : fond discret et remplissage or
+# Une image complète : $1 = contenu de la trompe (SVG), $2 = fichier PNG de sortie
+image() {
+	cat > /tmp/sama-image.svg <<FIN
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="380" viewBox="0 0 320 380">
+ <g transform="translate(60 20) scale(2)">
+$(tete)
+$1
+ </g>
+ <text x="160" y="330" text-anchor="middle" font-family="Noto Sans" font-weight="300" font-size="56" fill="$IVOIRE">Sama</text>
+</svg>
+FIN
+	rsvg-convert --height 600 /tmp/sama-image.svg -o "$2"
+}
+
+# Trompe : $1 = chemin, $2 = couleur, $3 = attributs en plus (rotation, pointillés)
+trompe() {
+	echo "<path d=\"$1\" fill=\"none\" stroke=\"$2\" stroke-width=\"10\" stroke-linecap=\"round\" $3/>"
+}
+# Contour nuit sous la trompe, qui la détache de la tête quand elle passe devant
+contour() {
+	echo "<path d=\"$1\" fill=\"none\" stroke=\"$NUIT\" stroke-width=\"15\" stroke-linecap=\"round\" pathLength=\"100\" stroke-dasharray=\"84 200\" stroke-dashoffset=\"-16\" $2/>"
+}
+
+REPOS="M50 58 C50 70 63 66 63 77 C63 88 47 90 42 83"
+
+# --- Salut : repos, montée, pause en haut, descente (48 images) -----------------
+N=48
+i=0
+while [ $i -lt $N ]; do
+	chemin=$(awk -v i=$i -v n=$N 'BEGIN {
+		split("50 58 50 70 63 66 63 77 63 88 47 90 42 83", r, " ")
+		split("50 58 50 68 62 70 72 64 82 58 86 50 84 44", h, " ")
+		t = i / n
+		if (t < 0.15) k = 0
+		else if (t < 0.50) { u = (t - 0.15) / 0.35; k = (1 - cos(u * 3.14159265)) / 2 }
+		else if (t < 0.65) k = 1
+		else { u = (t - 0.65) / 0.35; k = (1 + cos(u * 3.14159265)) / 2 }
+		for (j = 1; j <= 14; j++) p[j] = r[j] + (h[j] - r[j]) * k
+		printf "M%.2f %.2f C%.2f %.2f %.2f %.2f %.2f %.2f C%.2f %.2f %.2f %.2f %.2f %.2f",
+			p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14]
+	}')
+	image "$(contour "$chemin")
+$(trompe "$chemin" "$IVOIRE")" "$THEME/salut-$i.png"
+	i=$((i + 1))
+done
+
+# --- Balancement : rotation douce autour de la base de la trompe (36 images) ------
+N=36
+i=0
+while [ $i -lt $N ]; do
+	angle=$(awk -v i=$i -v n=$N 'BEGIN { printf "%.2f", 9 * sin(2 * 3.14159265 * i / n) }')
+	image "$(contour "$REPOS" "transform=\"rotate($angle 50 58)\"")
+$(trompe "$REPOS" "$IVOIRE" "transform=\"rotate($angle 50 58)\"")" "$THEME/balancement-$i.png"
+	i=$((i + 1))
+done
+
+# --- Tracé progressif : la trompe se dessine en or, de 0 à 100 % (41 images) ------
+i=0
+while [ $i -le 40 ]; do
+	reste=$((100 - i * 100 / 40))
+	or=$(trompe "$REPOS" "$OR" "pathLength=\"100\" stroke-dasharray=\"100\" stroke-dashoffset=\"$reste\"")
+	[ $i -eq 0 ] && or=""
+	image "$(contour "$REPOS")
+$(trompe "$REPOS" "$SOCLE")
+$or" "$THEME/trace-$i.png"
+	i=$((i + 1))
+done
+rm -f /tmp/sama-image.svg
+
+# Barre de progression du démarrage : fond discret et remplissage or
 printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#262B3D"/></svg>' \
 	| rsvg-convert -o "$THEME/barre-fond.png"
 printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#F2C879"/></svg>' \
