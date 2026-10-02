@@ -21,9 +21,3 @@ masquer org.kde.dolphin.desktop
 masquer org.kde.discover.desktop
 masquer org.kde.gwenview.desktop
 
-# L'installateur s'appelle « Installer Sama OS » (et non « Install Debian »), avec l'éléphant
-for f in /usr/share/applications/install-debian.desktop /etc/skel/Desktop/install-debian.desktop; do
-	[ -f "$f" ] || continue
-	sed -i -e '/^Name\(\[[^]]*\]\)\?=/d' -e '/^GenericName\(\[[^]]*\]\)\?=/d' -e '/^Comment\(\[[^]]*\]\)\?=/d' -e '/^Icon=/d' \
-		-e '/^\[Desktop Entry\]/a Name=Installer Sama OS\nComment=Installer Sama OS sur cet ordinateur\nIcon=/usr/share/samaos/logo-cour.svg' "$f"
-done

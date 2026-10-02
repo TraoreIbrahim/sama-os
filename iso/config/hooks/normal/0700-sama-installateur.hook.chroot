@@ -1,0 +1,59 @@
+#!/bin/sh
+# Installateur aux couleurs de Sama OS (Calamares) et menu de démarrage du système installé (GRUB).
+set -e
+
+# --- Installateur ---------------------------------------------------------------
+
+MARQUE=/etc/calamares/branding/samaos
+rsvg-convert --width 256 --height 256 /usr/share/samaos/logo-cour.svg -o "$MARQUE/logo.png"
+rsvg-convert --width 960 /usr/share/samaos/installateur/bienvenue.svg -o "$MARQUE/bienvenue.png"
+
+# Utiliser l'identité Sama au lieu de celle de Debian
+sed -i 's/^branding: .*/branding: samaos/' /etc/calamares/settings.conf
+
+# Page d'accueil : pas de liens vers des pages qui n'existent pas encore
+if [ -f /etc/calamares/modules/welcome.conf ]; then
+	sed -i -e 's/^showSupportUrl:.*/showSupportUrl:         false/' \
+		-e 's/^showKnownIssuesUrl:.*/showKnownIssuesUrl:     false/' \
+		-e 's/^showReleaseNotesUrl:.*/showReleaseNotesUrl:    false/' /etc/calamares/modules/welcome.conf
+fi
+
+# Le raccourci « Install Debian » devient « Installer Sama OS », avec l'éléphant
+for f in /usr/share/applications/calamares-install-debian.desktop; do
+	[ -f "$f" ] || continue
+	sed -i -e '/^Name\(\[[^]]*\]\)\?=/d' -e '/^GenericName\(\[[^]]*\]\)\?=/d' \
+		-e '/^Comment\(\[[^]]*\]\)\?=/d' -e '/^Keywords\(\[[^]]*\]\)\?=/d' -e '/^Icon=/d' \
+		-e '/^\[Desktop Entry\]/a Name=Installer Sama OS\nGenericName=Installateur\nComment=Installer Sama OS sur cet ordinateur\nKeywords=installer;installation;sama;\nIcon=/usr/share/samaos/logo-cour.svg' "$f"
+done
+sed -i 's/Name=Install Debian/Name=Installer Sama OS/; s/Icon=install-debian/Icon=\/usr\/share\/samaos\/logo-cour.svg/' \
+	/usr/bin/add-calamares-desktop-icon 2>/dev/null || true
+
+# --- Menu de démarrage du système installé (GRUB) -------------------------------
+
+THEME=/usr/share/grub/themes/samaos
+mkdir -p "$THEME"
+rsvg-convert --width 1920 --height 1080 /usr/share/samaos/demarrage/fond-menu.svg -o "$THEME/fond.png"
+
+POLICES=/usr/share/fonts/truetype/noto
+titre="$POLICES/NotoSans-Light.ttf"
+[ -f "$titre" ] || titre="$POLICES/NotoSans-Regular.ttf"
+if command -v grub-mkfont >/dev/null 2>&1; then
+	grub-mkfont --size 36 --name "Sama Titre 36" --output "$THEME/sama-titre.pf2" "$titre"
+	grub-mkfont --size 22 --name "Sama Menu 22" --output "$THEME/sama-menu.pf2" "$POLICES/NotoSans-Regular.ttf"
+	grub-mkfont --size 16 --name "Sama Aide 16" --output "$THEME/sama-aide.pf2" "$POLICES/NotoSans-Regular.ttf"
+fi
+
+pilule='<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="VB"><rect width="48" height="48" rx="12" fill="#B5532F"/></svg>'
+morceau() {
+	echo "$pilule" | sed "s/VB/$2/; s/width=\"48\" height=\"48\" viewBox/width=\"$3\" height=\"$4\" viewBox/" \
+		| rsvg-convert -o "$THEME/selection_$1.png"
+}
+morceau nw "0 0 12 12" 12 12
+morceau n "12 0 24 12" 24 12
+morceau ne "36 0 12 12" 12 12
+morceau w "0 12 12 24" 12 24
+morceau c "12 12 24 24" 24 24
+morceau e "36 12 12 24" 12 24
+morceau sw "0 36 12 12" 12 12
+morceau s "12 36 24 12" 24 12
+morceau se "36 36 12 12" 12 12

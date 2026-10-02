@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <title>Sama OS — accueil de l'installateur</title>
+  <g transform="translate(180 20) scale(1.2)">
+    <circle cx="25" cy="40" r="21" fill="#B5532F"/>
+    <circle cx="75" cy="40" r="21" fill="#B5532F"/>
+    <ellipse cx="50" cy="40" rx="19" ry="23" fill="#B5532F" stroke="#FBF9F6" stroke-width="4"/>
+    <path d="M50 58 C50 70 63 66 63 77 C63 88 47 90 42 83" fill="none" stroke="#B5532F" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="43" cy="36" r="2.6" fill="#FBF9F6"/>
+    <circle cx="57" cy="36" r="2.6" fill="#FBF9F6"/>
+  </g>
+  <text x="240" y="200" text-anchor="middle" font-family="Noto Sans" font-weight="300" font-size="44" fill="#1F1C18">Sama OS</text>
+  <text x="240" y="240" text-anchor="middle" font-family="Noto Sans" font-size="18" fill="#665E54">I ni ce · Bienvenue · Karibu</text>
+</svg>

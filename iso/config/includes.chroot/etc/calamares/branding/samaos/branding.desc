@@ -1,0 +1,38 @@
+---
+componentName:   samaos
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 900px,620px
+windowPlacement: center
+
+strings:
+    productName:         Sama OS
+    shortProductName:    Sama
+    version:             0.1
+    shortVersion:        0.1
+    versionedName:       Sama OS 0.1
+    shortVersionedName:  Sama 0.1
+    bootloaderEntryName: SamaOS
+    productUrl:          https://github.com/TraoreIbrahim/sama-os
+    supportUrl:          https://github.com/TraoreIbrahim/sama-os/issues
+    knownIssuesUrl:      https://github.com/TraoreIbrahim/sama-os/issues
+    releaseNotesUrl:     https://github.com/TraoreIbrahim/sama-os
+    donateUrl:           https://github.com/TraoreIbrahim/sama-os
+
+sidebar: widget
+navigation: widget
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "logo.png"
+    productWelcome:      "bienvenue.png"
+
+slideshow:               "show.qml"
+slideshowAPI:            2
+
+style:
+   SidebarBackground:        "#1E2740"
+   SidebarText:              "#E6DAC2"
+   SidebarTextCurrent:       "#FFFFFF"
+   SidebarBackgroundCurrent: "#B5532F"

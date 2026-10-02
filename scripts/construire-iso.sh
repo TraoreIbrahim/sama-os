@@ -18,6 +18,8 @@ cp "$racine/branding/logo-sama.svg" "$racine/branding/logo-cour.svg" "$inclus/us
 cp "$racine"/branding/fonds/*.svg "$inclus/usr/share/samaos/fonds/"
 mkdir -p "$inclus/usr/share/samaos/icones" "$inclus/usr/share/samaos/demarrage"
 cp "$racine"/branding/demarrage/*.svg "$inclus/usr/share/samaos/demarrage/"
+mkdir -p "$inclus/usr/share/samaos/installateur"
+cp "$racine"/branding/installateur/*.svg "$inclus/usr/share/samaos/installateur/"
 cp "$racine"/branding/icones/*.svg "$inclus/usr/share/samaos/icones/"
 for widget in org.samaos.natte org.samaos.pouls; do
 	rm -rf "$inclus/usr/share/plasma/plasmoids/$widget"

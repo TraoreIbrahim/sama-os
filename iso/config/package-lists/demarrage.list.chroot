@@ -1,0 +1,19 @@
+# Chargeur de démarrage du système installé (GRUB), utilisé par l'installateur.
+# Sans ces paquets, l'installation échouerait à sa dernière étape.
+
+#if ARCHITECTURE amd64
+grub-pc-bin
+grub-efi-amd64
+grub-efi-amd64-signed
+shim-signed
+#endif
+
+#if ARCHITECTURE arm64
+grub-efi-arm64
+grub-efi-arm64-signed
+shim-signed
+#endif
+
+efibootmgr
+# Détection de Windows pour le double démarrage
+os-prober
