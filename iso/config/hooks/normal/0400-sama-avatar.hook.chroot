@@ -13,3 +13,6 @@ cat > /var/lib/AccountsService/users/sama <<'FIN'
 [User]
 Icon=/var/lib/AccountsService/icons/sama
 FIN
+
+# Corbeille prête dès la création du compte (le compteur de la Natte surveille ce dossier)
+mkdir -p /etc/skel/.local/share/Trash/files /etc/skel/.local/share/Trash/info

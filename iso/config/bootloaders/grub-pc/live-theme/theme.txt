@@ -18,8 +18,8 @@ terminal-font: "Unifont Regular 16"
 }
 
 + boot_menu {
-        left = 34%
-        width = 32%
+        left = 30%
+        width = 40%
         top = 48%
         height = 30%
         item_font = "Sama Menu 22"
@@ -27,25 +27,26 @@ terminal-font: "Unifont Regular 16"
         selected_item_font = "Sama Menu 22"
         selected_item_color = "#FFFFFF"
         selected_item_pixmap_style = "selection_*.png"
-        item_height = 52
-        item_padding = 20
-        item_spacing = 10
+        item_height = 40
+        item_padding = 18
+        item_spacing = 8
         icon_width = 0
         icon_height = 0
         item_icon_space = 0
         scrollbar = false
 }
 
-+ progress_bar {
+# Compte à rebours discret en texte (au lieu d'une barre)
++ label {
         id = "__timeout__"
-        left = 44%
-        width = 12%
-        top = 82%
-        height = 4
-        fg_color = "#B5532F"
-        bg_color = "#262B3D"
-        border_color = "#151A2B"
-        text = ""
+        top = 80%
+        left = 0
+        width = 100%
+        height = 24
+        text = "Démarrage automatique dans %d s"
+        align = "center"
+        color = "#8C867A"
+        font = "Sama Aide 16"
 }
 
 + label {

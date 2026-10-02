@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="116" height="116" viewBox="0 0 116 116">
-  <!-- Natte sans effet de flou (machines sans accélération graphique) : légère transparence -->
+  <!-- Natte translucide sur flou, comme la maquette : rgba(250,246,240,0.66) + flou -->
   <style type="text/css" id="current-color-scheme">.ColorScheme-Background { color:#fbf9f6; }</style>
-  <g class="ColorScheme-Background" fill="currentColor" fill-opacity="0.9">
+  <g class="ColorScheme-Background" fill="currentColor" fill-opacity="0.66">
     <path id="topleft" d="M28 0 A28 28 0 0 0 0 28 L28 28 Z"/>
     <rect id="top" x="28" y="0" width="60" height="28"/>
     <path id="topright" d="M88 0 A28 28 0 0 1 116 28 L88 28 Z"/>

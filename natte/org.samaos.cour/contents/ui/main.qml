@@ -76,7 +76,7 @@ PlasmoidItem {
 
     fullRepresentation: MouseArea {
         id: bouton
-        readonly property int taille: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 3
+        readonly property int taille: 44   // comme la maquette
         Layout.minimumWidth: taille
         Layout.minimumHeight: taille
         Layout.preferredWidth: taille
@@ -98,7 +98,7 @@ PlasmoidItem {
 
             Image {
                 anchors.centerIn: parent
-                width: parent.width * 0.62
+                width: 26
                 height: width
                 sourceSize.width: width * 2
                 sourceSize.height: height * 2

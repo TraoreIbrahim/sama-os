@@ -56,8 +56,8 @@ PlasmoidItem {
         hoverEnabled: true
         onClicked: racine.expanded = !racine.expanded
 
-        readonly property int hauteurCapsule: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 3
-        Layout.minimumWidth: contenu.implicitWidth + Kirigami.Units.largeSpacing * 2
+        readonly property int hauteurCapsule: 44   // comme la maquette
+        Layout.minimumWidth: contenu.implicitWidth + 32
         Layout.preferredWidth: Layout.minimumWidth
         Layout.minimumHeight: hauteurCapsule
         Layout.preferredHeight: hauteurCapsule
@@ -70,24 +70,24 @@ PlasmoidItem {
             height: capsule.hauteurCapsule
             radius: height / 2
             color: racine.encre
-            opacity: capsule.containsMouse || racine.expanded ? 0.11 : 0.06
+            opacity: capsule.containsMouse || racine.expanded ? 0.1 : 0.05
         }
 
         RowLayout {
             id: contenu
             anchors.centerIn: parent
-            spacing: Kirigami.Units.largeSpacing
+            spacing: 10
 
             Text {
                 text: racine.langue
-                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                font.pixelSize: 11
                 font.weight: Font.DemiBold
                 font.letterSpacing: 0.4
                 color: racine.encreDouce
             }
 
             Kirigami.Icon {
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                Layout.preferredWidth: 16
                 Layout.preferredHeight: Layout.preferredWidth
                 isMask: true
                 color: racine.encre
@@ -98,7 +98,7 @@ PlasmoidItem {
 
             // Économie de data
             Kirigami.Icon {
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                Layout.preferredWidth: 16
                 Layout.preferredHeight: Layout.preferredWidth
                 isMask: true
                 color: racine.foret
@@ -108,8 +108,8 @@ PlasmoidItem {
             // Batterie (seulement si l'ordinateur en a une)
             Item {
                 visible: racine.aBatterie
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small * 1.25
-                Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 16
 
                 Kirigami.Icon {
                     anchors.fill: parent
@@ -130,7 +130,7 @@ PlasmoidItem {
 
             Text {
                 text: racine.heure
-                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize + 1
+                font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: racine.encre
             }

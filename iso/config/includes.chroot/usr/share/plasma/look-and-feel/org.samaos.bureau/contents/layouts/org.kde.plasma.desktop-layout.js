@@ -8,7 +8,8 @@ natte.floating = true;
 natte.alignment = "center";
 natte.lengthMode = "fit";
 natte.hiding = "none";
-natte.height = Math.round(gridUnit * 3.2);
+// 60 px comme la maquette : 8 px de marge (thème) autour des éléments de 44 px
+natte.height = 60;
 
 // La Cour : lanceur plein écran de Sama (toutes les applications et recherche unifiée)
 natte.addWidget("org.samaos.cour");
