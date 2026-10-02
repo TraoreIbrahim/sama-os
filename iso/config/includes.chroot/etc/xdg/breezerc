@@ -1,0 +1,10 @@
+# Barres de titre de Sama : sans liseré ni séparateur, titre centré, ombre large et douce
+[Common]
+OutlineIntensity=OutlineOff
+ShadowSize=ShadowLarge
+ShadowStrength=60
+
+[Windeco]
+TitleAlignment=AlignCenterFullWidth
+DrawTitleBarSeparator=false
+DrawBackgroundGradient=false

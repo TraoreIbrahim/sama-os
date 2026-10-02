@@ -15,14 +15,19 @@ Window {
     color: "transparent"
     title: "Bienvenue sur Sama"
 
-    // Palette de la maquette
-    readonly property color ciel: "#F3ECE2"
-    readonly property color texte: "#1F1C18"
-    readonly property color texte2: "#665E54"
-    readonly property color texte3: "#8A8277"
+    // Mode sombre : suit la palette du système (couleurs Sama Clair ou Sama Sombre)
+    SystemPalette { id: palette }
+    readonly property bool sombre: palette.window.hslLightness < 0.5
+
+    // Palette de la maquette, en clair et en sombre
+    readonly property color ciel: sombre ? "#151A2B" : "#F3ECE2"
+    readonly property color texte: sombre ? "#F1EBE1" : "#1F1C18"
+    readonly property color texte2: sombre ? "#ADA698" : "#665E54"
+    readonly property color texte3: sombre ? "#8C867A" : "#8A8277"
     readonly property color laterite: "#B5532F"
-    readonly property color lateriteEncre: "#93401F"
-    readonly property color ligne: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.08)
+    readonly property color lateriteEncre: sombre ? "#F0B392" : "#93401F"
+    readonly property color ligne: sombre ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.08)
+    readonly property color champFond: sombre ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05)
 
     // Prénom passé par bienvenue.sh (dernier argument)
     readonly property string prenom: {
@@ -34,13 +39,13 @@ Window {
     // Espaces proposés : nom, couleur, fond, encre, applications (pour l'aperçu), phrase d'exemple
     ListModel {
         id: propositions
-        ListElement { nom: "Travail"; teinte: "#B5532F"; fond: "#F2E1D5"; encre: "#93401F"; choisi: true
+        ListElement { nom: "Travail"; teinte: "#B5532F"; fond: "#F2E1D5"; encre: "#93401F"; fondSombre: "#3DB5532F"; encreSombre: "#F0B392"; choisi: true
                       exemple: "Documents, tableaux, navigateur : vos dossiers du bureau ou de la boutique."
                       apps: "griot,docs,sheet,fichiers" }
-        ListElement { nom: "École"; teinte: "#3D5A99"; fond: "#DFE5F2"; encre: "#2D4682"; choisi: false
+        ListElement { nom: "École"; teinte: "#3D5A99"; fond: "#DFE5F2"; encre: "#2D4682"; fondSombre: "#523D5A99"; encreSombre: "#B4C6EE"; choisi: false
                       exemple: "Cours, devoirs et recherches, à part du reste."
                       apps: "griot,sugu,fichiers,docs" }
-        ListElement { nom: "Maison"; teinte: "#2F6B57"; fond: "#DBEAE2"; encre: "#1F5544"; choisi: false
+        ListElement { nom: "Maison"; teinte: "#2F6B57"; fond: "#DBEAE2"; encre: "#1F5544"; fondSombre: "#522F6B57"; encreSombre: "#A3D6C1"; choisi: false
                       exemple: "Photos, musique, achats et loisirs en famille."
                       apps: "griot,fichiers,photos,sugu" }
     }
@@ -81,7 +86,7 @@ Window {
     // Voile ivoire sur le bureau
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(243 / 255, 236 / 255, 226 / 255, 0.97)
+        color: fenetre.sombre ? Qt.rgba(21 / 255, 26 / 255, 43 / 255, 0.97) : Qt.rgba(243 / 255, 236 / 255, 226 / 255, 0.97)
         opacity: 0
         Component.onCompleted: opacity = 1
         Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
@@ -137,9 +142,9 @@ Window {
             width: Math.min(parent.width - 48, 800)
             height: contenuCarte.implicitHeight + 50
             radius: 24
-            color: Qt.rgba(252 / 255, 250 / 255, 247 / 255, 0.98)
+            color: fenetre.sombre ? Qt.rgba(30 / 255, 34 / 255, 51 / 255, 0.98) : Qt.rgba(252 / 255, 250 / 255, 247 / 255, 0.98)
             border.width: 1
-            border.color: Qt.rgba(70 / 255, 45 / 255, 20 / 255, 0.1)
+            border.color: fenetre.sombre ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(70 / 255, 45 / 255, 20 / 255, 0.1)
 
             ColumnLayout {
                 id: contenuCarte
@@ -193,7 +198,9 @@ Window {
                             Rectangle {
                                 anchors.fill: parent
                                 radius: 16
-                                color: model.choisi ? model.fond : (choix.containsMouse ? "#FFFFFF" : Qt.rgba(1, 1, 1, 0.6))
+                                color: model.choisi ? (fenetre.sombre ? model.fondSombre : model.fond)
+                                     : fenetre.sombre ? Qt.rgba(1, 1, 1, choix.containsMouse ? 0.08 : 0.04)
+                                     : (choix.containsMouse ? "#FFFFFF" : Qt.rgba(1, 1, 1, 0.6))
                                 border.width: model.choisi ? 1.5 : 1
                                 border.color: model.choisi ? model.teinte : fenetre.ligne
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -215,14 +222,14 @@ Window {
                                         text: model.nom
                                         font.pixelSize: 15
                                         font.weight: Font.DemiBold
-                                        color: model.choisi ? model.encre : fenetre.texte
+                                        color: model.choisi ? (fenetre.sombre ? model.encreSombre : model.encre) : fenetre.texte
                                     }
                                     // Case cochée
                                     Rectangle {
                                         width: 22; height: 22; radius: 11
                                         color: model.choisi ? model.teinte : "transparent"
                                         border.width: model.choisi ? 0 : 1.5
-                                        border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.25)
+                                        border.color: fenetre.sombre ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.25)
                                         Text {
                                             anchors.centerIn: parent
                                             visible: model.choisi
@@ -273,7 +280,7 @@ Window {
                             height: 32
                             width: lignePerso.implicitWidth + 28
                             radius: 16
-                            color: "#EDE6DC"
+                            color: fenetre.sombre ? Qt.rgba(1, 1, 1, 0.08) : "#EDE6DC"
                             Row {
                                 id: lignePerso
                                 anchors.centerIn: parent
@@ -302,7 +309,7 @@ Window {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
                         radius: 20
-                        color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05)
+                        color: fenetre.champFond
                         QQC2.TextField {
                             id: champ
                             anchors.fill: parent

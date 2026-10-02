@@ -153,9 +153,8 @@ Item {
                 detail: panneau.modeSombre ? "Activé" : "Désactivé"
                 nomIcone: "lune"
                 active: panneau.modeSombre
-                onClicked: executeur.lancer(panneau.modeSombre
-                    ? "plasma-apply-colorscheme SamaClair; plasma-apply-wallpaperimage /usr/share/wallpapers/SamaAube"
-                    : "plasma-apply-colorscheme SamaSombre; plasma-apply-wallpaperimage /usr/share/wallpapers/SamaNuit")
+                // Couleurs, icônes et fonds d'écran basculent ensemble
+                onClicked: executeur.lancer("/usr/libexec/samaos/apparence.sh " + (panneau.modeSombre ? "clair" : "sombre"))
             }
             Tuile {
                 titre: "Réseaux"

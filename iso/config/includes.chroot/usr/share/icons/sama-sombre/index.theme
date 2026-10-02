@@ -1,0 +1,27 @@
+[Icon Theme]
+Name=Sama Sombre
+Comment=Icônes de Sama OS : dossiers ocre, fichiers à étiquette, tuiles des applications Sama
+Inherits=breeze-dark,hicolor
+Directories=scalable/places,scalable/mimetypes,scalable/apps
+FollowsColorScheme=false
+
+[scalable/places]
+Size=64
+MinSize=8
+MaxSize=512
+Context=Places
+Type=Scalable
+
+[scalable/mimetypes]
+Size=64
+MinSize=8
+MaxSize=512
+Context=MimeTypes
+Type=Scalable
+
+[scalable/apps]
+Size=64
+MinSize=8
+MaxSize=512
+Context=Applications
+Type=Scalable

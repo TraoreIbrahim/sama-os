@@ -37,6 +37,7 @@ locales
 keyboard-configuration
 fonts-noto-core
 fonts-noto-ui-core
+fonts-noto-mono
 fonts-sil-andika
 
 # Matériel et réseau

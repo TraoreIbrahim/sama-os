@@ -1,0 +1,4 @@
+#!/bin/sh
+# Écran de verrouillage de Sama (voir /usr/libexec/samaos/installer-verrouillage.sh)
+set -e
+sh /usr/libexec/samaos/installer-verrouillage.sh

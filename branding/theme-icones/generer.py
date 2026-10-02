@@ -7,17 +7,28 @@ Langage visuel de la maquette (écran Fichiers) :
   - applications : les tuiles Sama de branding/icones/.
 Tout ce qui n'est pas redéfini ici vient de Breeze (Inherits=breeze).
 
+Deux variantes : « sama » (mode clair, hérite de breeze) et « sama-sombre » (mode sombre, hérite de breeze-dark),
+aux teintes de la maquette en mode sombre (dossier #D9A35F / #B9864A, feuille #262B3D).
+
 Usage : python3 branding/theme-icones/generer.py
-Sortie : iso/config/includes.chroot/usr/share/icons/sama/
+Sortie : iso/config/includes.chroot/usr/share/icons/sama/ et sama-sombre/
 """
 import os
 import shutil
 
 RACINE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SORTIE = os.path.join(RACINE, "iso/config/includes.chroot/usr/share/icons/sama")
+ICONES = os.path.join(RACINE, "iso/config/includes.chroot/usr/share/icons")
 TUILES = os.path.join(RACINE, "branding/icones")
 
-ONGLET, FACE, TRAIT = "#CF9A55", "#E3B373", "#A8742F"
+VARIANTES = {
+    "sama": dict(nom="Sama", herite="breeze", onglet="#CF9A55", face="#E3B373", trait="#A8742F",
+                 papier="#FFFFFF", bord="#1F1C18", bord_op="0.18", lignes="#1F1C18", lignes_op="0.09",
+                 tuile="#E4E0DA", tuile_encre="#5B544B"),
+    "sama-sombre": dict(nom="Sama Sombre", herite="breeze-dark", onglet="#B9864A", face="#D9A35F", trait="#8A5F2A",
+                        papier="#262B3D", bord="#FFFFFF", bord_op="0.16", lignes="#FFFFFF", lignes_op="0.12",
+                        tuile="#2B3044", tuile_encre="#ADA698"),
+}
+V = VARIANTES["sama"]
 
 # Pictogrammes (trait 1.7, grille 24), même famille que les icônes de la Natte et du Pouls
 PICTOS = {
@@ -40,10 +51,10 @@ def dossier(picto=None, ouvert=False):
     face = ("M2 26a4 4 0 0 1 4-4h52a4 4 0 0 1 3.9 4.9l-5 22A4 4 0 0 1 53 52H8a4 4 0 0 1-4-4z" if ouvert
             else "M4 22a4 4 0 0 1 4-4h48a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z")
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">',
-           f'  <path d="M4 14a4 4 0 0 1 4-4h16l6 6h26a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="{ONGLET}"/>',
-           f'  <path d="{face}" fill="{FACE}"/>']
+           f'  <path d="M4 14a4 4 0 0 1 4-4h16l6 6h26a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="{V["onglet"]}"/>',
+           f'  <path d="{face}" fill="{V["face"]}"/>']
     if picto:
-        svg.append(f'  <g transform="translate(22.4 25.4) scale(0.8)" fill="none" stroke="{TRAIT}" stroke-width="2" '
+        svg.append(f'  <g transform="translate(22.4 25.4) scale(0.8)" fill="none" stroke="{V["trait"]}" stroke-width="2" '
                    f'stroke-linecap="round" stroke-linejoin="round"><path d="{PICTOS[picto]}"/></g>')
     svg.append("</svg>\n")
     return "\n".join(svg)
@@ -52,8 +63,8 @@ def dossier(picto=None, ouvert=False):
 def fichier(etiquette=None, couleur="#8A8277"):
     """Feuille 64×64 : papier blanc, trois lignes, étiquette colorée débordant à gauche."""
     svg = ['<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">',
-           '  <rect x="12.5" y="4.5" width="39" height="55" rx="6" fill="#FFFFFF" stroke="#1F1C18" stroke-opacity="0.18"/>',
-           '  <g fill="#1F1C18" fill-opacity="0.09">',
+           f'  <rect x="12.5" y="4.5" width="39" height="55" rx="6" fill="{V["papier"]}" stroke="{V["bord"]}" stroke-opacity="{V["bord_op"]}"/>',
+           f'  <g fill="{V["lignes"]}" fill-opacity="{V["lignes_op"]}">',
            '    <rect x="20" y="16" width="24" height="3" rx="1.5"/>',
            '    <rect x="20" y="23" width="18" height="3" rx="1.5"/>',
            '    <rect x="20" y="30" width="21" height="3" rx="1.5"/>',
@@ -151,6 +162,9 @@ APPLICATIONS = {
 }
 
 
+SORTIE = ICONES
+
+
 def ecrire(dossier_relatif, nom, contenu):
     chemin = os.path.join(SORTIE, dossier_relatif, nom + ".svg")
     os.makedirs(os.path.dirname(chemin), exist_ok=True)
@@ -158,16 +172,19 @@ def ecrire(dossier_relatif, nom, contenu):
         f.write(contenu)
 
 
-def main():
+def generer(variante):
+    global V, SORTIE
+    V = VARIANTES[variante]
+    SORTIE = os.path.join(ICONES, variante)
     if os.path.isdir(SORTIE):
         shutil.rmtree(SORTIE)
 
     for nom, picto in EMPLACEMENTS.items():
         ecrire("scalable/places", nom, dossier(picto))
     ecrire("scalable/places", "folder-open", dossier(ouvert=True))
-    ecrire("scalable/places", "user-trash", tuile("#E4E0DA", "#5B544B", "corbeille"))
-    ecrire("scalable/places", "user-trash-full", tuile("#E4E0DA", "#5B544B", "corbeille", pastille=True))
-    ecrire("scalable/places", "trash-empty", tuile("#E4E0DA", "#5B544B", "corbeille"))
+    ecrire("scalable/places", "user-trash", tuile(V["tuile"], V["tuile_encre"], "corbeille"))
+    ecrire("scalable/places", "user-trash-full", tuile(V["tuile"], V["tuile_encre"], "corbeille", pastille=True))
+    ecrire("scalable/places", "trash-empty", tuile(V["tuile"], V["tuile_encre"], "corbeille"))
 
     for nom, valeur in TYPES.items():
         ecrire("scalable/mimetypes", nom, fichier(*valeur) if valeur else fichier())
@@ -179,10 +196,10 @@ def main():
             ecrire("scalable/apps", nom, contenu)
 
     with open(os.path.join(SORTIE, "index.theme"), "w") as f:
-        f.write("""[Icon Theme]
-Name=Sama
+        f.write(f"""[Icon Theme]
+Name={V["nom"]}
 Comment=Icônes de Sama OS : dossiers ocre, fichiers à étiquette, tuiles des applications Sama
-Inherits=breeze,hicolor
+Inherits={V["herite"]},hicolor
 Directories=scalable/places,scalable/mimetypes,scalable/apps
 FollowsColorScheme=false
 
@@ -208,8 +225,9 @@ Context=Applications
 Type=Scalable
 """)
     total = sum(len(fs) for _, _, fs in os.walk(SORTIE)) - 1
-    print(f"Thème Sama : {total} icônes dans {os.path.relpath(SORTIE, RACINE)}")
+    print(f'{V["nom"]} : {total} icônes dans {os.path.relpath(SORTIE, RACINE)}')
 
 
 if __name__ == "__main__":
-    main()
+    for variante in VARIANTES:
+        generer(variante)
