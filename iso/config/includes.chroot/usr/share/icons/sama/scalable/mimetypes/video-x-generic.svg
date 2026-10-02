@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect x="12.5" y="4.5" width="39" height="55" rx="6" fill="#FFFFFF" stroke="#1F1C18" stroke-opacity="0.18"/>
+  <g fill="#1F1C18" fill-opacity="0.09">
+    <rect x="20" y="16" width="24" height="3" rx="1.5"/>
+    <rect x="20" y="23" width="18" height="3" rx="1.5"/>
+    <rect x="20" y="30" width="21" height="3" rx="1.5"/>
+  </g>
+  <rect x="6" y="40" width="27.2" height="13" rx="4" fill="#1E2740"/>
+  <text x="19.6" y="49.6" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="9" font-weight="700" letter-spacing="0.3" fill="#FFFFFF">VID</text>
+</svg>
