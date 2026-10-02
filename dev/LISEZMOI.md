@@ -8,7 +8,7 @@ et de voir le résultat **tout de suite** dans la machine virtuelle UTM, sans re
 Dans Sama, ouvrez le terminal **Konsole** et tapez :
 
 ```bash
-sudo apt-get update && sudo apt-get install -y openssh-server spectacle && mkdir -p ~/.ssh && curl -fsSL https://raw.githubusercontent.com/TraoreIbrahim/sama-os/main/dev/cle-dev.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && ip -4 -brief address
+sudo apt-get update && sudo apt-get install -y openssh-server kde-spectacle && mkdir -p ~/.ssh && curl -fsSL https://raw.githubusercontent.com/TraoreIbrahim/sama-os/main/dev/cle-dev.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && ip -4 -brief address
 ```
 
 La dernière ligne affiche l'adresse de la machine virtuelle (par exemple `192.168.64.5`).
