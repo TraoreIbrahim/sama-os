@@ -22,3 +22,4 @@ iso/config/source
 
 # Mode direct (adresse locale de la machine virtuelle)
 .mode-direct-adresse
+iso/config/includes.chroot/usr/share/plasma/look-and-feel/org.samaos.bureau/contents/splash/ChargementSama.qml

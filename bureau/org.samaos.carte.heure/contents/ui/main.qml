@@ -35,13 +35,13 @@ PlasmoidItem {
     }
 
     fullRepresentation: Item {
+        readonly property int marge: Kirigami.Units.gridUnit * 1.3
         Layout.minimumWidth: Kirigami.Units.gridUnit * 14
-        Layout.minimumHeight: carte.implicitHeight
         Layout.preferredWidth: Kirigami.Units.gridUnit * 17
-        Layout.preferredHeight: carte.implicitHeight
+        Layout.minimumHeight: colonne.implicitHeight + marge * 2
+        Layout.preferredHeight: colonne.implicitHeight + marge * 2
 
         Rectangle {
-            id: fond
             anchors.fill: parent
             radius: Kirigami.Units.gridUnit * 1.3
             color: Kirigami.Theme.backgroundColor
@@ -51,40 +51,33 @@ PlasmoidItem {
         }
 
         ColumnLayout {
-            id: carte
+            id: colonne
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: Kirigami.Units.gridUnit * 1.3
+            anchors.margins: parent.marge
             spacing: Kirigami.Units.smallSpacing
-            implicitHeight: colonne.implicitHeight + Kirigami.Units.gridUnit * 2.6
 
-            ColumnLayout {
-                id: colonne
-                spacing: Kirigami.Units.smallSpacing
-
-                Text {
-                    text: Qt.formatTime(racine.maintenant, "hh:mm")
-                    font.pixelSize: Kirigami.Units.gridUnit * 3.2
-                    font.weight: Font.Light
-                    font.letterSpacing: -1.5
-                    color: Kirigami.Theme.textColor
+            Text {
+                text: Qt.formatTime(racine.maintenant, "hh:mm")
+                font.pixelSize: Kirigami.Units.gridUnit * 3.2
+                font.weight: Font.Light
+                font.letterSpacing: -1.5
+                color: Kirigami.Theme.textColor
+            }
+            Text {
+                text: {
+                    var d = racine.maintenant.toLocaleDateString(Qt.locale(), "dddd d MMMM")
+                    return d.charAt(0).toUpperCase() + d.slice(1)
                 }
-                Text {
-                    text: {
-                        var d = racine.maintenant.toLocaleDateString(Qt.locale(), "dddd d MMMM")
-                        return d.charAt(0).toUpperCase() + d.slice(1)
-                    }
-                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
-                    color: Kirigami.Theme.disabledTextColor
-                }
-                Text {
-                    Layout.topMargin: Kirigami.Units.largeSpacing
-                    text: racine.salutation
-                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.3
-                    font.weight: Font.Medium
-                    color: Kirigami.Theme.textColor
-                }
+                color: Kirigami.Theme.disabledTextColor
+            }
+            Text {
+                Layout.topMargin: Kirigami.Units.largeSpacing
+                text: racine.salutation
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.3
+                font.weight: Font.Medium
+                color: Kirigami.Theme.textColor
             }
         }
     }

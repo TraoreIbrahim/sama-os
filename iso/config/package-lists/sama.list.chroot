@@ -56,5 +56,6 @@ qemu-guest-agent
 btrfs-progs
 
 # Outils utilisés par les scripts de Sama
+curl
 dbus-bin
 librsvg2-bin

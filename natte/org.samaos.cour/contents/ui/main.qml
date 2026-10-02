@@ -49,12 +49,12 @@ PlasmoidItem {
 
     property var fenetre: null
 
-    function basculer() {
+    function basculer(source) {
         if (!fenetre) {
             var composant = Qt.createComponent("Fenetre.qml")
             if (composant.status === Component.Ready) {
                 fenetre = composant.createObject(cour, {
-                    "visualParent": bouton,
+                    "visualParent": source,
                     "modeleRacine": modeleRacine,
                     "modeleRecherche": modeleRecherche
                 })
@@ -66,18 +66,30 @@ PlasmoidItem {
         fenetre.toggle()
     }
 
+    property Item boutonCour: null
+
+    // Touche Méta (Windows) ou raccourci du lanceur : ouvre aussi la Cour
+    Connections {
+        target: Plasmoid
+        function onActivated() { cour.basculer(cour.boutonCour) }
+    }
+
     fullRepresentation: MouseArea {
         id: bouton
-        Layout.minimumWidth: Layout.minimumHeight
-        Layout.minimumHeight: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 3
-        Layout.preferredWidth: Layout.minimumWidth
-        Layout.preferredHeight: Layout.minimumHeight
+        readonly property int taille: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 3
+        Layout.minimumWidth: taille
+        Layout.minimumHeight: taille
+        Layout.preferredWidth: taille
+        Layout.preferredHeight: taille
+        implicitWidth: taille
+        implicitHeight: taille
         hoverEnabled: true
-        onClicked: cour.basculer()
+        onClicked: cour.basculer(bouton)
+        Component.onCompleted: cour.boutonCour = bouton
 
         Rectangle {
             anchors.centerIn: parent
-            width: Math.min(parent.width, parent.height)
+            width: bouton.taille
             height: width
             radius: width / 2
             color: "#B5532F"

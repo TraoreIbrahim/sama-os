@@ -52,9 +52,10 @@ Kicker.DashboardWindow {
         if (!modeleApps && modeleRacine.count > 0) {
             modeleApps = modeleRacine.modelForRow(0)
         }
-        if (!modeleApps) relance.restart()
+        if (!modeleApps) fenetre.relance.restart()
     }
-    Timer { id: relance; interval: 500; onTriggered: fenetre.trouverApplications() }
+    // (déclaré comme propriété : cette fenêtre n'accepte que des éléments visuels comme enfants)
+    property Timer relance: Timer { interval: 500; onTriggered: fenetre.trouverApplications() }
 
     function lancer(modele, index) {
         if (modele) {

@@ -26,7 +26,7 @@ Item {
         historique.clear(NotificationManager.Notifications.ClearExpired | NotificationManager.Notifications.ClearDismissed)
     }
 
-    Component.onCompleted: NotificationManager.Server.init()
+    // Le serveur de notifications est démarré par Plasma lui-même (plasmashell)
 
     // Historique : toutes les notifications reçues (hors tâches de fond)
     NotificationManager.Notifications {
@@ -73,14 +73,16 @@ Item {
             x: notifications.zoneEcran.x + notifications.zoneEcran.width - width - notifications.marge
             y: notifications.zoneEcran.y + notifications.zoneEcran.height - (height + notifications.marge / 2) * (index + 1) - notifications.marge
 
-            Timer {
-                interval: bulle.duree
-                running: !survol.containsMouse
-                onTriggered: bulles.expire(bulles.index(index, 0))
-            }
-
             mainItem: MouseArea {
                 id: survol
+
+                // Disparition automatique (en pause tant que la souris survole la bulle)
+                Timer {
+                    interval: bulle.duree
+                    running: !survol.containsMouse
+                    onTriggered: bulles.expire(bulles.index(index, 0))
+                }
+
                 width: notifications.largeurBulle
                 height: contenu.implicitHeight + Kirigami.Units.largeSpacing * 2
                 hoverEnabled: true

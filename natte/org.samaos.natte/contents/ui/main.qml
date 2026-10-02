@@ -111,6 +111,9 @@ PlasmoidItem {
 
     fullRepresentation: RowLayout {
         spacing: Kirigami.Units.smallSpacing
+        Layout.minimumHeight: racine.hauteurPilule
+        Layout.preferredHeight: racine.hauteurPilule
+        Layout.maximumHeight: racine.hauteurPilule
 
         Separateur {}
 

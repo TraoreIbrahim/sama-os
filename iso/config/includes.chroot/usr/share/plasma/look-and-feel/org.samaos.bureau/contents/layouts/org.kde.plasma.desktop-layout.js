@@ -29,7 +29,12 @@ for (var i = 0; i < bureaux.length; i++) {
 
     // Cartes du bureau, en haut à gauche : heure et salutation, puis data consommée
     var marge = Math.round(gridUnit * 1.5);
+    var gauche = Math.round(gridUnit * 7);
     var largeur = Math.round(gridUnit * 17);
-    bureau.addWidget("org.samaos.carte.heure", marge, marge, largeur, Math.round(gridUnit * 9));
-    bureau.addWidget("org.samaos.carte.data", marge, marge + Math.round(gridUnit * 9.8), largeur, Math.round(gridUnit * 6.5));
+    bureau.addWidget("org.samaos.carte.heure", gauche, marge, largeur, Math.round(gridUnit * 10.5));
+    bureau.addWidget("org.samaos.carte.data", gauche, marge + Math.round(gridUnit * 11.2), largeur, Math.round(gridUnit * 6.5));
 }
+
+// Bureau verrouillé : pas de poignées ni de déplacements accidentels des cartes
+// (déverrouillage possible depuis le menu du clic droit sur le bureau).
+locked = true;

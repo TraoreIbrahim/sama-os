@@ -11,6 +11,8 @@
 #
 # Prérequis dans la machine virtuelle : voir dev/LISEZMOI.md (une commande à taper une fois).
 set -eu
+# Pas de métadonnées macOS dans les archives envoyées (évite les avertissements de tar côté Linux)
+export COPYFILE_DISABLE=1
 
 racine="$(cd "$(dirname "$0")/.." && pwd)"
 fichier_adresse="$racine/.mode-direct-adresse"
@@ -44,14 +46,19 @@ envoyer)
 		cp -R "$dossier" "$travail/plasmoids/"
 	done
 	cp "$racine"/branding/qml/*.qml "$travail/plasmoids/org.samaos.natte/contents/ui/"
-	tar -C "$travail" -czf - plasmoids | vm 'mkdir -p ~/.local/share/plasma && rm -rf ~/.local/share/plasma/plasmoids/org.samaos.* && tar -xzf - -C ~/.local/share/plasma'
+	tar --no-xattrs -C "$travail" -czf - plasmoids | vm 'mkdir -p ~/.local/share/plasma && rm -rf ~/.local/share/plasma/plasmoids/org.samaos.* && tar -xzf - -C ~/.local/share/plasma'
 	rm -rf "$travail"
 
+	cp "$racine"/branding/qml/ChargementSama.qml "$inclus/usr/share/plasma/look-and-feel/org.samaos.bureau/contents/splash/"
+	printf "%s" "$(cat "$inclus/etc/xdg/ksplashrc")" | vm "sudo tee /etc/xdg/ksplashrc >/dev/null"
+
 	# Identité visuelle, couleurs, thème Plasma, apparence (fichiers système : sudo sans mot de passe en session d'essai)
-	tar -C "$racine/branding" -czf - logo-sama.svg logo-cour.svg fonds icones demarrage installateur \
+	tar --no-xattrs -C "$racine/branding" -czf - logo-sama.svg logo-cour.svg fonds icones demarrage installateur \
 		| vm 'sudo mkdir -p /usr/share/samaos && sudo tar -xzf - -C /usr/share/samaos'
-	tar -C "$inclus/usr/share" -czf - color-schemes plasma/desktoptheme plasma/look-and-feel \
+	tar --no-xattrs -C "$inclus/usr/share" -czf - color-schemes plasma/desktoptheme plasma/look-and-feel \
 		| vm 'sudo tar -xzf - -C /usr/share'
+	# Scripts Sama (organisation du menu…) et application du tri des applications
+	tar --no-xattrs -C "$inclus/usr/libexec" -czf - samaos | vm 'sudo tar -xzf - -C /usr/libexec && sudo sh /usr/libexec/samaos/organiser-applications.sh && kbuildsycoca6 >/dev/null 2>&1'
 
 	# Recharger le bureau (quelques secondes)
 	vm 'systemctl --user restart plasma-plasmashell.service 2>/dev/null || (kquitapp6 plasmashell; sleep 1; setsid plasmashell >/dev/null 2>&1 &)'

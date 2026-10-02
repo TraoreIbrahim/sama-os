@@ -14,6 +14,8 @@ VERSION="0.1 (prototype)"
 ID=samaos
 ID_LIKE=debian
 FIN
+# /etc/os-release doit pointer vers notre fichier (il est parfois recopié en fichier ordinaire)
+ln -sf ../usr/lib/os-release /etc/os-release
 
 # Langues disponibles d'emblée : français, anglais, swahili
 for langue in fr_FR.UTF-8 en_US.UTF-8 sw_KE.UTF-8; do

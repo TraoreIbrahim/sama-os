@@ -56,14 +56,18 @@ PlasmoidItem {
         hoverEnabled: true
         onClicked: racine.expanded = !racine.expanded
 
+        readonly property int hauteurCapsule: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 3
         Layout.minimumWidth: contenu.implicitWidth + Kirigami.Units.largeSpacing * 2
         Layout.preferredWidth: Layout.minimumWidth
-        Layout.fillHeight: true
+        Layout.minimumHeight: hauteurCapsule
+        Layout.preferredHeight: hauteurCapsule
+        implicitWidth: Layout.minimumWidth
+        implicitHeight: hauteurCapsule
 
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width
-            height: Math.min(parent.height, Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 3)
+            height: capsule.hauteurCapsule
             radius: height / 2
             color: racine.encre
             opacity: capsule.containsMouse || racine.expanded ? 0.11 : 0.06

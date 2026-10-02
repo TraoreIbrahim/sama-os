@@ -29,6 +29,7 @@ for dossier in "$racine"/natte/org.samaos.* "$racine"/bureau/org.samaos.*; do
 done
 # Composants QML partagés (indicateur de chargement…)
 cp "$racine"/branding/qml/*.qml "$inclus/usr/share/plasma/plasmoids/org.samaos.natte/contents/ui/"
+cp "$racine"/branding/qml/ChargementSama.qml "$inclus/usr/share/plasma/look-and-feel/org.samaos.bureau/contents/splash/"
 
 echo "==> Préparation de l'environnement de construction ($ARCH)"
 docker build --platform "linux/$ARCH" -t "samaos-construction:$ARCH" "$racine/docker"

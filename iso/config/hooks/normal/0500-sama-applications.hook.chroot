@@ -1,23 +1,4 @@
 #!/bin/sh
-# Masque du menu les logiciels provisoires dont Sama propose un raccourci à son nom
-# (Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos…).
-# On ne modifie pas les fichiers des paquets : une copie masquée dans /usr/local/share
-# prend le dessus sur l'original.
+# Organise le menu des applications (la Cour) : voir /usr/libexec/samaos/organiser-applications.sh
 set -e
-
-masquer() {
-	original="/usr/share/applications/$1"
-	[ -f "$original" ] || return 0
-	mkdir -p /usr/local/share/applications
-	sed '/^NoDisplay=/d; /^\[Desktop Entry\]/a NoDisplay=true' "$original" \
-		> "/usr/local/share/applications/$1"
-}
-
-masquer chromium.desktop
-masquer libreoffice-writer.desktop
-masquer libreoffice-calc.desktop
-masquer libreoffice-impress.desktop
-masquer org.kde.dolphin.desktop
-masquer org.kde.discover.desktop
-masquer org.kde.gwenview.desktop
-
+sh /usr/libexec/samaos/organiser-applications.sh

@@ -19,3 +19,7 @@ theme=Breeze
 
 [Wallpaper]
 Image=SamaAube
+
+[ksplashrc][KSplash]
+Engine=KSplashQML
+Theme=org.samaos.bureau
