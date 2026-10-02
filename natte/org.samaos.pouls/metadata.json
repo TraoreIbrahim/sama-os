@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPlugin": {
+        "Id": "org.samaos.pouls",
+        "Name": "Le Pouls",
+        "Description": "État du système de Sama OS en une capsule : langue, réseau, data, batterie, heure",
+        "Category": "System Information",
+        "Icon": "preferences-system",
+        "Authors": [{ "Name": "Projet Sama OS" }],
+        "License": "GPL-3.0-or-later",
+        "Version": "0.1"
+    }
+}

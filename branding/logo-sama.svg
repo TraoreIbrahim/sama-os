@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 100 100">
+  <title>Sama OS</title>
+  <circle cx="25" cy="40" r="21" fill="#B5532F"/>
+  <circle cx="75" cy="40" r="21" fill="#B5532F"/>
+  <ellipse cx="50" cy="40" rx="19" ry="23" fill="#B5532F" stroke="#F5EEE1" stroke-width="4"/>
+  <path d="M50 58 C50 70 63 66 63 77 C63 88 47 90 42 83" fill="none" stroke="#B5532F" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="43" cy="36" r="2.6" fill="#F5EEE1"/>
+  <circle cx="57" cy="36" r="2.6" fill="#F5EEE1"/>
+</svg>

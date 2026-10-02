@@ -1,0 +1,9 @@
+[KDE]
+LookAndFeelPackage=org.samaos.bureau
+widgetStyle=Breeze
+
+[General]
+ColorScheme=SamaClair
+
+[Icons]
+Theme=breeze

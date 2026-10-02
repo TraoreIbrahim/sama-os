@@ -1,0 +1,22 @@
+# ISO et journaux de construction
+sortie/
+*.iso
+build.log
+
+# Fichiers copiés depuis branding/ et natte/ au moment de la construction
+iso/config/includes.chroot/usr/share/samaos/
+iso/config/includes.chroot/usr/share/plasma/plasmoids/org.samaos.natte/
+iso/config/includes.chroot/usr/share/plasma/plasmoids/org.samaos.pouls/
+
+# Arborescence produite par live-build
+iso/.build/
+iso/cache/
+iso/chroot/
+iso/binary/
+iso/config/binary
+iso/config/bootstrap
+iso/config/chroot
+iso/config/common
+iso/config/source
+
+.DS_Store

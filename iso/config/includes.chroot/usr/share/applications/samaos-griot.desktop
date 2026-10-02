@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Griot
+Comment=Navigateur web de Sama (préversion)
+Exec=chromium %U
+Icon=/usr/share/samaos/icones/griot.svg
+StartupWMClass=chromium
+Categories=Network;WebBrowser;
+Terminal=false
+X-Sama-Provisoire=true

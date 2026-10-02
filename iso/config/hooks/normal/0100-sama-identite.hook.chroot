@@ -1,0 +1,22 @@
+#!/bin/sh
+# Identité du système : Sama OS, basé sur Debian, et langues générées par défaut.
+set -e
+
+# os-release : on détourne celui de Debian pour qu'une mise à jour de base-files ne l'écrase pas
+dpkg-divert --quiet --local --rename --add \
+	--divert /usr/lib/os-release.debian /usr/lib/os-release
+
+cat > /usr/lib/os-release <<'FIN'
+PRETTY_NAME="Sama OS 0.1 (prototype)"
+NAME="Sama OS"
+VERSION_ID="0.1"
+VERSION="0.1 (prototype)"
+ID=samaos
+ID_LIKE=debian
+FIN
+
+# Langues disponibles d'emblée : français, anglais, swahili
+for langue in fr_FR.UTF-8 en_US.UTF-8 sw_KE.UTF-8; do
+	sed -i "s/^# *\($langue\)/\1/" /etc/locale.gen
+done
+locale-gen

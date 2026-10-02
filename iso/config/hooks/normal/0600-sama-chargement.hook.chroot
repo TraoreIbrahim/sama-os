@@ -1,0 +1,17 @@
+#!/bin/sh
+# Écran de chargement de Sama OS (Plymouth) : images générées depuis les SVG, puis thème par défaut.
+set -e
+
+THEME=/usr/share/plymouth/themes/samaos
+SOURCES=/usr/share/samaos/demarrage
+
+rsvg-convert --height 760 "$SOURCES/logo-chargement.svg" -o "$THEME/logo.png"
+
+# Barre de progression : fond discret et remplissage or
+printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#262B3D"/></svg>' \
+	| rsvg-convert -o "$THEME/barre-fond.png"
+printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#F2C879"/></svg>' \
+	| rsvg-convert -o "$THEME/barre.png"
+
+# Thème par défaut (l'image de démarrage est régénérée plus tard par live-build)
+plymouth-set-default-theme samaos

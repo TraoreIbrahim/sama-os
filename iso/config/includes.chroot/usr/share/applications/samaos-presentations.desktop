@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Sama Présentations
+Comment=Présentations de Sama (préversion)
+Exec=libreoffice --impress %U
+Icon=/usr/share/samaos/icones/presentations.svg
+StartupWMClass=libreoffice-impress
+Categories=Office;Presentation;
+Terminal=false
+X-Sama-Provisoire=true

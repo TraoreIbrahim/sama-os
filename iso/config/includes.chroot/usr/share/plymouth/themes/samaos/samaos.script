@@ -1,0 +1,77 @@
+# Écran de démarrage de Sama OS (Plymouth, module « script »)
+# Fond nuit, l'éléphant et « Sama » au centre, une fine barre de progression or en dessous.
+# Gère aussi la saisie du mot de passe quand le disque est chiffré.
+
+Window.SetBackgroundTopColor(0.082, 0.102, 0.169);
+Window.SetBackgroundBottomColor(0.082, 0.102, 0.169);
+
+largeur = Window.GetWidth();
+hauteur = Window.GetHeight();
+x0 = Window.GetX();
+y0 = Window.GetY();
+
+# Logo : environ un quart de la hauteur de l'écran
+logo_source = Image("logo.png");
+logo_h = Math.Int(hauteur * 0.24);
+logo_l = Math.Int(logo_source.GetWidth() * logo_h / logo_source.GetHeight());
+logo.image = logo_source.Scale(logo_l, logo_h);
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetPosition(x0 + largeur / 2 - logo_l / 2, y0 + hauteur * 0.42 - logo_h / 2, 1);
+
+# Barre de progression
+barre_l = Math.Int(largeur * 0.12);
+barre_h = 4;
+barre_x = x0 + largeur / 2 - barre_l / 2;
+barre_y = y0 + hauteur * 0.42 + logo_h / 2 + 48;
+
+fond_source = Image("barre-fond.png");
+fond.sprite = Sprite(fond_source.Scale(barre_l, barre_h));
+fond.sprite.SetPosition(barre_x, barre_y, 1);
+
+remplissage_source = Image("barre.png");
+remplissage.sprite = Sprite();
+remplissage.sprite.SetPosition(barre_x, barre_y, 2);
+
+fun progression(duree, avancement) {
+    l = Math.Int(barre_l * avancement);
+    if (l < 1) l = 1;
+    remplissage.sprite.SetImage(remplissage_source.Scale(l, barre_h));
+}
+Plymouth.SetBootProgressFunction(progression);
+
+# Messages (rares) sous la barre
+message.sprite = Sprite();
+message.sprite.SetPosition(x0 + largeur / 2, barre_y + 32, 3);
+
+fun afficher_message(texte) {
+    image = Image.Text(texte, 0.678, 0.651, 0.596, 1);
+    message.sprite.SetImage(image);
+    message.sprite.SetX(x0 + largeur / 2 - image.GetWidth() / 2);
+}
+Plymouth.SetMessageFunction(afficher_message);
+
+# Mot de passe du disque chiffré
+invite.sprite = Sprite();
+points.sprite = Sprite();
+
+fun demander_mot_de_passe(texte, nombre) {
+    fond.sprite.SetOpacity(0);
+    remplissage.sprite.SetOpacity(0);
+    titre = Image.Text("Mot de passe du disque", 0.945, 0.922, 0.882, 1);
+    invite.sprite.SetImage(titre);
+    invite.sprite.SetPosition(x0 + largeur / 2 - titre.GetWidth() / 2, barre_y - 8, 4);
+    puces = "";
+    for (i = 0; i < nombre && i < 24; i++) puces = puces + "* ";
+    image = Image.Text(puces, 0.902, 0.855, 0.761, 1);
+    points.sprite.SetImage(image);
+    points.sprite.SetPosition(x0 + largeur / 2 - image.GetWidth() / 2, barre_y + 28, 4);
+}
+Plymouth.SetDisplayPasswordFunction(demander_mot_de_passe);
+
+fun retour_normal() {
+    invite.sprite.SetOpacity(0);
+    points.sprite.SetOpacity(0);
+    fond.sprite.SetOpacity(1);
+    remplissage.sprite.SetOpacity(1);
+}
+Plymouth.SetDisplayNormalFunction(retour_normal);

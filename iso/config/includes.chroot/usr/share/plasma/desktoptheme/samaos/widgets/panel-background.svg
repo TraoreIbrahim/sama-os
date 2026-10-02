@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="116" height="116" viewBox="0 0 116 116">
+  <style type="text/css" id="current-color-scheme">.ColorScheme-Background { color:#fbf9f6; }</style>
+  <g class="ColorScheme-Background" fill="currentColor">
+    <path id="topleft" d="M28 0 A28 28 0 0 0 0 28 L28 28 Z"/>
+    <rect id="top" x="28" y="0" width="60" height="28"/>
+    <path id="topright" d="M88 0 A28 28 0 0 1 116 28 L88 28 Z"/>
+    <rect id="left" x="0" y="28" width="28" height="60"/>
+    <rect id="center" x="28" y="28" width="60" height="60"/>
+    <rect id="right" x="88" y="28" width="28" height="60"/>
+    <path id="bottomleft" d="M0 88 A28 28 0 0 0 28 116 L28 88 Z"/>
+    <rect id="bottom" x="28" y="88" width="60" height="28"/>
+    <path id="bottomright" d="M88 88 L116 88 A28 28 0 0 1 88 116 Z"/>
+  </g>
+</svg>

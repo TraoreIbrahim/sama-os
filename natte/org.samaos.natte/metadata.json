@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPlugin": {
+        "Id": "org.samaos.natte",
+        "Name": "La Natte",
+        "Description": "Barre de navigation de Sama OS : la Cour et les Espaces (expérimental)",
+        "Category": "Windows and Tasks",
+        "Icon": "start-here",
+        "Authors": [{ "Name": "Projet Sama OS" }],
+        "License": "GPL-3.0-or-later",
+        "Version": "0.1"
+    }
+}

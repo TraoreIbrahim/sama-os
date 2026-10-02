@@ -1,0 +1,37 @@
+#!/bin/sh
+# Habille le menu de démarrage de la clé Sama OS (GRUB) :
+# fond en pleine résolution, polices Noto nettes, surbrillance latérite aux coins arrondis.
+# Exécuté dans binary/, après la génération du menu par live-build.
+set -e
+
+SOURCES="../config/includes.chroot/usr/share/samaos/demarrage"
+POLICES="../chroot/usr/share/fonts/truetype/noto"
+THEME="boot/grub/live-theme"
+
+mkdir -p "$THEME"
+
+# Fond du menu (remplace le casque de live-build)
+rsvg-convert --width 1920 --height 1080 "$SOURCES/fond-menu.svg" -o boot/grub/splash.png
+
+# Polices : Noto Sans, avec Light pour le titre si elle est disponible
+titre="$POLICES/NotoSans-Light.ttf"
+[ -f "$titre" ] || titre="$POLICES/NotoSans-Regular.ttf"
+grub-mkfont --size 36 --name "Sama Titre 36" --output "$THEME/sama-titre.pf2" "$titre"
+grub-mkfont --size 22 --name "Sama Menu 22" --output "$THEME/sama-menu.pf2" "$POLICES/NotoSans-Regular.ttf"
+grub-mkfont --size 16 --name "Sama Aide 16" --output "$THEME/sama-aide.pf2" "$POLICES/NotoSans-Regular.ttf"
+
+# Surbrillance de l'entrée choisie : pilule latérite découpée en 9 morceaux (coins de 12 px)
+pilule='<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="VB"><rect width="48" height="48" rx="12" fill="#B5532F"/></svg>'
+morceau() {
+	echo "$pilule" | sed "s/VB/$2/; s/width=\"48\" height=\"48\" viewBox/width=\"$3\" height=\"$4\" viewBox/" \
+		| rsvg-convert -o "$THEME/selection_$1.png"
+}
+morceau nw "0 0 12 12" 12 12
+morceau n "12 0 24 12" 24 12
+morceau ne "36 0 12 12" 12 12
+morceau w "0 12 12 24" 12 24
+morceau c "12 12 24 24" 24 24
+morceau e "36 12 12 24" 12 24
+morceau sw "0 36 12 12" 12 12
+morceau s "12 36 24 12" 24 12
+morceau se "36 36 12 12" 12 12

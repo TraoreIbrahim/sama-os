@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="380" viewBox="0 0 320 380">
+  <title>Sama OS — logo de l'écran de chargement</title>
+  <g transform="translate(60 20) scale(2)">
+    <circle cx="25" cy="40" r="21" fill="#E6DAC2"/>
+    <circle cx="75" cy="40" r="21" fill="#E6DAC2"/>
+    <ellipse cx="50" cy="40" rx="19" ry="23" fill="#E6DAC2" stroke="#151A2B" stroke-width="4"/>
+    <path d="M50 58 C50 70 63 66 63 77 C63 88 47 90 42 83" fill="none" stroke="#E6DAC2" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="43" cy="36" r="2.6" fill="#151A2B"/>
+    <circle cx="57" cy="36" r="2.6" fill="#151A2B"/>
+  </g>
+  <text x="160" y="330" text-anchor="middle" font-family="Noto Sans" font-weight="300" font-size="56" fill="#E6DAC2">Sama</text>
+</svg>

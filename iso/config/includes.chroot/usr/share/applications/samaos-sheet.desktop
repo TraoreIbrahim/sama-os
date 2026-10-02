@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Sama Sheet
+Comment=Tableur de Sama (préversion)
+Exec=libreoffice --calc %U
+Icon=/usr/share/samaos/icones/sheet.svg
+StartupWMClass=libreoffice-calc
+Categories=Office;Spreadsheet;
+Terminal=false
+X-Sama-Provisoire=true

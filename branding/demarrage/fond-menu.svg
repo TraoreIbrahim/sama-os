@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <title>Sama OS — fond du menu de démarrage</title>
+  <rect width="1920" height="1080" fill="#151A2B"/>
+  <!-- Collines de la nuit, très discrètes, en bas de l'écran -->
+  <path d="M0 860 C 320 820, 600 834, 880 852 S 1460 812, 1920 840 L1920 1080 L0 1080 Z" fill="#191F33"/>
+  <path d="M0 950 C 360 918, 700 930, 1010 948 S 1600 914, 1920 936 L1920 1080 L0 1080 Z" fill="#1D2439"/>
+  <!-- L'éléphant -->
+  <g transform="translate(900 250) scale(1.2)">
+    <circle cx="25" cy="40" r="21" fill="#E6DAC2"/>
+    <circle cx="75" cy="40" r="21" fill="#E6DAC2"/>
+    <ellipse cx="50" cy="40" rx="19" ry="23" fill="#E6DAC2" stroke="#151A2B" stroke-width="4"/>
+    <path d="M50 58 C50 70 63 66 63 77 C63 88 47 90 42 83" fill="none" stroke="#E6DAC2" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="43" cy="36" r="2.6" fill="#151A2B"/>
+    <circle cx="57" cy="36" r="2.6" fill="#151A2B"/>
+  </g>
+</svg>

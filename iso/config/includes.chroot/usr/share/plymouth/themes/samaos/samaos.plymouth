@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Sama OS
+Description=Écran de démarrage de Sama OS : l'éléphant et une fine barre de progression
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/samaos
+ScriptFile=/usr/share/plymouth/themes/samaos/samaos.script

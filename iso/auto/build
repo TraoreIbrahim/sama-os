@@ -1,0 +1,4 @@
+#!/bin/sh
+# Construction de l'ISO ; le journal complet est gardé dans build.log.
+set -e
+lb build noauto "${@}" 2>&1 | tee build.log

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Sugu
+Comment=Magasin d'applications de Sama (préversion)
+Exec=plasma-discover %F
+Icon=/usr/share/samaos/icones/sugu.svg
+StartupWMClass=org.kde.discover
+Categories=System;PackageManager;
+Terminal=false
+X-Sama-Provisoire=true

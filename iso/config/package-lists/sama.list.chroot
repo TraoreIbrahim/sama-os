@@ -1,0 +1,60 @@
+# Paquets de l'ISO live Sama OS 0.1 (prototype)
+
+# Bureau : KDE Plasma 6, qui sera personnalisé aux couleurs de Sama
+kde-plasma-desktop
+sddm
+plasma-nm
+plasma-pa
+powerdevil
+kscreen
+bluedevil
+breeze-gtk-theme
+
+# Applications provisoires, en attendant la suite Sama
+# (Griot, Sama Docs, Sama Sheet, Sugu… remplaceront ces logiciels et seront renommés)
+dolphin
+konsole
+kate
+okular
+gwenview
+ark
+chromium
+libreoffice-writer
+libreoffice-calc
+libreoffice-impress
+plasma-discover
+plasma-discover-backend-flatpak
+flatpak
+
+# Installation sur disque (sera rebrandée aux couleurs de Sama)
+calamares
+calamares-settings-debian
+
+# Langues, claviers et polices (Noto pour l'interface, Andika pour l'apprentissage)
+locales
+keyboard-configuration
+fonts-noto-core
+fonts-noto-ui-core
+fonts-sil-andika
+
+# Matériel et réseau
+network-manager
+firmware-linux-free
+firmware-linux-nonfree
+firmware-misc-nonfree
+
+# Écran de démarrage (éléphant et barre de progression)
+plymouth
+plymouth-label
+
+# Machines virtuelles (UTM, QEMU) : écran net qui suit la taille de la fenêtre, copier-coller
+# (sans effet sur un vrai ordinateur)
+spice-vdagent
+qemu-guest-agent
+
+# Système de fichiers résistant aux coupures (instantanés)
+btrfs-progs
+
+# Outils utilisés par les scripts de Sama
+dbus-bin
+librsvg2-bin

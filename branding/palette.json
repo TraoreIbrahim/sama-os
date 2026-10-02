@@ -1,0 +1,43 @@
+{
+  "nom": "Sama OS — palette",
+  "version": "0.1",
+  "clair": {
+    "ciel": "#F3ECE2",
+    "soleil": "#EDC6A2",
+    "collines": ["#E7D5C1", "#DDC2A6", "#D0AC8B", "#C39876"],
+    "fenetre": "#FBF9F6",
+    "page": "#FFFFFF",
+    "texte": "#1F1C18",
+    "texte2": "#665E54",
+    "texte3": "#8A8277"
+  },
+  "sombre": {
+    "ciel": "#151A2B",
+    "lune": "#E6DAC2",
+    "collines": ["#1B2135", "#20273F", "#252E4A", "#2B3555"],
+    "fenetre": "#1E2233",
+    "page": "#262B3D",
+    "texte": "#F1EBE1",
+    "texte2": "#ADA698",
+    "texte3": "#8C867A"
+  },
+  "accents": {
+    "laterite": "#B5532F",
+    "laterite_encre": "#93401F",
+    "foret": "#2F6B57",
+    "indigo": "#3D5A99",
+    "nuit": "#1E2740",
+    "or": "#E2A62B",
+    "ivoire": "#F5EEE1",
+    "danger": "#A3322A"
+  },
+  "espaces": {
+    "Travail": "#B5532F",
+    "École": "#3D5A99",
+    "Maison": "#2F6B57"
+  },
+  "polices": {
+    "interface": "Noto Sans",
+    "apprentissage": "Andika"
+  }
+}

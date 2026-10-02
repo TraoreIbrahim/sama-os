@@ -1,0 +1,28 @@
+#!/bin/sh
+# Transforme les fonds d'écran SVG de Sama en paquets de fonds d'écran Plasma (PNG).
+# Le dessin source est au format 16:10 ; pour les écrans 16:9, on recadre le haut et le bas
+# au lieu d'étirer l'image, pour que le soleil reste rond.
+set -e
+
+convertir() {
+	source="/usr/share/samaos/fonds/$1.svg"
+	cible="/usr/share/wallpapers/$2/contents/images"
+	temporaire="$(mktemp --suffix=.svg)"
+	mkdir -p "$cible"
+
+	# 16:10 : dessin tel quel
+	for taille in 1440x900 1680x1050 1920x1200 2560x1600; do
+		rsvg-convert --width "${taille%x*}" --height "${taille#*x}" "$source" -o "$cible/$taille.png"
+	done
+
+	# 16:9 : recadrage vertical (45 unités en haut et en bas)
+	sed 's/viewBox="0 0 1440 900"/viewBox="0 45 1440 810"/' "$source" > "$temporaire"
+	for taille in 1366x768 1920x1080 2560x1440 3840x2160; do
+		rsvg-convert --width "${taille%x*}" --height "${taille#*x}" "$temporaire" -o "$cible/$taille.png"
+	done
+
+	rm -f "$temporaire"
+}
+
+convertir sama-aube SamaAube
+convertir sama-nuit SamaNuit

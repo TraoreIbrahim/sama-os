@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Photos
+Comment=Visionneuse de photos de Sama (préversion)
+Exec=gwenview %U
+Icon=/usr/share/samaos/icones/photos.svg
+StartupWMClass=org.kde.gwenview
+Categories=Graphics;Viewer;
+Terminal=false
+X-Sama-Provisoire=true

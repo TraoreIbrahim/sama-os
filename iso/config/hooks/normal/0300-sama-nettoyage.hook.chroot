@@ -1,0 +1,8 @@
+#!/bin/sh
+# Retire ce qui présente le système comme « Debian » ou « KDE » à l'utilisateur.
+# Le Centre de bienvenue de KDE sera remplacé par l'assistant de bienvenue de Sama.
+set -e
+
+if dpkg -s plasma-welcome >/dev/null 2>&1; then
+	apt-get purge -y plasma-welcome
+fi

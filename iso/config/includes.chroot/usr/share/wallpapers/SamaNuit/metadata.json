@@ -1,0 +1,8 @@
+{
+    "KPlugin": {
+        "Id": "SamaNuit",
+        "Name": "Sama — Nuit",
+        "Authors": [{ "Name": "Projet Sama OS" }],
+        "License": "CC-BY-SA-4.0"
+    }
+}

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Fichiers
+Comment=Explorateur de fichiers de Sama (préversion)
+Exec=dolphin %u
+Icon=/usr/share/samaos/icones/fichiers.svg
+StartupWMClass=org.kde.dolphin
+Categories=System;FileManager;
+Terminal=false
+X-Sama-Provisoire=true

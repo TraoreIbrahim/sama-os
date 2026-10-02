@@ -1,0 +1,37 @@
+#!/bin/sh
+# Configuration de l'ISO live de Sama OS (live-build, Debian 13 « trixie »).
+# L'architecture vient de SAMA_ARCH : amd64 (cible principale) ou arm64 (tests sur Mac Apple Silicon).
+set -e
+
+ARCH="${SAMA_ARCH:-amd64}"
+
+# Miroir utilisé pour télécharger les paquets pendant la construction (choisir le plus rapide depuis chez soi).
+# Le système installé, lui, utilisera deb.debian.org en attendant les dépôts souverains de Sama.
+MIROIR="${SAMA_MIROIR:-http://ftp.fr.debian.org/debian/}"
+
+case "$ARCH" in
+	amd64) CHARGEURS="grub-pc,grub-efi" ;;
+	arm64) CHARGEURS="grub-efi" ;;
+	*) echo "Architecture non prise en charge : $ARCH" >&2; exit 1 ;;
+esac
+
+lb config noauto \
+	--mode debian \
+	--distribution trixie \
+	--architecture "$ARCH" \
+	--archive-areas "main contrib non-free non-free-firmware" \
+	--mirror-bootstrap "$MIROIR" \
+	--mirror-chroot "$MIROIR" \
+	--mirror-chroot-security "http://security.debian.org/debian-security/" \
+	--mirror-binary "http://deb.debian.org/debian/" \
+	--mirror-binary-security "http://security.debian.org/debian-security/" \
+	--apt-options "--yes -o Acquire::Retries=20 -o Acquire::http::Timeout=60 -o Acquire::Queue-Mode=access -o Acquire::http::Pipeline-Depth=0" \
+	--debian-installer none \
+	--binary-images iso-hybrid \
+	--bootloaders "$CHARGEURS" \
+	--iso-application "Sama OS" \
+	--iso-publisher "Projet Sama OS" \
+	--iso-volume "SAMAOS_0_1" \
+	--image-name "samaos-0.1-$ARCH" \
+	--bootappend-live "boot=live components quiet splash locales=fr_FR.UTF-8 keyboard-layouts=fr timezone=Africa/Abidjan username=sama user-fullname=Sama hostname=samaos" \
+	"${@}"

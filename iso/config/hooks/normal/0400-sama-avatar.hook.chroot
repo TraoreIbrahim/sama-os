@@ -1,0 +1,15 @@
+#!/bin/sh
+# Avatar par défaut : l'éléphant de Sama, à la place du logo Debian.
+set -e
+
+# Pour Plasma (menu, verrouillage) : chaque nouveau compte reçoit l'éléphant
+ln -sf /usr/share/samaos/logo-cour.svg /etc/skel/.face.icon
+
+# Pour l'écran de connexion (AccountsService) : compte de la session d'essai
+mkdir -p /var/lib/AccountsService/icons /var/lib/AccountsService/users
+rsvg-convert --width 256 --height 256 /usr/share/samaos/logo-cour.svg \
+	-o /var/lib/AccountsService/icons/sama
+cat > /var/lib/AccountsService/users/sama <<'FIN'
+[User]
+Icon=/var/lib/AccountsService/icons/sama
+FIN
