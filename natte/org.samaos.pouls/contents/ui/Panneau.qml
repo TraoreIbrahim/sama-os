@@ -1,6 +1,9 @@
-// Panneau de contrôle du Pouls (première version du centre de contrôle de Sama).
-// Notifications ; tuiles Wi-Fi, mode sombre, réseau, réglages ; volume ; langue.
-// L'économie de data réelle viendra dans une version suivante.
+// Centre de contrôle de Sama (panneau du Pouls), d'après l'écran « Centre de contrôle » de la maquette :
+//   notifications groupées ;
+//   tuiles : Wi-Fi, Économie de data, Mode sombre, Mises à jour la nuit, Bluetooth, Ne pas déranger ;
+//   curseurs de luminosité et de volume ; data du jour ; langue.
+// Chaque source (réseau, Bluetooth, luminosité, son…) est chargée à part : si l'une manque, le reste fonctionne.
+// Économie de data et mises à jour la nuit sont affichées comme « bientôt » tant que le service n'existe pas.
 
 import QtQuick
 import QtQuick.Layouts
@@ -9,10 +12,12 @@ import org.kde.plasma.plasma5support as P5Support
 
 Item {
     id: panneau
-    implicitHeight: colonne.implicitHeight + Kirigami.Units.largeSpacing * 2
+    implicitHeight: colonne.implicitHeight + 4
 
-    readonly property bool modeSombre: Kirigami.Theme.backgroundColor.hslLightness < 0.5
-    readonly property bool wifiActif: reseau.item ? reseau.item.wifiActive : true
+    readonly property bool sombre: Kirigami.Theme.backgroundColor.hslLightness < 0.5
+    readonly property color champ: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, sombre ? 0.07 : 0.05)
+    readonly property color texte2: Kirigami.Theme.disabledTextColor
+    readonly property bool wifiActif: reseau.item ? reseau.item.wifiActive : false
 
     P5Support.DataSource {
         id: executeur
@@ -22,95 +27,126 @@ Item {
         function lancer(commande) { connectSource(commande) }
     }
 
-    // Une tuile du centre de contrôle (latérite quand elle est active)
+    Loader { id: wifi; source: "Wifi.qml" }
+    Loader { id: bluetooth; source: "Bluetooth.qml" }
+    Loader { id: silence; source: "NePasDeranger.qml" }
+    Loader { id: data; source: "Data.qml" }
+
+    // Relire le nom du réseau à chaque ouverture
+    Connections {
+        target: racine
+        function onExpandedChanged() { if (racine.expanded && wifi.item) wifi.item.relire() }
+    }
+
+    // Tuile de la maquette : 62 px, coins de 16, latérite quand elle est active
     component Tuile: MouseArea {
         id: tuile
         property string titre
         property string detail
         property string nomIcone
         property bool active: false
+        property bool bientot: false
 
         Layout.fillWidth: true
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 3.4
-        hoverEnabled: true
+        Layout.preferredWidth: 1
+        Layout.preferredHeight: 62
+        hoverEnabled: !bientot
+        cursorShape: bientot ? Qt.ArrowCursor : Qt.PointingHandCursor
 
         Rectangle {
             anchors.fill: parent
-            radius: Kirigami.Units.gridUnit
-            color: tuile.active ? "#B5532F" : Kirigami.Theme.textColor
-            opacity: tuile.active ? (tuile.containsMouse ? 0.9 : 1) : (tuile.containsMouse ? 0.1 : 0.06)
+            radius: 16
+            color: tuile.active ? "#B5532F" : panneau.champ
+            opacity: tuile.active && tuile.containsMouse ? 0.9 : 1
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Kirigami.Theme.textColor
+                opacity: !tuile.active && tuile.containsMouse ? 0.05 : 0
+            }
         }
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Kirigami.Units.largeSpacing
-            anchors.rightMargin: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.smallSpacing * 2
+            anchors.leftMargin: 14
+            anchors.rightMargin: 10
+            spacing: 10
+            opacity: tuile.bientot ? 0.55 : 1
 
             Kirigami.Icon {
-                Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                Layout.preferredHeight: Layout.preferredWidth
+                Layout.preferredWidth: 18
+                Layout.preferredHeight: 18
                 isMask: true
-                color: tuile.active ? "white" : Kirigami.Theme.textColor
+                color: tuile.active ? "#FFFFFF" : Kirigami.Theme.textColor
                 source: Qt.resolvedUrl("../icons/" + tuile.nomIcone + ".svg")
             }
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 0
+                spacing: 1
                 Text {
                     Layout.fillWidth: true
                     text: tuile.titre
                     elide: Text.ElideRight
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
+                    font.pixelSize: 13
                     font.weight: Font.DemiBold
-                    color: tuile.active ? "white" : Kirigami.Theme.textColor
+                    lineHeight: 0.92
+                    color: tuile.active ? "#FFFFFF" : Kirigami.Theme.textColor
                 }
                 Text {
                     Layout.fillWidth: true
                     text: tuile.detail
                     elide: Text.ElideRight
-                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                    color: tuile.active ? "#FBE9DF" : Kirigami.Theme.disabledTextColor
+                    font.pixelSize: 11
+                    color: tuile.active ? Qt.rgba(1, 1, 1, 0.85) : panneau.texte2
                 }
             }
         }
     }
 
-    // Une ligne cliquable (langue, réglages)
+// Ligne cliquable (langue, réglages)
     component Ligne: MouseArea {
         id: ligne
         property string titre
         property string nomIcone
         Layout.fillWidth: true
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 2.4
+        Layout.preferredHeight: 40
         hoverEnabled: true
-
+        cursorShape: Qt.PointingHandCursor
         Rectangle {
             anchors.fill: parent
-            radius: Kirigami.Units.gridUnit * 0.7
-            color: Kirigami.Theme.textColor
-            opacity: ligne.containsMouse ? 0.1 : 0.06
+            radius: 12
+            color: panneau.champ
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Kirigami.Theme.textColor
+                opacity: ligne.containsMouse ? 0.05 : 0
+            }
         }
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Kirigami.Units.largeSpacing
-            anchors.rightMargin: Kirigami.Units.largeSpacing
-            spacing: Kirigami.Units.smallSpacing * 2
+            anchors.leftMargin: 14
+            anchors.rightMargin: 12
+            spacing: 10
             Kirigami.Icon {
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Layout.preferredWidth
+                Layout.preferredWidth: 16
+                Layout.preferredHeight: 16
                 isMask: true
-                color: Kirigami.Theme.disabledTextColor
+                color: panneau.texte2
                 source: Qt.resolvedUrl("../icons/" + ligne.nomIcone + ".svg")
             }
             Text {
                 Layout.fillWidth: true
                 text: ligne.titre
+                font.pixelSize: 13
                 color: Kirigami.Theme.textColor
             }
             Kirigami.Icon {
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Layout.preferredWidth
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
                 isMask: true
-                color: Kirigami.Theme.disabledTextColor
+                color: panneau.texte2
                 source: Qt.resolvedUrl("../icons/chevron.svg")
             }
         }
@@ -118,11 +154,13 @@ Item {
 
     ColumnLayout {
         id: colonne
-        anchors.fill: parent
-        anchors.margins: Kirigami.Units.largeSpacing
-        spacing: Kirigami.Units.largeSpacing
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 2
+        spacing: 12
 
-        // Notifications (chargées à part : le panneau reste utilisable si elles manquent)
+        // Notifications
         Loader {
             Layout.fillWidth: true
             source: "ListeNotifications.qml"
@@ -135,55 +173,162 @@ Item {
             opacity: 0.08
         }
 
+        // Tuiles
         GridLayout {
             Layout.fillWidth: true
             columns: 2
-            columnSpacing: Kirigami.Units.smallSpacing * 2
-            rowSpacing: Kirigami.Units.smallSpacing * 2
+            columnSpacing: 8
+            rowSpacing: 8
 
             Tuile {
-                titre: "Wi-Fi"
-                detail: panneau.wifiActif ? "Activé" : "Désactivé"
-                nomIcone: panneau.wifiActif ? "wifi" : "wifi-coupe"
-                active: panneau.wifiActif
-                onClicked: if (reseau.item) reseau.item.activerWifi(!panneau.wifiActif)
-            }
-            Tuile {
-                titre: "Mode sombre"
-                detail: panneau.modeSombre ? "Activé" : "Désactivé"
-                nomIcone: "lune"
-                active: panneau.modeSombre
-                // Couleurs, icônes et fonds d'écran basculent ensemble
-                onClicked: executeur.lancer("/usr/libexec/samaos/apparence.sh " + (panneau.modeSombre ? "clair" : "sombre"))
-            }
-            Tuile {
-                titre: "Réseaux"
-                detail: "Choisir un réseau"
-                nomIcone: "globe"
-                onClicked: executeur.lancer("systemsettings kcm_networkmanagement")
+                readonly property string type: wifi.item ? wifi.item.type : ""
+                titre: type === "filaire" ? "Réseau" : "Wi-Fi"
+                nomIcone: type === "filaire" ? "filaire" : (panneau.wifiActif ? "wifi" : "wifi-coupe")
+                active: type !== "" || panneau.wifiActif
+                detail: {
+                    var nom = wifi.item ? wifi.item.nom : ""
+                    if (type === "filaire") return nom ? "Filaire · " + nom : "Filaire"
+                    if (nom) return nom
+                    return panneau.wifiActif ? "Non connecté" : "Désactivé"
+                }
+                // Filaire : ouvre les réglages réseau ; Wi-Fi : active ou coupe
+                onClicked: {
+                    if (type === "filaire" || !reseau.item) executeur.lancer("systemsettings kcm_networkmanagement")
+                    else reseau.item.activerWifi(!panneau.wifiActif)
+                }
+                onPressAndHold: executeur.lancer("systemsettings kcm_networkmanagement")
             }
             Tuile {
                 titre: "Économie de data"
                 detail: "Bientôt disponible"
                 nomIcone: "feuille"
+                bientot: true
+            }
+            Tuile {
+                titre: "Mode sombre"
+                detail: panneau.sombre ? "Activé" : "Désactivé"
+                nomIcone: "contraste"
+                active: panneau.sombre
+                // Couleurs, icônes et fonds d'écran basculent ensemble
+                onClicked: executeur.lancer("/usr/libexec/samaos/apparence.sh " + (panneau.sombre ? "clair" : "sombre"))
+            }
+            Tuile {
+                titre: "Mises à jour la nuit"
+                detail: "Bientôt disponible"
+                nomIcone: "mises-a-jour"
+                bientot: true
+            }
+            Tuile {
+                readonly property bool dispo: bluetooth.item ? bluetooth.item.disponible : false
+                titre: "Bluetooth"
+                nomIcone: "bluetooth"
+                active: bluetooth.item ? bluetooth.item.actif : false
+                bientot: !dispo
+                detail: !dispo ? "Aucun adaptateur" : !active ? "Désactivé"
+                      : (bluetooth.item.appareil || "Activé")
+                onClicked: if (dispo) bluetooth.item.basculer()
+                onPressAndHold: executeur.lancer("systemsettings kcm_bluetooth")
+            }
+            Tuile {
+                titre: "Ne pas déranger"
+                nomIcone: "ne-pas-deranger"
+                active: silence.item ? silence.item.actif : false
+                detail: active ? "Activé" : "Désactivé"
+                onClicked: if (silence.item) silence.item.basculer()
             }
         }
 
-        // Volume (chargé à part : le panneau reste utilisable s'il manque)
-        Loader {
+        // Luminosité et volume
+        ColumnLayout {
             Layout.fillWidth: true
-            source: "Volume.qml"
+            Layout.leftMargin: 6
+            Layout.rightMargin: 6
+            spacing: 10
+            Loader {
+                Layout.fillWidth: true
+                source: "Luminosite.qml"
+                visible: !!item && item.disponible
+            }
+            Loader {
+                Layout.fillWidth: true
+                source: "Volume.qml"
+                visible: !!item && item.disponible
+            }
         }
 
-        Ligne {
-            titre: "Langue : " + racine.langue
-            nomIcone: "globe"
-            onClicked: executeur.lancer("systemsettings kcm_regionandlang")
+        // Data consommée
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: blocData.implicitHeight + 24
+            radius: 16
+            color: panneau.champ
+            visible: !!data.item
+
+            ColumnLayout {
+                id: blocData
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                spacing: 8
+
+                readonly property real mo: data.item ? data.item.megaOctets : 0
+                readonly property real forfait: data.item ? data.item.forfait : 1024
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Data depuis l'allumage"
+                        font.pixelSize: 12
+                        color: panneau.texte2
+                    }
+                    Text {
+                        text: blocData.mo >= 1024 ? (blocData.mo / 1024).toFixed(1).replace(".", ",") + " Go"
+                                                  : Math.round(blocData.mo) + " Mo"
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        color: Kirigami.Theme.textColor
+                    }
+                    Text {
+                        text: "sur " + (blocData.forfait >= 1024 ? Math.round(blocData.forfait / 1024) + " Go" : blocData.forfait + " Mo")
+                        font.pixelSize: 12
+                        color: panneau.texte2
+                    }
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 6
+                    radius: 3
+                    color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
+                    Rectangle {
+                        height: parent.height
+                        radius: 3
+                        width: parent.width * Math.min(1, blocData.mo / blocData.forfait)
+                        color: blocData.mo / blocData.forfait > 0.9 ? "#B5532F" : "#2F6B57"
+                    }
+                }
+            }
         }
-        Ligne {
-            titre: "Tous les réglages"
-            nomIcone: "reglages"
-            onClicked: executeur.lancer("systemsettings")
+
+        // Langue, puis tous les réglages
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Ligne {
+                titre: "Langue : " + ({ "FR": "Français", "EN": "English", "SW": "Kiswahili" }[racine.langue] || racine.langue)
+                nomIcone: "globe"
+                onClicked: executeur.lancer("systemsettings kcm_regionandlang")
+            }
+            Ligne {
+                Layout.fillWidth: false
+                Layout.preferredWidth: 132
+                titre: "Réglages"
+                nomIcone: "reglages"
+                onClicked: executeur.lancer("systemsettings")
+            }
         }
     }
 }

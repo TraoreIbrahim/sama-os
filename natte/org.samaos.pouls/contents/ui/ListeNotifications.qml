@@ -14,13 +14,14 @@ ColumnLayout {
         Text {
             Layout.fillWidth: true
             text: "Notifications"
+            font.pixelSize: 13
             font.weight: Font.DemiBold
             color: Kirigami.Theme.textColor
         }
         Text {
             visible: liste.source && liste.source.nombre > 0
             text: "Tout effacer"
-            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+            font.pixelSize: 12
             color: Kirigami.Theme.disabledTextColor
             MouseArea {
                 anchors.fill: parent
@@ -33,7 +34,7 @@ ColumnLayout {
     Text {
         visible: !liste.source || liste.source.nombre === 0
         text: "Aucune notification"
-        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+        font.pixelSize: 12
         color: Kirigami.Theme.disabledTextColor
     }
 
@@ -43,19 +44,22 @@ ColumnLayout {
         delegate: Rectangle {
             visible: index < 4
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? ligne.implicitHeight + Kirigami.Units.largeSpacing * 1.5 : 0
-            radius: Kirigami.Units.gridUnit * 0.8
-            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06)
+            Layout.preferredHeight: visible ? ligne.implicitHeight + 20 : 0
+            radius: 16
+            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.05)
 
             RowLayout {
                 id: ligne
                 anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing * 0.75
-                spacing: Kirigami.Units.largeSpacing
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                anchors.topMargin: 10
+                anchors.bottomMargin: 10
+                spacing: 10
 
                 Kirigami.Icon {
                     Layout.alignment: Qt.AlignTop
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                    Layout.preferredWidth: 20
                     Layout.preferredHeight: Layout.preferredWidth
                     source: model.image ? model.image : (model.iconName || model.applicationIconName || "preferences-desktop-notification")
                 }
@@ -68,12 +72,13 @@ ColumnLayout {
                             Layout.fillWidth: true
                             text: (model.applicationName || "Sama") + (model.summary ? " · " + model.summary : "")
                             elide: Text.ElideRight
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                             color: Kirigami.Theme.textColor
                         }
                         Text {
                             text: Qt.formatTime(model.created, "hh:mm")
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            font.pixelSize: 11
                             color: Kirigami.Theme.disabledTextColor
                         }
                     }
@@ -85,8 +90,8 @@ ColumnLayout {
                         elide: Text.ElideRight
                         maximumLineCount: 2
                         wrapMode: Text.WordWrap
-                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                        color: Kirigami.Theme.disabledTextColor
+                        font.pixelSize: 13
+                        color: Kirigami.Theme.textColor
                     }
                 }
             }

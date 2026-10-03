@@ -149,7 +149,14 @@ PlasmoidItem {
 
     fullRepresentation: Loader {
         source: "Panneau.qml"
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 20
-        Layout.preferredHeight: item ? item.implicitHeight : Kirigami.Units.gridUnit * 14
+        // 360 px avec les marges du cadre, comme la maquette. Hauteur imposée par le contenu :
+        // Plasma mémorise sinon la taille d'une ouverture précédente et coupe le panneau.
+        readonly property real hauteur: item ? item.implicitHeight : Kirigami.Units.gridUnit * 14
+        Layout.minimumWidth: 336
+        Layout.preferredWidth: 336
+        Layout.maximumWidth: 336
+        Layout.minimumHeight: hauteur
+        Layout.preferredHeight: hauteur
+        Layout.maximumHeight: hauteur
     }
 }
