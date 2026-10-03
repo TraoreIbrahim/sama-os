@@ -8,5 +8,9 @@
     <entry name="dernierCoupDOeilTelechargements" type="String">
       <default></default>
     </entry>
+    <!-- Personnalisation des Espaces, par identifiant d'activité : {"<id>": {"teinte": "#B5532F", "epingles": [...]}} -->
+    <entry name="personnalisation" type="String">
+      <default>{}</default>
+    </entry>
   </group>
 </kcfg>

@@ -3,6 +3,12 @@
 // l'Espace actif se déplie et montre ses applications (épinglées + ouvertes),
 // les autres restent repliés avec le nombre de fenêtres ouvertes.
 // La Cour (lanceur plein écran), la Corbeille et le Pouls sont des widgets voisins dans la barre.
+//
+// Gestion des Espaces, sans quitter la Natte :
+//  - « + » après les Espaces : un champ apparaît, Entrée crée l'Espace (couleur suivante de la palette) ;
+//  - clic droit sur un Espace : Renommer (dans la Natte), Couleur, Retirer ;
+//  - clic droit sur une application de l'Espace actif : l'épingler à cet Espace ou l'en retirer.
+// Couleur et applications épinglées sont gardées par identifiant d'Espace (elles suivent un renommage).
 
 import QtQuick
 import QtQuick.Layouts
@@ -13,6 +19,10 @@ import org.kde.taskmanager as TaskManager
 import QtCore
 import Qt.labs.folderlistmodel
 import org.kde.notificationmanager as NotificationManager
+import QtQuick.Controls as QQC2
+import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.extras as PlasmaExtras
+import org.kde.plasma.plasma5support as P5Support
 
 PlasmoidItem {
     id: racine
@@ -38,8 +48,153 @@ PlasmoidItem {
                                               epingles: ["applications:samaos-griot.desktop", "applications:samaos-docs.desktop",
                                                          "applications:samaos-fichiers.desktop"] })
 
-    function infosEspace(nom) {
-        return espacesSama[nom] || espaceParDefaut
+    // Palette proposée pour les Espaces (couleurs de Sama)
+    readonly property var palette: [
+        { nom: "Latérite", teinte: "#B5532F", encre: "#93401F", fond: "#F2E1D5", fondSombre: "#3DB5532F" },
+        { nom: "Indigo",   teinte: "#3D5A99", encre: "#2D4682", fond: "#DFE5F2", fondSombre: "#523D5A99" },
+        { nom: "Forêt",    teinte: "#2F6B57", encre: "#1F5544", fond: "#DBEAE2", fondSombre: "#522F6B57" },
+        { nom: "Or",       teinte: "#C08A1E", encre: "#7A4E0C", fond: "#F6E7CC", fondSombre: "#52C08A1E" },
+        { nom: "Violet",   teinte: "#7A5C99", encre: "#59407A", fond: "#E9E2F2", fondSombre: "#527A5C99" },
+        { nom: "Terre",    teinte: "#8A6A4A", encre: "#634A31", fond: "#EDE3D8", fondSombre: "#528A6A4A" }
+    ]
+    function couleurDePalette(teinte) {
+        for (var i = 0; i < palette.length; i++) {
+            if (palette[i].teinte.toLowerCase() === String(teinte).toLowerCase()) return palette[i]
+        }
+        return null
+    }
+
+    // Personnalisation enregistrée : { "<id d'Espace>": { teinte, epingles } }
+    readonly property var perso: {
+        try { return JSON.parse(Plasmoid.configuration.personnalisation || "{}") } catch (e) { return {} }
+    }
+    function personnaliser(id, champ, valeur) {
+        var p = JSON.parse(JSON.stringify(perso))
+        if (!p[id]) p[id] = {}
+        if (valeur === undefined) delete p[id][champ]
+        else p[id][champ] = valeur
+        Plasmoid.configuration.personnalisation = JSON.stringify(p)
+    }
+    function oublier(id) {
+        var p = JSON.parse(JSON.stringify(perso))
+        delete p[id]
+        Plasmoid.configuration.personnalisation = JSON.stringify(p)
+    }
+
+    function infosEspace(id, nom) {
+        var base = espacesSama[nom] || espaceParDefaut
+        var p = perso[id]
+        if (!p) return base
+        var c = p.teinte ? couleurDePalette(p.teinte) : null
+        return {
+            teinte: c ? c.teinte : base.teinte, encre: c ? c.encre : base.encre,
+            fond: c ? c.fond : base.fond, fondSombre: c ? c.fondSombre : base.fondSombre,
+            epingles: p.epingles || base.epingles
+        }
+    }
+
+    // Avant un renommage : on fige couleur et épingles, qui dépendaient peut-être du nom (Travail, École…)
+    function figer(id, nom) {
+        var i = infosEspace(id, nom)
+        var p = JSON.parse(JSON.stringify(perso))
+        if (!p[id]) p[id] = {}
+        if (!p[id].teinte) p[id].teinte = i.teinte
+        if (!p[id].epingles) p[id].epingles = i.epingles
+        Plasmoid.configuration.personnalisation = JSON.stringify(p)
+    }
+
+    // --- Création, renommage, suppression ---------------------------------------------------
+    property string edition: ""          // identifiant de l'Espace renommé, « nouveau » pendant une création
+    property string nomEnAttente: ""     // Espace créé, en attente d'apparaître dans la liste
+    property string teinteEnAttente: ""
+
+    // Saisie terminée : on rend le clavier au panneau, sinon Plasma laisse un trait de focus au-dessus de la Natte
+    onEditionChanged: if (edition === "") Qt.callLater(function () {
+        racine.expanded = false
+        if (racine.Window.window && racine.Window.window.contentItem) racine.Window.window.contentItem.forceActiveFocus()
+    })
+    // La Natte n'a pas de panneau à déplier : on ignore l'état « déplié » que Plasma lui donne avec le clavier
+    onExpandedChanged: if (expanded && edition === "") Qt.callLater(function () { racine.expanded = false })
+
+    // La Natte doit pouvoir recevoir le clavier pendant la saisie d'un nom
+    Plasmoid.status: edition !== "" ? PlasmaCore.Types.AcceptingInputStatus : PlasmaCore.Types.ActiveStatus
+
+    function teinteSuivante() {
+        var prises = {}
+        for (var i = 0; i < espacesOrdonnes.length; i++) {
+            prises[infosEspace(espacesOrdonnes[i].id, espacesOrdonnes[i].nom).teinte.toLowerCase()] = true
+        }
+        for (var j = 0; j < palette.length; j++) {
+            if (!prises[palette[j].teinte.toLowerCase()]) return palette[j].teinte
+        }
+        return palette[espacesOrdonnes.length % palette.length].teinte
+    }
+
+    function creerEspace(nom) {
+        nom = String(nom).trim()
+        edition = ""
+        if (nom.length === 0) return
+        nomEnAttente = nom
+        teinteEnAttente = teinteSuivante()
+        espaces.addActivity(nom, function (id) {
+            if (typeof id === "string" && id.length > 0) racine.accueillir(id)
+        })
+    }
+    // Un nouvel Espace est apparu : on lui donne sa couleur, on y va, puis on prépare son bureau
+    function accueillir(id) {
+        if (!nomEnAttente) return
+        nomEnAttente = ""
+        personnaliser(id, "teinte", teinteEnAttente)
+        espaces.setCurrentActivity(id, function () {})
+        preparation.restart()
+    }
+    // Fond d'écran du mode en cours et cartes du bureau (une fois l'Espace affiché)
+    Timer {
+        id: preparation
+        interval: 900
+        onTriggered: executeur.connectSource("/usr/libexec/samaos/preparer-espace.sh")
+    }
+    P5Support.DataSource {
+        id: executeur
+        engine: "executable"
+        onNewData: source => disconnectSource(source)
+    }
+
+    function renommerEspace(id, ancien, nom) {
+        nom = String(nom).trim()
+        edition = ""
+        if (nom.length === 0 || nom === ancien) return
+        figer(id, ancien)
+        espaces.setActivityName(id, nom, function () {})
+    }
+
+    function retirerEspace(id) {
+        if (espacesOrdonnes.length < 2) return
+        if (id === infoActivite.currentActivity) {
+            for (var i = 0; i < espacesOrdonnes.length; i++) {
+                if (espacesOrdonnes[i].id !== id) {
+                    espaces.setCurrentActivity(espacesOrdonnes[i].id, function () {})
+                    break
+                }
+            }
+        }
+        espaces.removeActivity(id, function () {})
+        oublier(id)
+    }
+
+    // Épingler / désépingler une application dans l'Espace actif
+    function estEpinglee(url) {
+        return infosEspace(infoActivite.currentActivity, nomActif).epingles.indexOf(String(url)) >= 0
+    }
+    function basculerEpingle(url) {
+        url = String(url)
+        if (!url) return
+        figer(infoActivite.currentActivity, nomActif)
+        var liste = infosEspace(infoActivite.currentActivity, nomActif).epingles.slice()
+        var i = liste.indexOf(url)
+        if (i >= 0) liste.splice(i, 1)
+        else liste.push(url)
+        personnaliser(infoActivite.currentActivity, "epingles", liste)
     }
 
     // Mesures de la maquette (px) : éléments de 44, tuiles de 34, 8 d'écart
@@ -179,6 +334,14 @@ PlasmoidItem {
             return ra - rb
         })
         espacesOrdonnes = liste
+        if (nomEnAttente) {
+            for (var j = 0; j < liste.length; j++) {
+                if (liste[j].nom === nomEnAttente && !perso[liste[j].id]) {
+                    accueillir(liste[j].id)
+                    break
+                }
+            }
+        }
     }
 
     Instantiator {
@@ -213,7 +376,150 @@ PlasmoidItem {
         launchInPlace: true
         groupMode: TaskManager.TasksModel.GroupApplications
         sortMode: TaskManager.TasksModel.SortManual
-        launcherList: racine.infosEspace(racine.nomActif).epingles
+        launcherList: racine.infosEspace(infoActivite.currentActivity, racine.nomActif).epingles
+    }
+
+    // Champ de saisie d'un nom d'Espace, dans la Natte : Entrée valide, Échap annule
+    component ChampNom: QQC2.TextField {
+        id: champNom
+        signal valide(string nom)
+        implicitWidth: Math.max(text.length > 0 ? 90 : 140, contentWidth + 28)
+        implicitHeight: 30
+        Layout.preferredWidth: implicitWidth
+        Layout.preferredHeight: 30
+        Layout.alignment: Qt.AlignVCenter
+        leftPadding: 12
+        rightPadding: 12
+        font.pixelSize: 12
+        font.weight: Font.DemiBold
+        color: Kirigami.Theme.textColor
+        maximumLength: 24
+        selectByMouse: true
+        background: Rectangle {
+            radius: height / 2
+            color: Kirigami.Theme.backgroundColor
+            border.width: 1
+            border.color: "#B5532F"
+        }
+        // La Natte n'a pas forcément le clavier (ex. après un clic dans un menu) : on le demande à sa fenêtre,
+        // en réessayant quelques fois le temps que le menu se ferme et que la fenêtre soit activée
+        property int essais: 0
+        property bool aEuLeClavier: false
+        Component.onCompleted: prendreLeClavier.start()
+        Timer {
+            id: prendreLeClavier
+            interval: 80
+            repeat: true
+            onTriggered: {
+                if (champNom.Window.window && !champNom.Window.window.active) champNom.Window.window.requestActivate()
+                champNom.forceActiveFocus()
+                if (champNom.activeFocus) {
+                    champNom.aEuLeClavier = true
+                    champNom.selectAll()
+                    stop()
+                } else if (++champNom.essais > 15) {
+                    stop()
+                    racine.edition = ""
+                }
+            }
+        }
+        // Clic ailleurs (la Natte perd le clavier) : on abandonne la saisie
+        Connections {
+            target: champNom.Window.window
+            function onActiveChanged() {
+                if (champNom.aEuLeClavier && champNom.Window.window && !champNom.Window.window.active) racine.edition = ""
+            }
+        }
+        onAccepted: valide(text)
+        Keys.onEscapePressed: racine.edition = ""
+    }
+
+    // Menu d'un Espace (clic droit)
+    PlasmaExtras.Menu {
+        id: menuEspace
+        placement: PlasmaExtras.Menu.TopPosedLeftAlignedPopup
+        property string idCible: ""
+        property string nomCible: ""
+        readonly property string teinteCible: idCible ? racine.infosEspace(idCible, nomCible).teinte.toLowerCase() : ""
+
+        PlasmaExtras.MenuItem {
+            text: "Renommer"
+            icon: "edit-rename"
+            onClicked: racine.edition = menuEspace.idCible
+        }
+        PlasmaExtras.MenuItem { separator: true }
+        PlasmaExtras.MenuItem { section: true; text: "Couleur" }
+        PlasmaExtras.MenuItem {
+            text: racine.palette[0].nom; checkable: true
+            checked: menuEspace.teinteCible === racine.palette[0].teinte.toLowerCase()
+            onClicked: racine.personnaliser(menuEspace.idCible, "teinte", racine.palette[0].teinte)
+        }
+        PlasmaExtras.MenuItem {
+            text: racine.palette[1].nom; checkable: true
+            checked: menuEspace.teinteCible === racine.palette[1].teinte.toLowerCase()
+            onClicked: racine.personnaliser(menuEspace.idCible, "teinte", racine.palette[1].teinte)
+        }
+        PlasmaExtras.MenuItem {
+            text: racine.palette[2].nom; checkable: true
+            checked: menuEspace.teinteCible === racine.palette[2].teinte.toLowerCase()
+            onClicked: racine.personnaliser(menuEspace.idCible, "teinte", racine.palette[2].teinte)
+        }
+        PlasmaExtras.MenuItem {
+            text: racine.palette[3].nom; checkable: true
+            checked: menuEspace.teinteCible === racine.palette[3].teinte.toLowerCase()
+            onClicked: racine.personnaliser(menuEspace.idCible, "teinte", racine.palette[3].teinte)
+        }
+        PlasmaExtras.MenuItem {
+            text: racine.palette[4].nom; checkable: true
+            checked: menuEspace.teinteCible === racine.palette[4].teinte.toLowerCase()
+            onClicked: racine.personnaliser(menuEspace.idCible, "teinte", racine.palette[4].teinte)
+        }
+        PlasmaExtras.MenuItem {
+            text: racine.palette[5].nom; checkable: true
+            checked: menuEspace.teinteCible === racine.palette[5].teinte.toLowerCase()
+            onClicked: racine.personnaliser(menuEspace.idCible, "teinte", racine.palette[5].teinte)
+        }
+        PlasmaExtras.MenuItem { separator: true }
+        PlasmaExtras.MenuItem {
+            text: "Nouvel Espace…"
+            icon: "list-add"
+            onClicked: racine.edition = "nouveau"
+        }
+        PlasmaExtras.MenuItem {
+            text: "Retirer cet Espace"
+            icon: "edit-delete-remove"
+            enabled: racine.espacesOrdonnes.length > 1
+            onClicked: racine.retirerEspace(menuEspace.idCible)
+        }
+    }
+    function ouvrirMenuEspace(id, nom, element) {
+        menuEspace.idCible = id
+        menuEspace.nomCible = nom
+        menuEspace.visualParent = element
+        menuEspace.openRelative()
+    }
+
+    // Menu d'une application de l'Espace actif (clic droit)
+    PlasmaExtras.Menu {
+        id: menuApplication
+        placement: PlasmaExtras.Menu.TopPosedLeftAlignedPopup
+        property string urlCible: ""
+        property int indexCible: -1
+        property bool ouverteCible: false
+
+        PlasmaExtras.MenuItem {
+            text: racine.estEpinglee(menuApplication.urlCible) ? "Retirer de « " + racine.nomActif + " »"
+                                                                : "Épingler dans « " + racine.nomActif + " »"
+            icon: racine.estEpinglee(menuApplication.urlCible) ? "window-unpin" : "window-pin"
+            enabled: menuApplication.urlCible.length > 0
+            onClicked: racine.basculerEpingle(menuApplication.urlCible)
+        }
+        PlasmaExtras.MenuItem {
+            text: "Fermer la fenêtre"
+            icon: "window-close"
+            visible: menuApplication.ouverteCible
+            onClicked: applications.requestClose(applications.makeModelIndex(menuApplication.indexCible))
+        }
     }
 
     component Separateur: Rectangle {
@@ -242,7 +548,8 @@ PlasmoidItem {
                 readonly property string idEspace: modelData.id
                 readonly property string nomEspace: modelData.nom
                 readonly property bool actif: idEspace === infoActivite.currentActivity
-                readonly property var infos: racine.infosEspace(nomEspace)
+                readonly property var infos: racine.infosEspace(idEspace, nomEspace)
+                readonly property bool enEdition: racine.edition === idEspace
 
                 Layout.preferredHeight: racine.hauteurPilule
                 Layout.preferredWidth: actif ? piluleActive.implicitWidth : piluleRepliee.implicitWidth
@@ -260,6 +567,14 @@ PlasmoidItem {
                     color: Kirigami.Theme.textColor.hslLightness > 0.5 ? espace.infos.fondSombre : espace.infos.fond
                     implicitWidth: rangeeActive.implicitWidth + 14 + 6
 
+                    // Clic droit sur la pilule (hors applications) : menu de l'Espace
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.RightButton
+                        onClicked: racine.ouvrirMenuEspace(espace.idEspace, espace.nomEspace, espace)
+                        onDoubleClicked: racine.edition = espace.idEspace
+                    }
+
                     RowLayout {
                         id: rangeeActive
                         anchors.top: parent.top
@@ -269,11 +584,28 @@ PlasmoidItem {
                         spacing: 6
 
                         Text {
+                            visible: !espace.enEdition
                             text: espace.nomEspace
                             font.weight: Font.DemiBold
                             font.pixelSize: 12
                             color: Kirigami.Theme.textColor.hslLightness > 0.5 ? Kirigami.Theme.textColor : espace.infos.encre
                             Layout.rightMargin: 6
+                            // Double-clic sur le nom : renommer
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onClicked: mouse => { if (mouse.button === Qt.RightButton) racine.ouvrirMenuEspace(espace.idEspace, espace.nomEspace, espace) }
+                                onDoubleClicked: racine.edition = espace.idEspace
+                            }
+                        }
+                        Loader {
+                            active: espace.enEdition
+                            visible: active
+                            Layout.rightMargin: 6
+                            sourceComponent: ChampNom {
+                                text: espace.nomEspace
+                                onValide: nom => racine.renommerEspace(espace.idEspace, espace.nomEspace, nom)
+                            }
                         }
 
                         Repeater {
@@ -286,7 +618,18 @@ PlasmoidItem {
                                 Layout.preferredWidth: racine.tailleTuile
                                 Layout.preferredHeight: racine.hauteurPilule
                                 hoverEnabled: true
-                                onClicked: applications.requestActivate(applications.makeModelIndex(index))
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onClicked: mouse => {
+                                    if (mouse.button === Qt.RightButton) {
+                                        menuApplication.urlCible = String(model.LauncherUrlWithoutIcon || "")
+                                        menuApplication.indexCible = index
+                                        menuApplication.ouverteCible = tuile.ouverte
+                                        menuApplication.visualParent = tuile
+                                        menuApplication.openRelative()
+                                    } else {
+                                        applications.requestActivate(applications.makeModelIndex(index))
+                                    }
+                                }
 
                                 Rectangle {
                                     anchors.horizontalCenter: parent.horizontalCenter
@@ -355,7 +698,11 @@ PlasmoidItem {
                     anchors.fill: parent
                     hoverEnabled: true
                     implicitWidth: rangeeRepliee.implicitWidth + 28
-                    onClicked: espaces.setCurrentActivity(espace.idEspace, function () {})
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.RightButton) racine.ouvrirMenuEspace(espace.idEspace, espace.nomEspace, espace)
+                        else espaces.setCurrentActivity(espace.idEspace, function () {})
+                    }
 
                     Rectangle {
                         anchors.fill: parent
@@ -378,10 +725,20 @@ PlasmoidItem {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
+                            visible: !espace.enEdition
                             text: espace.nomEspace
                             font.pixelSize: 12
                             font.weight: Font.Medium
                             color: racine.encreDouce
+                        }
+                        Loader {
+                            anchors.verticalCenter: parent.verticalCenter
+                            active: espace.enEdition
+                            visible: active
+                            sourceComponent: ChampNom {
+                                text: espace.nomEspace
+                                onValide: nom => racine.renommerEspace(espace.idEspace, espace.nomEspace, nom)
+                            }
                         }
                         Rectangle {
                             anchors.verticalCenter: parent.verticalCenter
@@ -401,6 +758,40 @@ PlasmoidItem {
                         }
                     }
                 }
+            }
+        }
+
+        // Nouvel Espace : « + » discret, ou champ de saisie pendant la création
+        MouseArea {
+            id: boutonPlus
+            visible: racine.edition !== "nouveau"
+            Layout.preferredWidth: 28
+            Layout.preferredHeight: 28
+            Layout.alignment: Qt.AlignVCenter
+            hoverEnabled: true
+            onClicked: racine.edition = "nouveau"
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: Kirigami.Theme.textColor
+                opacity: boutonPlus.containsMouse ? 0.1 : 0
+            }
+            Text {
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: -1
+                text: "+"
+                font.pixelSize: 18
+                font.weight: Font.Light
+                color: racine.encreDouce
+            }
+        }
+        Loader {
+            active: racine.edition === "nouveau"
+            visible: active
+            Layout.alignment: Qt.AlignVCenter
+            sourceComponent: ChampNom {
+                placeholderText: "Nom de l'Espace"
+                onValide: nom => racine.creerEspace(nom)
             }
         }
 

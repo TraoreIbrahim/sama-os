@@ -28,3 +28,12 @@ scripts/mode-direct.sh capture       # capture d'écran dans sortie/captures/
 La partie privée reste sur le Mac du développeur (`~/.ssh/samaos_dev`).
 Cet accès n'existe que dans la session d'essai de la machine virtuelle de développement,
 jamais dans les ISO destinées aux utilisateurs.
+
+## Tester les gestes sans toucher la machine virtuelle
+
+`dev/entrees.py` crée une souris et un clavier virtuels (AZERTY) pour cliquer et taper dans l'interface :
+
+```bash
+scripts/mode-direct.sh commande 'sudo apt-get install -y python3-evdev; cat > /tmp/entrees.py' < dev/entrees.py
+scripts/mode-direct.sh commande 'sudo python3 /tmp/entrees.py clic 993 1041 -- taper Boutique -- touche entree'
+```
