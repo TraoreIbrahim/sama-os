@@ -13,8 +13,9 @@ PlasmoidItem {
     id: cour
 
     preferredRepresentation: fullRepresentation
-    toolTipMainText: "La Cour"
-    toolTipSubText: "Applications et recherche"
+    // Pas d'infobulle : l'élément parle de lui-même
+    toolTipMainText: ""
+    toolTipSubText: ""
 
     signal reset()
 

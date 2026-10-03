@@ -48,7 +48,8 @@ PlasmoidItem {
     }
 
     preferredRepresentation: compactRepresentation
-    toolTipMainText: "Le Pouls"
+    // Pas d'infobulle : l'élément parle de lui-même
+    toolTipMainText: ""
     toolTipSubText: ""
 
     compactRepresentation: MouseArea {

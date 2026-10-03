@@ -12,6 +12,7 @@ import org.kde.activities as Activities
 import org.kde.taskmanager as TaskManager
 import QtCore
 import Qt.labs.folderlistmodel
+import org.kde.notificationmanager as NotificationManager
 
 PlasmoidItem {
     id: racine
@@ -65,6 +66,87 @@ PlasmoidItem {
         showHidden: true
         showDotAndDotDot: false
     }
+    // --- Téléchargements --------------------------------------------------------------------
+    readonly property url dossierTelechargements: StandardPaths.writableLocation(StandardPaths.DownloadLocation)
+    // Extensions des fichiers en cours d'écriture par les navigateurs (Chromium/Griot, Firefox, Safari…)
+    readonly property var extensionsPartielles: [".crdownload", ".part", ".partial", ".download", ".tmp"]
+
+    FolderListModel {
+        id: contenuTelechargements
+        folder: racine.dossierTelechargements
+        showHidden: false
+        showDotAndDotDot: false
+        sortField: FolderListModel.Time
+        onCountChanged: racine.examinerTelechargements()
+        onStatusChanged: racine.examinerTelechargements()
+    }
+
+    property bool nouveauxTelechargements: false
+    property bool telechargementPartiel: false
+
+    function examinerTelechargements() {
+        var vu = Number(Plasmoid.configuration.dernierCoupDOeilTelechargements || 0)
+        var nouveaux = false
+        var partiel = false
+        for (var i = 0; i < contenuTelechargements.count; i++) {
+            var nom = String(contenuTelechargements.get(i, "fileName")).toLowerCase()
+            var estPartiel = false
+            for (var j = 0; j < extensionsPartielles.length; j++) {
+                if (nom.endsWith(extensionsPartielles[j])) estPartiel = true
+            }
+            if (estPartiel) {
+                partiel = true
+            } else if (vu > 0 && contenuTelechargements.get(i, "fileModified").getTime() > vu) {
+                nouveaux = true
+            }
+        }
+        nouveauxTelechargements = nouveaux
+        telechargementPartiel = partiel
+    }
+
+    function ouvrirTelechargements() {
+        Plasmoid.configuration.dernierCoupDOeilTelechargements = String(Date.now())
+        nouveauxTelechargements = false
+        Qt.openUrlExternally(dossierTelechargements)
+    }
+
+    Component.onCompleted: {
+        // Premier lancement : les fichiers déjà présents ne sont pas « nouveaux »
+        if (!Plasmoid.configuration.dernierCoupDOeilTelechargements) {
+            Plasmoid.configuration.dernierCoupDOeilTelechargements = String(Date.now())
+        }
+    }
+
+    // Transferts suivis par le système (copies vers Téléchargements, navigateurs compatibles) : pourcentage réel
+    NotificationManager.Notifications {
+        id: transferts
+        showNotifications: false
+        showJobs: true
+        showExpired: false
+        showDismissed: true
+        onDataChanged: racine.versionTransferts++
+        onRowsInserted: racine.versionTransferts++
+        onRowsRemoved: racine.versionTransferts++
+    }
+    property int versionTransferts: 0
+    readonly property int progressionTelechargement: {
+        versionTransferts   // recalcul à chaque changement des transferts
+        var total = 0
+        var n = 0
+        var dossier = String(dossierTelechargements)
+        for (var i = 0; i < transferts.count; i++) {
+            var idx = transferts.index(i, 0)
+            if (transferts.data(idx, NotificationManager.Notifications.JobStateRole) !== NotificationManager.Notifications.JobStateRunning) continue
+            var details = transferts.data(idx, NotificationManager.Notifications.JobDetailsRole)
+            var dest = details ? String(details.effectiveDestUrl || details.destUrl || "") : ""
+            if (dest.indexOf(dossier) !== 0) continue
+            total += transferts.data(idx, NotificationManager.Notifications.PercentageRole)
+            n++
+        }
+        return n > 0 ? Math.round(total / n) : -1
+    }
+    readonly property bool telechargementEnCours: progressionTelechargement >= 0 || telechargementPartiel
+
     // Tant que la Corbeille n'a jamais servi, son dossier n'existe pas : on vérifie que la liste vient bien de lui
     readonly property int nombreDansCorbeille: contenuCorbeille.count > 0
         && String(contenuCorbeille.get(0, "filePath")).indexOf("/Trash/files/") >= 0 ? contenuCorbeille.count : 0
@@ -324,6 +406,82 @@ PlasmoidItem {
 
         Separateur {}
 
+        // Téléchargements : ouvre le dossier ; point latérite = nouveaux fichiers ; barre = téléchargement en cours
+        MouseArea {
+            id: telechargements
+            Layout.preferredWidth: racine.hauteurPilule
+            Layout.preferredHeight: racine.hauteurPilule
+            hoverEnabled: true
+            onClicked: racine.ouvrirTelechargements()
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: Kirigami.Theme.textColor
+                opacity: telechargements.containsMouse ? 0.1 : 0.05
+            }
+            Kirigami.Icon {
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: racine.telechargementEnCours ? -3 : 0
+                width: 24
+                height: width
+                isMask: true
+                color: Kirigami.Theme.textColor
+                source: Qt.resolvedUrl("../icons/telechargements.svg")
+                Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 200 } }
+            }
+            // Nouveaux fichiers
+            Rectangle {
+                visible: racine.nouveauxTelechargements && !racine.telechargementEnCours
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.topMargin: 7
+                anchors.rightMargin: 7
+                width: 9
+                height: 9
+                radius: 4.5
+                color: "#B5532F"
+            }
+            // Téléchargement en cours : pourcentage s'il est connu, sinon barre qui va et vient
+            Rectangle {
+                id: piste
+                visible: racine.telechargementEnCours
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 9
+                width: 22
+                height: 3
+                radius: 1.5
+                clip: true
+                color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+                // Pourcentage connu
+                Rectangle {
+                    visible: racine.progressionTelechargement >= 0
+                    height: parent.height
+                    radius: parent.radius
+                    color: "#B5532F"
+                    width: parent.width * Math.max(0, racine.progressionTelechargement) / 100
+                    Behavior on width { NumberAnimation { duration: 300 } }
+                }
+                // Pourcentage inconnu (navigateur) : segment qui va et vient
+                Rectangle {
+                    visible: racine.progressionTelechargement < 0
+                    height: parent.height
+                    radius: parent.radius
+                    color: "#B5532F"
+                    width: parent.width * 0.4
+                    NumberAnimation on x {
+                        running: piste.visible && racine.progressionTelechargement < 0
+                        loops: Animation.Infinite
+                        from: -piste.width * 0.4
+                        to: piste.width
+                        duration: 1100
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+            }
+        }
+
         // La Corbeille : bouton rond discret
         MouseArea {
             id: corbeille
@@ -340,7 +498,7 @@ PlasmoidItem {
             }
             Kirigami.Icon {
                 anchors.centerIn: parent
-                width: 20
+                width: 24
                 height: width
                 isMask: true
                 color: Kirigami.Theme.textColor
