@@ -5,8 +5,10 @@ Usage (en administrateur, dans la VM) :
   entrees.py clic X Y [droit]       clic à la position X, Y (pixels de l'écran)
   entrees.py double X Y             double-clic
   entrees.py bouger X Y             déplace la souris
+  entrees.py glisser X1 Y1 X2 Y2    glisser-déposer de (X1, Y1) à (X2, Y2)
   entrees.py taper "texte"          tape un texte (clavier AZERTY)
-  entrees.py touche entree|echap|effacer
+  entrees.py touche entree|echap|effacer|tab
+  entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
 Plusieurs actions peuvent s'enchaîner, séparées par « -- ».
 """
 import sys
@@ -35,7 +37,7 @@ TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE
 
 capacites = {
     e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE] + [k for k, _ in AZERTY.values()]
-              + list(TOUCHES.values()) + [e.KEY_LEFTSHIFT],
+              + list(TOUCHES.values()) + [e.KEY_LEFTSHIFT, e.KEY_LEFTMETA, e.KEY_LEFTCTRL, e.KEY_LEFTALT],
     e.EV_ABS: [(e.ABS_X, AbsInfo(0, 0, LARGEUR - 1, 0, 0, 0)), (e.ABS_Y, AbsInfo(0, 0, HAUTEUR - 1, 0, 0, 0))],
     e.EV_REL: [e.REL_WHEEL],
 }
@@ -76,10 +78,28 @@ for action in actions:
             bouton(e.BTN_RIGHT if len(p) > 2 and p[2] == "droit" else e.BTN_LEFT)
         elif nom == "double":
             bouton(e.BTN_LEFT); bouton(e.BTN_LEFT)
+    elif nom == "glisser":
+        x1, y1, x2, y2 = [float(v) for v in reste.split()]
+        bouger(x1, y1)
+        ui.write(e.EV_KEY, e.BTN_LEFT, 1); ui.syn(); time.sleep(0.2)
+        for i in range(1, 31):
+            bouger(x1 + (x2 - x1) * i / 30, y1 + (y2 - y1) * i / 30)
+        time.sleep(0.3)
+        ui.write(e.EV_KEY, e.BTN_LEFT, 0); ui.syn(); time.sleep(0.3)
     elif nom == "taper":
         for c in reste.strip().strip('"'):
             if c in AZERTY:
                 touche(*AZERTY[c])
+    elif nom == "raccourci":
+        mods = {"meta": e.KEY_LEFTMETA, "ctrl": e.KEY_LEFTCTRL, "alt": e.KEY_LEFTALT, "maj": e.KEY_LEFTSHIFT}
+        parties = reste.strip().lower().split("+")
+        tenus = [mods[p] for p in parties[:-1]]
+        for m in tenus:
+            ui.write(e.EV_KEY, m, 1); ui.syn(); time.sleep(0.05)
+        derniere = parties[-1]
+        touche(TOUCHES[derniere] if derniere in TOUCHES else AZERTY[derniere][0])
+        for m in reversed(tenus):
+            ui.write(e.EV_KEY, m, 0); ui.syn(); time.sleep(0.05)
     elif nom == "touche":
         touche(TOUCHES[reste.strip()])
     time.sleep(0.4)

@@ -58,7 +58,7 @@ envoyer)
 	tar --no-xattrs -C "$inclus/usr/share" -czf - color-schemes plasma/desktoptheme plasma/look-and-feel icons/sama icons/sama-sombre konsole \
 		| vm 'sudo tar -xzf - -C /usr/share'
 	# Réglages par défaut du système (barres de titre, terminal…)
-	tar --no-xattrs -C "$inclus/etc/xdg" -czf - breezerc konsolerc kdeglobals | vm 'sudo tar -xzf - -C /etc/xdg'
+	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc | vm 'sudo tar -xzf - -C /etc/xdg'
 	# Scripts Sama (organisation du menu…) et application du tri des applications
 	tar --no-xattrs -C "$inclus/usr/libexec" -czf - samaos | vm 'sudo tar -xzf - -C /usr/libexec && sudo sh /usr/libexec/samaos/organiser-applications.sh && kbuildsycoca6 >/dev/null 2>&1'
 

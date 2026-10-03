@@ -145,9 +145,22 @@ PlasmoidItem {
         if (!nomEnAttente) return
         nomEnAttente = ""
         personnaliser(id, "teinte", teinteEnAttente)
+        personnaliser(id, "prepare", true)
         espaces.setCurrentActivity(id, function () {})
         preparation.restart()
     }
+    // Première visite d'un Espace (créé ailleurs que dans la Natte, ex. à l'accueil) : on prépare son bureau une fois
+    Connections {
+        target: infoActivite
+        function onCurrentActivityChanged() {
+            var id = infoActivite.currentActivity
+            if (id && !(racine.perso[id] && racine.perso[id].prepare)) {
+                racine.personnaliser(id, "prepare", true)
+                preparation.restart()
+            }
+        }
+    }
+
     // Fond d'écran du mode en cours et cartes du bureau (une fois l'Espace affiché)
     Timer {
         id: preparation
@@ -443,6 +456,11 @@ PlasmoidItem {
         readonly property string teinteCible: idCible ? racine.infosEspace(idCible, nomCible).teinte.toLowerCase() : ""
 
         PlasmaExtras.MenuItem {
+            text: "Aperçu des Espaces"
+            icon: "view-grid"
+            onClicked: racine.basculerVue()
+        }
+        PlasmaExtras.MenuItem {
             text: "Renommer"
             icon: "edit-rename"
             onClicked: racine.edition = menuEspace.idCible
@@ -492,6 +510,24 @@ PlasmoidItem {
             onClicked: racine.retirerEspace(menuEspace.idCible)
         }
     }
+    // Vue d'ensemble des Espaces (Méta+Tab, ou menu d'un Espace)
+    property var vueEspaces: null
+    function basculerVue() {
+        if (!vueEspaces) {
+            var composant = Qt.createComponent("VueEspaces.qml")
+            if (composant.status !== Component.Ready) {
+                console.warn("Vue des Espaces :", composant.errorString())
+                return
+            }
+            vueEspaces = composant.createObject(racine, { visualParent: racine })
+        }
+        vueEspaces.toggle()
+    }
+    Connections {
+        target: Plasmoid
+        function onActivated() { racine.basculerVue() }
+    }
+
     function ouvrirMenuEspace(id, nom, element) {
         menuEspace.idCible = id
         menuEspace.nomCible = nom

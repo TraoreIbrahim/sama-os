@@ -1,0 +1,5 @@
+# Raccourcis de Sama : Méta+Tab ouvre la vue d'ensemble des Espaces (la Natte),
+# à la place du passage d'une activité à l'autre de Plasma.
+[plasmashell]
+next activity=none,Meta+Tab,Parcourir les activités
+previous activity=none,Meta+Shift+Tab,Parcourir les activités (en sens inverse)

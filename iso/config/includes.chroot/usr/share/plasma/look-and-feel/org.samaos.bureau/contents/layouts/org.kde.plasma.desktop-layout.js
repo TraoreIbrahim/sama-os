@@ -15,7 +15,9 @@ natte.height = 60;
 natte.addWidget("org.samaos.cour");
 
 // Les Espaces de Sama, leurs applications et la Corbeille
-natte.addWidget("org.samaos.natte");
+var natteEspaces = natte.addWidget("org.samaos.natte");
+// Méta+Tab : vue d'ensemble des Espaces
+natteEspaces.globalShortcut = "Meta+Tab";
 
 // Le Pouls : langue, réseau, data, batterie et heure dans une capsule ; un clic ouvre le panneau de contrôle
 natte.addWidget("org.samaos.pouls");
