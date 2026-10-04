@@ -9,6 +9,7 @@ Usage (en administrateur, dans la VM) :
   entrees.py taper "texte"          tape un texte (clavier AZERTY)
   entrees.py touche entree|echap|effacer|tab
   entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
+  entrees.py tenir alt+tab 3        combinaison dont la touche de modification reste enfoncée 3 s (ex. Alt+Tab)
 Plusieurs actions peuvent s'enchaîner, séparées par « -- ».
 """
 import sys
@@ -101,6 +102,18 @@ for action in actions:
             ui.write(e.EV_KEY, m, 1); ui.syn(); time.sleep(0.05)
         derniere = parties[-1]
         touche(TOUCHES[derniere] if derniere in TOUCHES else AZERTY[derniere][0])
+        for m in reversed(tenus):
+            ui.write(e.EV_KEY, m, 0); ui.syn(); time.sleep(0.05)
+    elif nom == "tenir":
+        mods = {"meta": e.KEY_LEFTMETA, "ctrl": e.KEY_LEFTCTRL, "alt": e.KEY_LEFTALT, "maj": e.KEY_LEFTSHIFT}
+        combinaison, duree = (reste.split() + ["2"])[:2]
+        parties = combinaison.lower().split("+")
+        tenus = [mods[p] for p in parties[:-1]]
+        for m in tenus:
+            ui.write(e.EV_KEY, m, 1); ui.syn(); time.sleep(0.05)
+        derniere = parties[-1]
+        touche(TOUCHES[derniere] if derniere in TOUCHES else AZERTY[derniere][0])
+        time.sleep(float(duree))
         for m in reversed(tenus):
             ui.write(e.EV_KEY, m, 0); ui.syn(); time.sleep(0.05)
     elif nom == "touche":

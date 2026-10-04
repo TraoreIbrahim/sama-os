@@ -2,6 +2,7 @@
 # Installe les écrans de Sama à la place de ceux du bureau Plasma :
 #  - l'écran de verrouillage (lockscreen/LockScreenUi.qml) ;
 #  - la galerie de widgets (explorer/WidgetExplorer.qml) ;
+#  - les bulles de volume, luminosité, clavier (osd/Osd.qml, osd/OsdItem.qml) ;
 #  - le mode édition du bureau (views/DesktopEditMode.qml) et les poignées des widgets (ConfigOverlay.qml) ;
 #  - la Natte sans bouton de réglage en mode édition ni menu « Modifier la barre » au clic droit
 #    (defaults : pas de « ToolBox » ni d'action de clic droit pour les barres).
@@ -21,6 +22,8 @@ remplacer() {
 
 remplacer "$coquille/lockscreen/LockScreenUi.qml" /usr/libexec/samaos/verrouillage/LockScreenUi.qml
 remplacer "$coquille/explorer/WidgetExplorer.qml" /usr/libexec/samaos/galerie/WidgetExplorer.qml
+remplacer "$coquille/osd/Osd.qml" /usr/libexec/samaos/osd/Osd.qml
+remplacer "$coquille/osd/OsdItem.qml" /usr/libexec/samaos/osd/OsdItem.qml
 remplacer "$coquille/views/DesktopEditMode.qml" /usr/libexec/samaos/edition/DesktopEditMode.qml
 remplacer "$bureau/ConfigOverlay.qml" /usr/libexec/samaos/edition/ConfigOverlay.qml
 
