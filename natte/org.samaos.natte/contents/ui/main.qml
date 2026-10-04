@@ -236,10 +236,13 @@ PlasmoidItem {
         personnaliser(infoActivite.currentActivity, "epingles", liste)
     }
 
-    // Mesures de la maquette (px) : éléments de 44, tuiles de 34, 8 d'écart
-    readonly property int hauteurPilule: 44
-    readonly property int tailleTuile: 34
-    readonly property int ecart: 8
+    // Mesures de la maquette (px) : éléments de 44, tuiles de 34, 8 d'écart ; × 0,82 (compacte) ou × 1,18 (grande)
+    // selon le réglage « Taille de la Natte »
+    readonly property real echelle: Plasmoid.configuration.taille === "compacte" ? 0.82
+                                  : Plasmoid.configuration.taille === "grande" ? 1.18 : 1
+    readonly property int hauteurPilule: Math.round(44 * echelle)
+    readonly property int tailleTuile: Math.round(34 * echelle)
+    readonly property int ecart: Math.round(8 * echelle)
     readonly property color encreDouce: Kirigami.Theme.disabledTextColor
 
     // Applications dont l'icône est déjà une tuile Sama (pas de fond à ajouter)
@@ -606,6 +609,8 @@ PlasmoidItem {
 
             delegate: Item {
                 id: espace
+                // Réglage « Afficher les autres Espaces » : l'Espace actif reste toujours là (avec ses applications)
+                visible: actif || Plasmoid.configuration.afficherEspaces
 
                 readonly property string idEspace: modelData.id
                 readonly property string nomEspace: modelData.nom
@@ -699,7 +704,7 @@ PlasmoidItem {
                                     anchors.topMargin: 4
                                     width: racine.tailleTuile
                                     height: width
-                                    radius: 11
+                                    radius: Math.round(11 * racine.echelle)
                                     color: tuile.tuileSama ? "transparent" : Kirigami.Theme.backgroundColor
                                     opacity: model.IsStartup === true ? 0.15 : 1
                                     // Survol : la tuile se soulève de 3 px, comme dans la maquette
@@ -712,6 +717,7 @@ PlasmoidItem {
                                         anchors.centerIn: parent
                                         width: tuile.tuileSama ? parent.width : parent.width * 0.7
                                         height: width
+                                        roundToIconSize: false   // suit la taille de la Natte (sinon arrondi à 32 px)
                                         source: model.decoration
                                     }
                                 }
@@ -826,7 +832,7 @@ PlasmoidItem {
         // Nouvel Espace : « + » discret, ou champ de saisie pendant la création
         MouseArea {
             id: boutonPlus
-            visible: racine.edition !== "nouveau"
+            visible: racine.edition !== "nouveau" && Plasmoid.configuration.afficherEspaces
             Layout.preferredWidth: 28
             Layout.preferredHeight: 28
             Layout.alignment: Qt.AlignVCenter
@@ -857,11 +863,12 @@ PlasmoidItem {
             }
         }
 
-        Separateur {}
+        Separateur { visible: Plasmoid.configuration.afficherTelechargements || Plasmoid.configuration.afficherCorbeille }
 
         // Téléchargements : ouvre le dossier ; point latérite = nouveaux fichiers ; barre = téléchargement en cours
         MouseArea {
             id: telechargements
+            visible: Plasmoid.configuration.afficherTelechargements
             Layout.preferredWidth: racine.hauteurPilule
             Layout.preferredHeight: racine.hauteurPilule
             hoverEnabled: true
@@ -876,7 +883,7 @@ PlasmoidItem {
             Kirigami.Icon {
                 anchors.centerIn: parent
                 anchors.verticalCenterOffset: racine.telechargementEnCours ? -3 : 0
-                width: 24
+                width: Math.round(24 * racine.echelle)
                 height: width
                 isMask: true
                 color: Kirigami.Theme.textColor
@@ -938,6 +945,7 @@ PlasmoidItem {
         // La Corbeille : bouton rond discret
         MouseArea {
             id: corbeille
+            visible: Plasmoid.configuration.afficherCorbeille
             Layout.preferredWidth: racine.hauteurPilule
             Layout.preferredHeight: racine.hauteurPilule
             hoverEnabled: true
@@ -951,7 +959,7 @@ PlasmoidItem {
             }
             Kirigami.Icon {
                 anchors.centerIn: parent
-                width: 24
+                width: Math.round(24 * racine.echelle)
                 height: width
                 isMask: true
                 color: Kirigami.Theme.textColor

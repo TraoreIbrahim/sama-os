@@ -3,6 +3,7 @@
 #
 # Usage : preparer-espace.sh            fond du mode en cours + cartes Sama si aucune n'est présente
 #         preparer-espace.sh ranger     remet seulement en colonne les cartes mal placées
+#         preparer-espace.sh forcer     remet toutes les cartes en colonne (Réglages « Bureau et Natte »)
 #
 # Plasma retient la position des widgets par résolution d'écran : au premier démarrage, ou quand la
 # résolution change (machine virtuelle redimensionnée…), il peut déposer les cartes en haut à gauche,
@@ -50,6 +51,7 @@ colonne.sort(function (a, b) { return a.y - b.y; });
 for (var i = 1; i < colonne.length; i++) {
     if (colonne[i].y - (colonne[i - 1].y + colonne[i - 1].height) < 8) malPlacees = true;
 }
+if ('$mode' === 'forcer') malPlacees = true;
 var ajouter = ('$mode' === 'preparer' && presentes === 0);
 var cartes = [];
 if (ajouter || malPlacees) {

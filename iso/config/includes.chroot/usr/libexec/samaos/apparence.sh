@@ -24,6 +24,9 @@ for outil in /usr/lib/*/libexec/plasma-changeicons /usr/libexec/plasma-changeico
 	[ -x "$outil" ] && { "$outil" "$icones"; break; }
 done
 
-plasma-apply-wallpaperimage "/usr/share/wallpapers/$fond"
+# Fond du bureau : Sama Aube ou Sama Nuit, sauf si la personne a choisi sa propre image (Réglages « Bureau et Natte »)
+if [ -z "$(kreadconfig6 --file samaosrc --group Bureau --key FondPersonnel)" ]; then
+	plasma-apply-wallpaperimage "/usr/share/wallpapers/$fond"
+fi
 kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General \
 	--key Image "file:///usr/share/wallpapers/$fond/"

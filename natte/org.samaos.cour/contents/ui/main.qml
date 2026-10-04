@@ -95,7 +95,9 @@ PlasmoidItem {
 
     fullRepresentation: MouseArea {
         id: bouton
-        readonly property int taille: 44   // comme la maquette
+        // 44 px comme la maquette, selon la taille de la Natte (Réglages « Bureau et Natte »)
+        readonly property int taille: Plasmoid.configuration.taille === "compacte" ? 36
+                                    : Plasmoid.configuration.taille === "grande" ? 52 : 44
         Layout.minimumWidth: taille
         Layout.minimumHeight: taille
         Layout.preferredWidth: taille
@@ -117,7 +119,7 @@ PlasmoidItem {
 
             Image {
                 anchors.centerIn: parent
-                width: 26
+                width: Math.round(bouton.taille * 0.6)
                 height: width
                 sourceSize.width: width * 2
                 sourceSize.height: height * 2

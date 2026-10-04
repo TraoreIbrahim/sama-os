@@ -12,5 +12,18 @@
     <entry name="personnalisation" type="String">
       <default>{}</default>
     </entry>
+    <!-- Réglages « Bureau et Natte » : taille (compacte, normale, grande) et éléments affichés -->
+    <entry name="taille" type="String">
+      <default>normale</default>
+    </entry>
+    <entry name="afficherEspaces" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="afficherTelechargements" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="afficherCorbeille" type="Bool">
+      <default>true</default>
+    </entry>
   </group>
 </kcfg>

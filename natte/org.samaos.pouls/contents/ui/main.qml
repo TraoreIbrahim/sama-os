@@ -65,7 +65,9 @@ PlasmoidItem {
     compactRepresentation: Item {
         id: capsule
 
-        readonly property int hauteurCapsule: 44   // comme la maquette
+        // 44 px comme la maquette, selon la taille de la Natte (Réglages « Bureau et Natte »)
+        readonly property int hauteurCapsule: Plasmoid.configuration.taille === "compacte" ? 36
+                                            : Plasmoid.configuration.taille === "grande" ? 52 : 44
         Layout.minimumWidth: etat.width + heure.width + 8
         Layout.preferredWidth: Layout.minimumWidth
         Layout.minimumHeight: hauteurCapsule

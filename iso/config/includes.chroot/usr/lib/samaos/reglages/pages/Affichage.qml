@@ -1,4 +1,5 @@
-// Affichage : écran (résolution, mise à l'échelle), luminosité, apparence claire ou sombre, mode nuit, fond d'écran.
+// Affichage : écran (résolution, mise à l'échelle), luminosité, apparence claire ou sombre, mode nuit
+// (le fond d'écran est dans « Bureau et Natte »).
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.private.brightnesscontrolplugin
@@ -164,35 +165,13 @@ PageReglage {
 
     Groupe {
         titre: "Fond d'écran"
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 150
-            Row {
-                anchors.centerIn: parent
-                spacing: 18
-                Repeater {
-                    model: [{ nom: "Sama Aube", dossier: "SamaAube", image: "sama-aube" }, { nom: "Sama Nuit", dossier: "SamaNuit", image: "sama-nuit" }]
-                    delegate: MouseArea {
-                        width: 180
-                        height: 126
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: commande.lancer("plasma-apply-wallpaperimage /usr/share/wallpapers/" + modelData.dossier)
-                        Column {
-                            spacing: 8
-                            Image {
-                                width: 180
-                                height: 100
-                                source: "file:///usr/share/samaos/fonds/" + modelData.image + ".svg"
-                                sourceSize.width: 360
-                                sourceSize.height: 200
-                                fillMode: Image.PreserveAspectCrop
-                                layer.enabled: true
-                            }
-                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.nom; font.pixelSize: 12; color: Couleurs.texte2 }
-                        }
-                    }
-                }
-            }
+        Ligne {
+            titre: "Fond d'écran et cartes du bureau"
+            detail: "Dans Bureau et Natte"
+            cliquable: true
+            derniere: true
+            onClique: fenetre.sectionCourante = "bureau"
+            Text { text: "›"; font.pixelSize: 20; color: Couleurs.texte3 }
         }
     }
 }

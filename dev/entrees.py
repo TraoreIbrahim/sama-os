@@ -9,6 +9,7 @@ Usage (en administrateur, dans la VM) :
   entrees.py taper "texte"          tape un texte (clavier AZERTY)
   entrees.py touche entree|echap|effacer|tab|haut|bas|gauche|droite
   entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
+  entrees.py molette X Y 5           fait tourner la molette (5 crans vers le bas ; négatif : vers le haut)
   entrees.py tenir alt+tab 3        combinaison dont la touche de modification reste enfoncée 3 s (ex. Alt+Tab)
 Plusieurs actions peuvent s'enchaîner, séparées par « -- ».
 """
@@ -119,5 +120,11 @@ for action in actions:
             ui.write(e.EV_KEY, m, 0); ui.syn(); time.sleep(0.05)
     elif nom == "touche":
         touche(TOUCHES[reste.strip()])
+    elif nom == "molette":
+        # molette X Y crans  (crans > 0 : vers le bas)
+        x, y, crans = reste.split()
+        bouger(x, y)
+        for i in range(abs(int(crans))):
+            ui.write(e.EV_REL, e.REL_WHEEL, -1 if int(crans) > 0 else 1); ui.syn(); time.sleep(0.05)
     time.sleep(0.4)
 ui.close()
