@@ -2,7 +2,8 @@
 // En attendant l'application Agenda de Sama, la carte garde ses propres événements :
 //  - « + » : titre, jour et heure, saisis dans la carte ; survol d'un événement : « × » pour le retirer ;
 //  - les jours fériés de Côte d'Ivoire à date fixe sont ajoutés d'office ;
-//  - les événements passés disparaissent d'eux-mêmes.
+//  - les événements passés disparaissent d'eux-mêmes ;
+//  - un clic sur la carte ouvre la semaine et tous les rendez-vous à venir (en attendant l'application Agenda).
 
 import QtQuick
 import QtQuick.Layouts
@@ -69,6 +70,30 @@ PlasmoidItem {
         return liste.slice(0, 3)
     }
 
+    // Tous les événements des 14 prochains jours (panneau détaillé)
+    readonly property var aVenir: {
+        var aujourdhui = cleJour(maintenant)
+        var liste = []
+        for (var i = 0; i < evenements.length; i++) {
+            if (evenements[i].date >= aujourdhui) liste.push({ titre: evenements[i].titre, date: evenements[i].date,
+                debut: evenements[i].debut || "", fin: evenements[i].fin || "", couleur: evenements[i].couleur, index: i })
+        }
+        for (var j = 0; j < 14; j++) {
+            var d = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate() + j)
+            for (var k = 0; k < feries.length; k++) {
+                if (feries[k].mois === d.getMonth() + 1 && feries[k].jour === d.getDate())
+                    liste.push({ titre: feries[k].titre, date: cleJour(d), debut: "", fin: "", couleur: "#8A8277", index: -1, ferie: true })
+            }
+        }
+        liste.sort(function (a, b) { return (a.date + a.debut).localeCompare(b.date + b.debut) })
+        return liste
+    }
+    function aDesEvenements(cle) {
+        for (var i = 0; i < aVenir.length; i++) if (aVenir[i].date === cle) return true
+        return false
+    }
+    property string jourFiltre: ""   // jour choisi dans la semaine du panneau (vide : tous)
+
     function libelleJour(cle) {
         var d = dateDe(cle)
         var ecart = Math.round((d.getTime() - new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate()).getTime()) / 86400000)
@@ -121,6 +146,175 @@ PlasmoidItem {
 
     fullRepresentation: Item {
         id: carte
+
+        // Clic sur la carte : la semaine et tous les rendez-vous
+        MouseArea {
+            anchors.fill: parent
+            enabled: !racine.saisie
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { racine.jourFiltre = ""; details.visible = !details.visible }
+        }
+
+        PlasmaCore.Dialog {
+            id: details
+            visualParent: carte
+            location: PlasmaCore.Types.LeftEdge
+            type: PlasmaCore.Dialog.PopupMenu
+            hideOnWindowDeactivate: true
+            flags: Qt.WindowStaysOnTopHint
+            visible: false
+            // Une fois ouvert, le panneau prend le clavier : Échap ou un clic ailleurs le referme
+            onVisibleChanged: if (visible) requestActivate()
+
+            mainItem: ColumnLayout {
+                width: 340
+                height: implicitHeight   // suit le contenu (les prévisions arrivent après l'ouverture)
+                spacing: 14
+                focus: true
+                Keys.onEscapePressed: details.visible = false
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        Layout.fillWidth: true
+                        text: {
+                            var t = racine.maintenant.toLocaleDateString(Qt.locale(), "MMMM yyyy")
+                            return t.charAt(0).toUpperCase() + t.slice(1)
+                        }
+                        font.pixelSize: 17
+                        font.weight: Font.Medium
+                        color: Kirigami.Theme.textColor
+                    }
+                    QQC2.AbstractButton {
+                        Layout.preferredHeight: 28
+                        contentItem: Text {
+                            text: "+ Ajouter"
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            color: "#FFFFFF"
+                            leftPadding: 12
+                            rightPadding: 12
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle { radius: 14; color: "#B5532F" }
+                        onClicked: { details.visible = false; racine.jourChoisi = 0; racine.saisie = true }
+                    }
+                }
+
+                // La semaine : aujourd'hui en latérite, un point sous les jours qui ont des rendez-vous
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    Repeater {
+                        model: 7
+                        delegate: MouseArea {
+                            id: jour
+                            readonly property date date: new Date(racine.maintenant.getFullYear(), racine.maintenant.getMonth(), racine.maintenant.getDate() + index)
+                            readonly property string cle: racine.cleJour(date)
+                            readonly property bool choisi: racine.jourFiltre === cle
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 58
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: racine.jourFiltre = choisi ? "" : cle
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 12
+                                color: jour.choisi ? Qt.rgba(181 / 255, 83 / 255, 47 / 255, 0.14) : "transparent"
+                            }
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 4
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: jour.date.toLocaleDateString(Qt.locale(), "ddd").substring(0, 3)
+                                    font.pixelSize: 11
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 26
+                                    height: 26
+                                    radius: 13
+                                    color: index === 0 ? "#B5532F" : "transparent"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: jour.date.getDate()
+                                        font.pixelSize: 13
+                                        font.weight: Font.Medium
+                                        color: index === 0 ? "#FFFFFF" : Kirigami.Theme.textColor
+                                    }
+                                }
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 4
+                                    height: 4
+                                    radius: 2
+                                    color: "#B5532F"
+                                    opacity: racine.aDesEvenements(jour.cle) ? 1 : 0
+                                }
+                            }
+                        }
+                    }
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Kirigami.Theme.textColor
+                    opacity: 0.08
+                }
+
+                // Rendez-vous, jour par jour
+                Repeater {
+                    model: racine.aVenir.filter(function (e) { return !racine.jourFiltre || e.date === racine.jourFiltre })
+                    delegate: ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        readonly property bool nouveauJour: {
+                            var l = racine.aVenir.filter(function (e) { return !racine.jourFiltre || e.date === racine.jourFiltre })
+                            return index === 0 || l[index - 1].date !== modelData.date
+                        }
+                        Text {
+                            visible: parent.nouveauJour
+                            Layout.topMargin: index === 0 ? 0 : 4
+                            text: racine.libelleJour(modelData.date).toUpperCase()
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 0.4
+                            color: Kirigami.Theme.disabledTextColor
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+                            Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 34; radius: 2; color: modelData.couleur }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+                                Text { Layout.fillWidth: true; text: modelData.titre; elide: Text.ElideRight; font.pixelSize: 14; font.weight: Font.Medium; color: Kirigami.Theme.textColor }
+                                Text {
+                                    text: modelData.ferie ? "Jour férié" : (modelData.debut ? modelData.debut + (modelData.fin ? " – " + modelData.fin : "") : "Toute la journée")
+                                    font.pixelSize: 12
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
+                            }
+                            Text {
+                                visible: modelData.index >= 0
+                                text: "×"
+                                font.pixelSize: 16
+                                color: Kirigami.Theme.disabledTextColor
+                                MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: racine.retirer(modelData.index) }
+                            }
+                        }
+                    }
+                }
+                Text {
+                    visible: racine.aVenir.filter(function (e) { return !racine.jourFiltre || e.date === racine.jourFiltre }).length === 0
+                    text: racine.jourFiltre ? "Rien de prévu ce jour-là" : "Rien de prévu ces deux prochaines semaines"
+                    font.pixelSize: 13
+                    color: Kirigami.Theme.disabledTextColor
+                }
+            }
+        }
+
         readonly property int marge: Kirigami.Units.gridUnit * 1.2
         Layout.minimumWidth: Kirigami.Units.gridUnit * 14
         Layout.preferredWidth: Kirigami.Units.gridUnit * 17

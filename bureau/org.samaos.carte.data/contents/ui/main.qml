@@ -1,6 +1,7 @@
 // Carte « Data consommée » du bureau de Sama OS.
 // Mesure réelle : octets reçus + envoyés par les cartes réseau depuis l'allumage
 // (hors boucle locale), comparés au forfait réglé dans la configuration (1 Go par défaut).
+// Un clic ouvre le Moniteur système, en attendant l'écran « Data » des Réglages de Sama.
 
 import QtQuick
 import QtQuick.Layouts
@@ -40,11 +41,23 @@ PlasmoidItem {
         }
     }
 
+    P5Support.DataSource {
+        id: executeur
+        engine: "executable"
+        onNewData: source => disconnectSource(source)
+    }
+
     fullRepresentation: Item {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 14
         Layout.preferredWidth: Kirigami.Units.gridUnit * 17
         Layout.minimumHeight: Kirigami.Units.gridUnit * 6.5
         Layout.preferredHeight: Kirigami.Units.gridUnit * 6.5
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: executeur.connectSource("plasma-systemmonitor")
+        }
 
         Rectangle {
             anchors.fill: parent

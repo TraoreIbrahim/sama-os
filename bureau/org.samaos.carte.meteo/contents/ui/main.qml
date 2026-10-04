@@ -1,7 +1,8 @@
 // Carte « Météo » du bureau de Sama OS (d'après la maquette) : icône, ville, ciel, température.
 // Données : Open-Meteo (service libre, sans compte ni clé). Mise à jour toutes les 30 minutes.
 // Hors ligne : la dernière météo reçue reste affichée avec son âge (« il y a 2 h »).
-// Un clic sur le nom de la ville permet d'en choisir une autre.
+// Un clic sur le nom de la ville permet d'en choisir une autre ; un clic ailleurs sur la carte ouvre les prévisions
+// détaillées (maintenant et 5 jours), en attendant l'application Météo de Sama.
 
 import QtQuick
 import QtQuick.Layouts
@@ -51,7 +52,8 @@ PlasmoidItem {
     function actualiser() {
         var url = "https://api.open-meteo.com/v1/forecast?latitude=" + Plasmoid.configuration.latitude
                 + "&longitude=" + Plasmoid.configuration.longitude
-                + "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1"
+                + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day"
+                + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5"
         var requete = new XMLHttpRequest()
         requete.onreadystatechange = function () {
             if (requete.readyState !== XMLHttpRequest.DONE) return
@@ -115,7 +117,15 @@ PlasmoidItem {
     // Saisie : la carte doit recevoir le clavier
     Plasmoid.status: saisieVille ? PlasmaCore.Types.AcceptingInputStatus : PlasmaCore.Types.ActiveStatus
 
+    function jourCourt(cle, i) {
+        if (i === 0) return "Aujourd'hui"
+        var p = String(cle).split("-")
+        var t = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).toLocaleDateString(Qt.locale(), "ddd d")
+        return t.charAt(0).toUpperCase() + t.slice(1)
+    }
+
     fullRepresentation: Item {
+        id: carte
         Layout.minimumWidth: Kirigami.Units.gridUnit * 14
         Layout.preferredWidth: Kirigami.Units.gridUnit * 17
         Layout.minimumHeight: Kirigami.Units.gridUnit * 5.5
@@ -128,6 +138,141 @@ PlasmoidItem {
             opacity: 0.72
             border.width: 1
             border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06)
+        }
+
+        // Clic sur la carte : prévisions détaillées
+        MouseArea {
+            anchors.fill: parent
+            enabled: !racine.saisieVille
+            cursorShape: Qt.PointingHandCursor
+            onClicked: details.visible = !details.visible
+        }
+
+        // Prévisions détaillées, à côté de la carte
+        PlasmaCore.Dialog {
+            id: details
+            visualParent: carte
+            location: PlasmaCore.Types.LeftEdge
+            type: PlasmaCore.Dialog.PopupMenu
+            hideOnWindowDeactivate: true
+            flags: Qt.WindowStaysOnTopHint
+            visible: false
+            // Une fois ouvert, le panneau prend le clavier : Échap ou un clic ailleurs le referme
+            onVisibleChanged: if (visible) requestActivate()
+
+            mainItem: ColumnLayout {
+                width: 340
+                height: implicitHeight   // suit le contenu (les prévisions arrivent après l'ouverture)
+                spacing: 14
+                focus: true
+                Keys.onEscapePressed: details.visible = false
+
+                // Maintenant
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 14
+                    Image {
+                        Layout.preferredWidth: 64
+                        Layout.preferredHeight: 64
+                        source: Qt.resolvedUrl("../icons/" + (racine.etat ? racine.etat.icone : "nuage") + ".svg")
+                        sourceSize.width: 128
+                        sourceSize.height: 128
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        Text { text: Plasmoid.configuration.ville; font.pixelSize: 17; font.weight: Font.Medium; color: Kirigami.Theme.textColor }
+                        Text { text: racine.etat ? racine.etat.texte : ""; font.pixelSize: 13; color: Kirigami.Theme.disabledTextColor }
+                    }
+                    Text {
+                        text: racine.meteo ? Math.round(racine.meteo.current.temperature_2m) + "°" : "–"
+                        font.pixelSize: 44
+                        font.weight: Font.Light
+                        color: Kirigami.Theme.textColor
+                    }
+                }
+                // Ressenti, humidité, vent
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Repeater {
+                        model: racine.meteo && racine.meteo.current.apparent_temperature !== undefined ? [
+                            { titre: "Ressenti", valeur: Math.round(racine.meteo.current.apparent_temperature) + "°" },
+                            { titre: "Humidité", valeur: Math.round(racine.meteo.current.relative_humidity_2m) + " %" },
+                            { titre: "Vent", valeur: Math.round(racine.meteo.current.wind_speed_10m) + " km/h" }
+                        ] : []
+                        delegate: Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 52
+                            radius: 12
+                            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.05)
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 1
+                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.titre; font.pixelSize: 11; color: Kirigami.Theme.disabledTextColor }
+                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.valeur; font.pixelSize: 15; font.weight: Font.Medium; color: Kirigami.Theme.textColor }
+                            }
+                        }
+                    }
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Kirigami.Theme.textColor
+                    opacity: 0.08
+                }
+                // 5 prochains jours
+                Repeater {
+                    model: racine.meteo && racine.meteo.daily.time && racine.meteo.daily.weather_code ? racine.meteo.daily.time.length : 0
+                    delegate: RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+                        Text {
+                            Layout.preferredWidth: 96
+                            text: racine.jourCourt(racine.meteo.daily.time[index], index)
+                            font.pixelSize: 13
+                            font.weight: index === 0 ? Font.DemiBold : Font.Normal
+                            color: Kirigami.Theme.textColor
+                        }
+                        Image {
+                            Layout.preferredWidth: 28
+                            Layout.preferredHeight: 28
+                            source: Qt.resolvedUrl("../icons/" + racine.ciel(racine.meteo.daily.weather_code[index], true).icone + ".svg")
+                            sourceSize.width: 56
+                            sourceSize.height: 56
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: racine.ciel(racine.meteo.daily.weather_code[index], true).texte
+                            elide: Text.ElideRight
+                            font.pixelSize: 12
+                            color: Kirigami.Theme.disabledTextColor
+                        }
+                        Text {
+                            text: Math.round(racine.meteo.daily.temperature_2m_max[index]) + "°"
+                            font.pixelSize: 13
+                            font.weight: Font.Medium
+                            color: Kirigami.Theme.textColor
+                        }
+                        Text {
+                            text: Math.round(racine.meteo.daily.temperature_2m_min[index]) + "°"
+                            font.pixelSize: 13
+                            color: Kirigami.Theme.disabledTextColor
+                        }
+                    }
+                }
+                Text {
+                    visible: !racine.meteo || !racine.meteo.daily.weather_code
+                    text: "Prévisions disponibles à la prochaine connexion"
+                    font.pixelSize: 12
+                    color: Kirigami.Theme.disabledTextColor
+                }
+                Text {
+                    text: "Données Open-Meteo" + (racine.age() ? " · " + racine.age() : "")
+                    font.pixelSize: 11
+                    color: Kirigami.Theme.disabledTextColor
+                }
+            }
         }
 
         RowLayout {
