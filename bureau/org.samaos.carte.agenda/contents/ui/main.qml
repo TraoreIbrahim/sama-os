@@ -182,8 +182,17 @@ PlasmoidItem {
                 spacing: 8
                 QQC2.TextField {
                     id: champTitre
+                    background: Rectangle {
+                        radius: 10
+                        color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06)
+                        border.width: parent.activeFocus ? 1.5 : 0
+                        border.color: "#B5532F"
+                    }
+                    leftPadding: 12
+                    rightPadding: 12
                     Layout.fillWidth: true
                     placeholderText: "Quoi ? (ex. Réunion de service)"
+                    Layout.preferredHeight: 34
                     font.pixelSize: 13
                     onVisibleChanged: if (visible) { text = ""; champHeure.text = ""; forceActiveFocus() }
                     onAccepted: champHeure.forceActiveFocus()
@@ -223,11 +232,36 @@ PlasmoidItem {
                 }
                 QQC2.TextField {
                     id: champHeure
+                    background: Rectangle {
+                        radius: 10
+                        color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06)
+                        border.width: parent.activeFocus ? 1.5 : 0
+                        border.color: "#B5532F"
+                    }
+                    leftPadding: 12
+                    rightPadding: 12
                     Layout.fillWidth: true
-                    placeholderText: "Heure (ex. 9h – 10h), facultative · Entrée pour ajouter"
+                    placeholderText: "Heure, facultative (ex. 9h – 10h)"
+                    Layout.preferredHeight: 34
                     font.pixelSize: 12
                     onAccepted: if (racine.ajouter(champTitre.text, racine.jourChoisi, text)) racine.saisie = false
                     Keys.onEscapePressed: racine.saisie = false
+                }
+                QQC2.AbstractButton {
+                    Layout.alignment: Qt.AlignRight
+                    Layout.preferredHeight: 30
+                    enabled: champTitre.text.trim().length > 0
+                    contentItem: Text {
+                        text: "Ajouter"
+                        font.pixelSize: 13
+                        font.weight: Font.DemiBold
+                        color: "#FFFFFF"
+                        leftPadding: 16
+                        rightPadding: 16
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle { radius: 15; color: "#B5532F"; opacity: parent.enabled ? 1 : 0.4 }
+                    onClicked: if (racine.ajouter(champTitre.text, racine.jourChoisi, champHeure.text)) racine.saisie = false
                 }
             }
 

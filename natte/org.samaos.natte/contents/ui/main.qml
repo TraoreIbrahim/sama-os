@@ -11,6 +11,7 @@
 // Couleur et applications épinglées sont gardées par identifiant d'Espace (elles suivent un renommage).
 
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.kirigami as Kirigami
@@ -149,6 +150,31 @@ PlasmoidItem {
         espaces.setCurrentActivity(id, function () {})
         preparation.restart()
     }
+    // Au démarrage de la session : préparer l'Espace actif s'il ne l'a jamais été, sinon remettre en colonne
+    // les cartes que Plasma aurait déplacées (il retient leur position par résolution d'écran)
+    Timer {
+        id: verificationDemarrage
+        interval: 6000
+        running: true
+        onTriggered: {
+            var id = infoActivite.currentActivity
+            if (id && !(racine.perso[id] && racine.perso[id].prepare)) {
+                racine.personnaliser(id, "prepare", true)
+                executeur.connectSource("/usr/libexec/samaos/preparer-espace.sh")
+            } else {
+                executeur.connectSource("/usr/libexec/samaos/preparer-espace.sh ranger")
+            }
+        }
+    }
+    // Résolution de l'écran modifiée : les cartes peuvent avoir été déplacées
+    readonly property size tailleEcran: Qt.size(Screen.width, Screen.height)
+    onTailleEcranChanged: rangement.restart()
+    Timer {
+        id: rangement
+        interval: 3000
+        onTriggered: executeur.connectSource("/usr/libexec/samaos/preparer-espace.sh ranger")
+    }
+
     // Première visite d'un Espace (créé ailleurs que dans la Natte, ex. à l'accueil) : on prépare son bureau une fois
     Connections {
         target: infoActivite

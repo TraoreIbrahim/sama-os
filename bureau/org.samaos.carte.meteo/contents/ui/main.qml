@@ -165,6 +165,14 @@ PlasmoidItem {
                 }
                 QQC2.TextField {
                     id: champVille
+                    background: Rectangle {
+                        radius: 10
+                        color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06)
+                        border.width: parent.activeFocus ? 1.5 : 0
+                        border.color: "#B5532F"
+                    }
+                    leftPadding: 12
+                    rightPadding: 12
                     visible: racine.saisieVille
                     Layout.fillWidth: true
                     Layout.preferredHeight: 26

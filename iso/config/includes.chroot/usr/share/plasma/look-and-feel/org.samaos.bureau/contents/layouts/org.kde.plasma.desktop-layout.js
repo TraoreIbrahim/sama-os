@@ -34,14 +34,14 @@ for (var i = 0; i < bureaux.length; i++) {
     var marge = Math.round(gridUnit * 1.5);
     var gauche = Math.round(gridUnit * 7);
     var largeur = Math.round(gridUnit * 17);
+    // (si Plasma les dépose ailleurs au premier démarrage, la Natte les remet en colonne : preparer-espace.sh ranger)
     var y = marge;
-    bureau.addWidget("org.samaos.carte.heure", gauche, y, largeur, Math.round(gridUnit * 10.5));
-    y += Math.round(gridUnit * 11.2);
-    bureau.addWidget("org.samaos.carte.data", gauche, y, largeur, Math.round(gridUnit * 6.5));
-    y += Math.round(gridUnit * 7.2);
-    bureau.addWidget("org.samaos.carte.meteo", gauche, y, largeur, Math.round(gridUnit * 5.5));
-    y += Math.round(gridUnit * 6.2);
-    bureau.addWidget("org.samaos.carte.agenda", gauche, y, largeur, Math.round(gridUnit * 9));
+    [["org.samaos.carte.heure", 10.5], ["org.samaos.carte.data", 6.5],
+     ["org.samaos.carte.meteo", 5.5], ["org.samaos.carte.agenda", 9]].forEach(function (c) {
+        var carte = bureau.addWidget(c[0], gauche, y, largeur, Math.round(gridUnit * c[1]));
+        // Plasma arrondit à sa grille : on repart de la place réellement occupée, plus 16 px d'écart
+        y = carte.geometry.y + carte.geometry.height + 16;
+    });
 }
 
 // Bureau verrouillé : pas de poignées ni de déplacements accidentels des cartes
