@@ -5,7 +5,7 @@ Part du thème sobre KvSimplicity (source/, thème libre de Tsu Jan, GPL) :
 - couleurs passées dans la palette Sama : bleus → latérite, gris → gris chauds (clair) ou bleu nuit (sombre) ;
 - menus redessinés comme les menus de la Natte : coins arrondis 10 px, fond de fenêtre, survol en pastille douce.
 
-Écrit iso/config/includes.chroot/usr/share/Kvantum/Sama et SamaSombre.
+Écrit iso/config/includes.chroot/usr/share/Kvantum/Sama (Sama = clair, SamaDark = sombre).
 """
 import colorsys
 import os
@@ -47,7 +47,7 @@ VARIANTES = {
             "progress.indicator.text.color": "#FFFFFF",
         },
     },
-    "SamaSombre": {
+    "SamaDark": {
         "source": "KvSimplicityDark",
         "sombre": True,
         "menu": "#2B3044",
@@ -269,7 +269,9 @@ def generer(nom, v):
                          "text.normal.color": v["texte"], "text.focus.color": v["texte"],
                          "text.margin.top": 2, "text.margin.bottom": 2, "text.margin.left": 6, "text.margin.right": 6})
 
-    dossier = os.path.join(SORTIE, nom)
+    # Une seule famille « Sama » : la variante sombre (SamaDark) est prise par le style « kvantum-dark »,
+    # ce qui permet à Plasma de basculer les applications ouvertes sans les relancer
+    dossier = os.path.join(SORTIE, "Sama")
     os.makedirs(dossier, exist_ok=True)
     ET.ElementTree(racine).write(os.path.join(dossier, nom + ".svg"), encoding="unicode", xml_declaration=True)
     open(os.path.join(dossier, nom + ".kvconfig"), "w").write(conf)

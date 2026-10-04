@@ -5,16 +5,19 @@
 set -u
 
 case "${1:-}" in
-clair)  couleurs=SamaClair;  icones=sama;        fond=SamaAube; style=Sama ;;
-sombre) couleurs=SamaSombre; icones=sama-sombre; fond=SamaNuit; style=SamaSombre ;;
+clair)  couleurs=SamaClair;  icones=sama;        fond=SamaAube; style=kvantum ;;
+sombre) couleurs=SamaSombre; icones=sama-sombre; fond=SamaNuit; style=kvantum-dark ;;
 *) echo "Usage : $0 clair|sombre" >&2; exit 1 ;;
 esac
 
 plasma-apply-colorscheme "$couleurs"
 
-# Style des menus, boutons et cases des applications KDE (les applications ouvertes le prennent en les rouvrant)
+# Style des menus, boutons et cases des applications KDE : thème Kvantum « Sama », variante claire (kvantum)
+# ou sombre (kvantum-dark). Le signal StyleChanged fait basculer les applications déjà ouvertes.
 mkdir -p "$HOME/.config/Kvantum"
-printf '[General]\ntheme=%s\n' "$style" > "$HOME/.config/Kvantum/kvantum.kvconfig"
+printf '[General]\ntheme=Sama\n' > "$HOME/.config/Kvantum/kvantum.kvconfig"
+kwriteconfig6 --notify --file kdeglobals --group KDE --key widgetStyle "$style"
+dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:2 int32:0
 
 # Thème d'icônes (outil de Plasma, son chemin dépend de l'architecture)
 for outil in /usr/lib/*/libexec/plasma-changeicons /usr/libexec/plasma-changeicons; do
