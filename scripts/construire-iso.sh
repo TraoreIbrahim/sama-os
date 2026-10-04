@@ -40,6 +40,8 @@ mkdir -p "$racine/sortie"
 echo "==> Construction de l'ISO (cela prend du temps)"
 # La construction se fait dans le système de fichiers du conteneur (live-build a besoin d'un vrai système Linux),
 # puis seule l'ISO est recopiée vers sortie/. Le cache des paquets est gardé dans un volume Docker.
+# L'ISO est d'abord copiée à côté, puis écrite DANS le fichier existant (même fichier pour macOS) :
+# UTM, isolé par macOS, garde ainsi le droit de l'ouvrir. Éteindre la machine virtuelle avant la fin de la construction.
 docker run --rm --privileged --platform "linux/$ARCH" \
 	-e SAMA_ARCH="$ARCH" \
 	-e SAMA_MIROIR="${SAMA_MIROIR:-http://ftp.fr.debian.org/debian/}" \
@@ -47,7 +49,7 @@ docker run --rm --privileged --platform "linux/$ARCH" \
 	-v "$racine/sortie:/sortie" \
 	-v "samaos-cache-$ARCH:/construction/cache" \
 	"samaos-construction:$ARCH" \
-	sh -c 'cp -a /source/. /construction/ && cd /construction && lb config && lb build && cp build.log /sortie/build-$SAMA_ARCH.log && for iso in ./*.iso; do nom=$(basename "$iso"); cp "$iso" "/sortie/.$nom.tmp" && mv "/sortie/.$nom.tmp" "/sortie/$nom"; done'
+	sh -c 'cp -a /source/. /construction/ && cd /construction && lb config && lb build && cp build.log /sortie/build-$SAMA_ARCH.log && for iso in ./*.iso; do nom=$(basename "$iso"); cp "$iso" "/sortie/.$nom.tmp" && if [ -f "/sortie/$nom" ]; then cat "/sortie/.$nom.tmp" > "/sortie/$nom" && rm -f "/sortie/.$nom.tmp"; else mv "/sortie/.$nom.tmp" "/sortie/$nom"; fi; done'
 
 echo "==> Terminé :"
 ls -lh "$racine"/sortie/*.iso
