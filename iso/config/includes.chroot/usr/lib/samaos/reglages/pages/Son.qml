@@ -80,7 +80,33 @@ PageReglage {
         }
     }
 
+    // Profils des cartes son (stéréo, surround, HDMI…)
     Groupe {
-        LigneAvancee { titre: "Réglages avancés du son"; detail: "Profils des cartes son, sons du système"; module: "kcm_pulseaudio"; derniere: true }
+        titre: "Cartes son"
+        Repeater {
+            model: CardModel {}
+            delegate: Ligne {
+                id: carteSon
+                readonly property var profils: model.Profiles || []
+                // (dans la liste déroulante, « model » désigne ses propres choix : on garde ici ceux de la carte)
+                readonly property int profilActif: model.ActiveProfileIndex
+                readonly property var carte: model.PulseObject
+                titre: (model.Properties && model.Properties["device.description"]) || model.Name || "Carte son"
+                detail: "Profil de la carte"
+                ListeDeroulante {
+                    implicitWidth: 240
+                    model: carteSon.profils.filter(function (p) { return p.availability !== 2 }).map(function (p) { return p.description })
+                    currentIndex: {
+                        var dispo = carteSon.profils.filter(function (p) { return p.availability !== 2 })
+                        var actif = carteSon.profils[carteSon.profilActif]
+                        return actif ? dispo.indexOf(actif) : -1
+                    }
+                    onActivated: i => {
+                        var dispo = carteSon.profils.filter(function (p) { return p.availability !== 2 })
+                        carteSon.carte.activeProfileIndex = carteSon.profils.indexOf(dispo[i])
+                    }
+                }
+            }
+        }
     }
 }

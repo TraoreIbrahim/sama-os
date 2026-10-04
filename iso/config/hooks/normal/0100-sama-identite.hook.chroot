@@ -18,7 +18,9 @@ FIN
 ln -sf ../usr/lib/os-release /etc/os-release
 
 # Langues disponibles d'emblée : français, anglais, swahili
-for langue in fr_FR.UTF-8 en_US.UTF-8 sw_KE.UTF-8; do
+# (+ formats régionaux d'Afrique francophone : date, nombres, franc CFA… choisis dans les Réglages)
+for langue in fr_FR.UTF-8 en_US.UTF-8 sw_KE.UTF-8 fr_CI.UTF-8 fr_SN.UTF-8 fr_ML.UTF-8 fr_BF.UTF-8 fr_BJ.UTF-8 \
+              fr_TG.UTF-8 fr_NE.UTF-8 fr_GN.UTF-8 fr_CM.UTF-8 fr_CD.UTF-8 fr_GA.UTF-8 en_GB.UTF-8; do
 	sed -i "s/^# *\($langue\)/\1/" /etc/locale.gen
 done
 locale-gen

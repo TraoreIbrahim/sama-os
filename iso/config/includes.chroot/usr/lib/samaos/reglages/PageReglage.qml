@@ -17,6 +17,15 @@ Flickable {
         y: 28
         width: Math.min(page.width - 68, 760)
         spacing: 14
+        // Lien de retour vers la section (dans une sous-page)
+        Text {
+            visible: fenetre.sousPage !== ""
+            text: "‹  " + fenetre.section.titre
+            font.pixelSize: 13
+            font.weight: Font.Medium
+            color: Couleurs.lateriteEncre
+            MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: fenetre.sousPage = "" }
+        }
         Text {
             Layout.bottomMargin: 4
             text: page.titre

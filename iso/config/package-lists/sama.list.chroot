@@ -62,3 +62,14 @@ btrfs-progs
 curl
 dbus-bin
 librsvg2-bin
+
+# Réglages Sama : impression sans pilote (imprimantes réseau et USB récentes)
+cups
+cups-filters
+ipp-usb
+avahi-daemon
+# Réglages Sama : VPN (OpenVPN ; WireGuard est géré par NetworkManager)
+network-manager-openvpn
+wireguard-tools
+# Réglages Sama : accessibilité (lecteur d'écran)
+orca

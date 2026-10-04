@@ -6,6 +6,8 @@ P5Support.DataSource {
     id: executeur
     engine: "executable"
     property var rappels: ({})
+    // Met un texte entre apostrophes pour le passer sans risque à une commande
+    function q(texte) { return "'" + String(texte).replace(/'/g, "'\\''") + "'" }
     function lancer(commande, rappel) {
         var r = rappels
         r[commande] = rappel || null

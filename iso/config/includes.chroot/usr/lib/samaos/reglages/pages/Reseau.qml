@@ -72,8 +72,8 @@ PageReglage {
 
     Groupe {
         titre: "Autres connexions"
-        LigneAvancee { titre: "Partage de connexion depuis le téléphone"; detail: "Par câble USB ou Bluetooth"; module: "kcm_networkmanagement" }
-        LigneAvancee { titre: "VPN"; detail: "Réseau privé de l'entreprise ou de l'école"; module: "kcm_networkmanagement" }
-        LigneAvancee { titre: "Proxy"; detail: "Passerelle imposée par certaines administrations"; module: "kcm_proxy"; derniere: true }
+        LigneSousPage { titre: "Partage de connexion depuis le téléphone"; detail: "Par câble USB ou Bluetooth"; sousPage: "Partage" }
+        LigneSousPage { titre: "VPN"; detail: "Réseau privé de l'entreprise ou de l'école"; sousPage: "Vpn" }
+        LigneSousPage { titre: "Proxy"; detail: "Passerelle imposée par certaines administrations"; sousPage: "Proxy"; derniere: true }
     }
 }

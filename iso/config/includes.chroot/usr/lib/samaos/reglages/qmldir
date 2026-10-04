@@ -7,5 +7,6 @@ Segments 1.0 Segments.qml
 Curseur 1.0 Curseur.qml
 BoutonSama 1.0 BoutonSama.qml
 Commande 1.0 Commande.qml
-LigneAvancee 1.0 LigneAvancee.qml
 ListeDeroulante 1.0 ListeDeroulante.qml
+LigneSousPage 1.0 LigneSousPage.qml
+ChampSama 1.0 ChampSama.qml

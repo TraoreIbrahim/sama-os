@@ -1,6 +1,6 @@
 // Réglages de Sama OS (d'après les écrans « Réglages » de la maquette).
 // Barre latérale : recherche, compte, 14 sections ; à droite, la page choisie.
-// Lancement : sama-reglages [section]   (ex. sama-reglages data)
+// Lancement : sama-reglages [section[/sous-page]]   (ex. sama-reglages data, sama-reglages reseau/vpn)
 
 import QtQuick
 import QtQuick.Window
@@ -40,7 +40,7 @@ Window {
     // Section de départ : argument de la ligne de commande, sinon Réseau
     property string sectionCourante: {
         var a = Qt.application.arguments
-        var demande = a.length > 0 ? String(a[a.length - 1]) : ""
+        var demande = a.length > 0 ? String(a[a.length - 1]).split("/")[0] : ""
         for (var i = 0; i < sections.length; i++) if (sections[i].id === demande) return demande
         return "reseau"
     }
@@ -48,6 +48,17 @@ Window {
         for (var i = 0; i < sections.length; i++) if (sections[i].id === sectionCourante) return sections[i]
         return sections[0]
     }
+
+    // Sous-page ouverte dans la section (ex. « Vpn » dans Réseau et Internet) ; vide : la page de la section
+    property string sousPage: ""
+    onSectionCouranteChanged: sousPage = ""
+    // « sama-reglages reseau/vpn » : ouvre directement la sous-page
+    Component.onCompleted: {
+        var a = Qt.application.arguments
+        var p = a.length > 0 ? String(a[a.length - 1]).split("/") : []
+        if (p.length > 1) sousPage = p[1].charAt(0).toUpperCase() + p[1].slice(1)
+    }
+    function ouvrir(nom) { sousPage = nom }
 
     property string recherche: ""
     readonly property var sectionsVisibles: {
@@ -190,7 +201,7 @@ Window {
             id: page
             Layout.fillWidth: true
             Layout.fillHeight: true
-            source: "pages/" + fenetre.section.page + ".qml"
+            source: "pages/" + (fenetre.sousPage || fenetre.section.page) + ".qml"
             onStatusChanged: if (status === Loader.Error) source = "pages/Bientot.qml"
         }
     }

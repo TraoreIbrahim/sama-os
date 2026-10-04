@@ -12,6 +12,13 @@ PageReglage {
     readonly property bool actif: disponible && !BluezQt.Manager.bluetoothBlocked
     Commande { id: commande }
 
+    // Recherche d'appareils : l'adaptateur les découvre, ils apparaissent dans la liste (« Disponible »)
+    property bool recherche: false
+    readonly property var adaptateur: BluezQt.Manager.usableAdapter
+    onRechercheChanged: if (adaptateur) { if (recherche) adaptateur.startDiscovery(); else adaptateur.stopDiscovery() }
+    Component.onDestruction: if (recherche && adaptateur) adaptateur.stopDiscovery()
+    Timer { interval: 60000; running: page.recherche; onTriggered: page.recherche = false }
+
     Groupe {
         Ligne {
             titre: "Bluetooth"
@@ -34,16 +41,30 @@ PageReglage {
                 titre: model.Name || model.Address
                 detail: model.Connected ? "Connecté" : (model.Paired ? "Associé" : "Disponible")
                 BoutonSama {
-                    text: model.Connected ? "Déconnecter" : "Connecter"
-                    onClicked: model.Connected ? model.Device.disconnectFromDevice() : model.Device.connectToDevice()
+                    principal: !model.Paired
+                    text: !model.Paired ? "Associer" : (model.Connected ? "Déconnecter" : "Connecter")
+                    onClicked: {
+                        if (!model.Paired) { model.Device.trusted = true; model.Device.pair() }
+                        else if (model.Connected) model.Device.disconnectFromDevice()
+                        else model.Device.connectToDevice()
+                    }
+                }
+                BoutonSama {
+                    visible: model.Paired
+                    text: "Oublier"
+                    onClicked: if (page.adaptateur) page.adaptateur.removeDevice(model.Device)
                 }
             }
         }
         Ligne {
-            titre: "Ajouter un appareil"
-            detail: "Casque, enceinte, souris, clavier, téléphone…"
+            titre: page.recherche ? "Recherche des appareils…" : "Ajouter un appareil"
+            detail: page.recherche ? "Mettez l'appareil en mode association (souvent un appui long sur son bouton)" : "Casque, enceinte, souris, clavier, téléphone…"
             derniere: true
-            BoutonSama { principal: true; text: "Ajouter"; onClicked: commande.lancer("bluedevil-wizard") }
+            BoutonSama {
+                principal: !page.recherche
+                text: page.recherche ? "Arrêter" : "Chercher"
+                onClicked: page.recherche = !page.recherche
+            }
         }
     }
 }

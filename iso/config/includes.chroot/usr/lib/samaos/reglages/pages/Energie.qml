@@ -22,7 +22,7 @@ PageReglage {
             page.batterie = l[1] + " · " + (etats[l[0]] || l[0])
         })
     }
-    Component.onCompleted: relire()
+    Component.onCompleted: { relire(); lireDelais() }
 
     readonly property var modes: [
         { id: "power-saver", nom: "Économie" }, { id: "balanced", nom: "Équilibré" }, { id: "performance", nom: "Performances" }
@@ -45,8 +45,54 @@ PageReglage {
         }
     }
 
+    // Délais (minutes, 0 = jamais), appliqués sur secteur et sur batterie (powerdevilrc)
+    readonly property var delaisEcran: [1, 2, 5, 10, 15, 30, 0]
+    readonly property var delaisVeille: [5, 10, 15, 30, 60, 0]
+    property int ecran: 10
+    property int veille: 15
+    function libelle(m) { return m === 0 ? "Jamais" : m < 60 ? m + " min" : (m / 60) + " h" }
+    function lireDelais() {
+        commande.lancer("kreadconfig6 --file powerdevilrc --group AC --group Display --key TurnOffDisplayWhenIdle --default true; "
+                        + "kreadconfig6 --file powerdevilrc --group AC --group Display --key TurnOffDisplayIdleTimeoutSec --default 600; "
+                        + "kreadconfig6 --file powerdevilrc --group AC --group SuspendAndShutdown --key AutoSuspendAction --default 1; "
+                        + "kreadconfig6 --file powerdevilrc --group AC --group SuspendAndShutdown --key AutoSuspendIdleTimeoutSec --default 900", function (s) {
+            var l = s.trim().split("\n")
+            page.ecran = l[0] === "false" ? 0 : Math.round(Number(l[1]) / 60)
+            page.veille = l[2] === "0" ? 0 : Math.round(Number(l[3]) / 60)
+        })
+    }
+    function ecrire(groupe, cle, valeur) {
+        return ["AC", "Battery", "LowBattery"].map(function (p) {
+            return "kwriteconfig6 --file powerdevilrc --group " + p + " --group " + groupe + " --key " + cle + " " + valeur }).join(" && ")
+    }
+    function appliquer() { commande.lancer("qdbus6 org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement org.kde.Solid.PowerManagement.refreshStatus") }
+
     Groupe {
         titre: "Écran et veille"
-        LigneAvancee { titre: "Mise en veille et extinction de l'écran"; detail: "Délais, fermeture du couvercle, coupures de courant"; module: "kcm_powerdevilprofilesconfig"; derniere: true }
+        Ligne {
+            titre: "Éteindre l'écran après"
+            detail: "Sans utilisation de la souris ni du clavier"
+            ListeDeroulante {
+                model: page.delaisEcran.map(page.libelle)
+                currentIndex: Math.max(0, page.delaisEcran.indexOf(page.ecran))
+                onActivated: index => {
+                    var m = page.delaisEcran[index]; page.ecran = m
+                    commande.lancer(page.ecrire("Display", "TurnOffDisplayWhenIdle", m > 0) + (m > 0 ? " && " + page.ecrire("Display", "TurnOffDisplayIdleTimeoutSec", m * 60) : ""), page.appliquer)
+                }
+            }
+        }
+        Ligne {
+            titre: "Mettre en veille après"
+            detail: "L'ordinateur consomme presque rien et repart en quelques secondes"
+            derniere: true
+            ListeDeroulante {
+                model: page.delaisVeille.map(page.libelle)
+                currentIndex: Math.max(0, page.delaisVeille.indexOf(page.veille))
+                onActivated: index => {
+                    var m = page.delaisVeille[index]; page.veille = m
+                    commande.lancer(page.ecrire("SuspendAndShutdown", "AutoSuspendAction", m > 0 ? 1 : 0) + (m > 0 ? " && " + page.ecrire("SuspendAndShutdown", "AutoSuspendIdleTimeoutSec", m * 60) : ""), page.appliquer)
+                }
+            }
+        }
     }
 }
