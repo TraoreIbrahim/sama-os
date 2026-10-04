@@ -2,6 +2,7 @@
 // Mesure réelle : octets reçus + envoyés par les cartes réseau depuis l'allumage
 // (hors boucle locale), comparés au forfait réglé dans la configuration (1 Go par défaut).
 // Un clic ouvre le Moniteur système, en attendant l'écran « Data » des Réglages de Sama.
+// Alerte (bulle de notification) à 80 % puis à 100 % du forfait, une fois par allumage.
 
 import QtQuick
 import QtQuick.Layouts
@@ -10,6 +11,7 @@ import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasma5support as P5Support
 import org.kde.kirigami as Kirigami
+import org.kde.notification
 
 PlasmoidItem {
     id: racine
@@ -21,6 +23,28 @@ PlasmoidItem {
     readonly property int forfaitMo: Plasmoid.configuration.forfaitMo
     property real consommeMo: 0
     readonly property real part: forfaitMo > 0 ? Math.min(1, consommeMo / forfaitMo) : 0
+
+    // Alertes de forfait
+    property int dernierSeuil: 0
+    onPartChanged: {
+        var seuil = part >= 1 ? 100 : (part >= 0.8 ? 80 : 0)
+        if (seuil > dernierSeuil) {
+            dernierSeuil = seuil
+            alerte.title = seuil === 100 ? "Forfait data atteint" : "Forfait data presque épuisé"
+            alerte.text = seuil === 100
+                ? "Vous avez utilisé " + lisible(consommeMo) + " sur " + lisible(forfaitMo) + ". Les gros téléchargements peuvent vous coûter cher."
+                : "Vous avez utilisé " + Math.round(part * 100) + " % de votre forfait (" + lisible(consommeMo) + " sur " + lisible(forfaitMo) + ")."
+            alerte.sendEvent()
+        }
+    }
+    Notification {
+        id: alerte
+        componentName: "samaos"      // /usr/share/knotifications6/samaos.notifyrc : signé « Sama »
+        eventId: "forfait"
+        iconName: "network-mobile-80"
+        urgency: Notification.HighUrgency
+        autoDelete: false
+    }
 
     function lisible(mo) {
         if (mo >= 1024) return (mo / 1024).toLocaleString(Qt.locale(), "f", 1) + " Go"

@@ -1,0 +1,10 @@
+[Global]
+IconName=network-mobile
+Name=Sama
+Comment=Sama OS
+
+[Event/forfait]
+Name=Forfait data
+Comment=Le forfait data est presque épuisé ou atteint
+Action=Popup
+Urgency=High
