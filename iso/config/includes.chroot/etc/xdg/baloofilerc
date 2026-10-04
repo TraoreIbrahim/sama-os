@@ -1,0 +1,7 @@
+# Recherche de fichiers de la Cour : index des noms de fichiers seulement (léger, rien n'est lu dans les documents)
+[Basic Settings]
+Indexing-Enabled=true
+
+[General]
+only basic indexing=true
+index hidden folders=false

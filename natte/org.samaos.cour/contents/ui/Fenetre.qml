@@ -1,12 +1,16 @@
 // Fenêtre plein écran de la Cour : barre de recherche, puis les applications rangées
-// par sections (Essentiels, Bureautique, Gestion, Outils, Système…), ou les résultats de recherche quand on tape.
-// Échap efface la recherche, puis ferme la Cour. Entrée lance le premier résultat.
+// par sections (Essentiels, Bureautique, Gestion, Outils, Système…), ou les résultats de recherche quand on tape
+// (maquette bur-01) : groupés en Applications, Fichiers, Réglages, Actions ; ↑ ↓ pour choisir, Entrée pour
+// ouvrir, Échap pour fermer.
 
 import QtQuick
+import QtQml.Models
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.kicker as Kicker
+import org.kde.plasma.plasma5support as P5Support
+import "file:///usr/lib/samaos/reglages/sections.js" as Reglages
 
 Kicker.DashboardWindow {
     id: fenetre
@@ -90,20 +94,125 @@ Kicker.DashboardWindow {
 
     readonly property bool sombre: Kirigami.Theme.backgroundColor.hslLightness < 0.5
     readonly property bool recherche: champ.text.length > 0
-    readonly property var resultats: recherche && modeleRecherche && modeleRecherche.count > 0
-                                     ? modeleRecherche.modelForRow(0) : null
+
+    // Couleurs de la maquette (clair / sombre)
+    readonly property color couleurPanneau: sombre ? "#232839" : "#FCFAF7"
+    readonly property color texte2: sombre ? "#ADA698" : "#665E54"
+    readonly property color texte3: sombre ? "#8C867A" : "#8A8277"
+    readonly property color encre: sombre ? "#F0B392" : "#93401F"
+    readonly property color trait: sombre ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.12)
+
+    // ——— Recherche ———
+    // groupes : [{ titre, sources: [{ modele (résultats d'un module de recherche) | reglages (liste), debut, nombre }] }]
+    // « debut » : position du premier résultat de la source dans la liste à plat (pour ↑ ↓ et Entrée)
+    property var groupes: []
+    property int totalResultats: 0
+    property int choix: 0
+    property Timer regroupement: Timer { interval: 40; onTriggered: fenetre.regrouper() }
+    readonly property var limites: ({ "Applications": 6, "Fichiers": 5, "Réglages": 4, "Actions": 4 })
+
+    // Les modules de recherche répondent l'un après l'autre : on regroupe à chaque nouvelle réponse
+    property Instantiator surveillance: Instantiator {
+        model: fenetre.modeleRecherche
+        delegate: QtObject {
+            required property int index
+            readonly property var sous: fenetre.modeleRecherche ? fenetre.modeleRecherche.modelForRow(index) : null
+            readonly property int nombre: sous ? sous.count : 0
+            onNombreChanged: fenetre.regroupement.restart()
+        }
+        onObjectAdded: fenetre.regroupement.restart()
+        onObjectRemoved: fenetre.regroupement.restart()
+    }
+
+    function sansAccents(t) { return String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() }
+    // Met en gras la partie tapée (« Budg » dans « Budget_2026.xlsx »)
+    function surligner(texte, q) {
+        var t = String(texte || ""), k = sansAccents(q).trim()
+        var echapper = function (x) { return x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }
+        var i = k ? sansAccents(t).indexOf(k) : -1
+        if (i < 0) return echapper(t)
+        return echapper(t.slice(0, i)) + "<b>" + echapper(t.slice(i, i + k.length)) + "</b>" + echapper(t.slice(i + k.length))
+    }
+    // D'après le nom (traduit) du module de recherche
+    function groupeDe(sous) {
+        var nom = sansAccents(sous.name || "")
+        if (nom.indexOf("application") >= 0) return "Applications"
+        if (/fichier|dossier|document|emplacement|bureau|baloo|recent/.test(nom)) return "Fichiers"
+        return "Actions"     // calculs, conversions, éteindre, verrouiller…
+    }
+    // Sections et sous-pages des Réglages de Sama (sections.js, partagé avec les Réglages)
+    function reglagesTrouves(q) {
+        var k = sansAccents(q).trim()
+        if (!k) return []
+        var liste = []
+        Reglages.sections.forEach(function (s) {
+            if (sansAccents(s.titre + " " + s.mots + " " + s.detail).indexOf(k) >= 0)
+                liste.push({ titre: s.titre, detail: s.detail, picto: s.picto, cible: s.id })
+        })
+        Reglages.raccourcis.forEach(function (r) {
+            if (sansAccents(r.titre + " " + r.mots + " " + r.detail).indexOf(k) >= 0) {
+                var section = Reglages.sections.filter(function (s) { return s.id === r.section })[0]
+                liste.push({ titre: r.titre, detail: r.detail, picto: section ? section.picto : "", cible: r.cible })
+            }
+        })
+        return liste
+    }
+    function regrouper() {
+        var ordre = ["Applications", "Fichiers", "Réglages", "Actions"]
+        var parGroupe = { "Applications": [], "Fichiers": [], "Réglages": [], "Actions": [] }
+        if (recherche && modeleRecherche) {
+            for (var i = 0; i < modeleRecherche.count; i++) {
+                var sous = modeleRecherche.modelForRow(i)
+                if (sous && sous.count > 0) parGroupe[groupeDe(sous)].push({ modele: sous, total: sous.count })
+            }
+            var r = reglagesTrouves(champ.text)
+            if (r.length > 0) parGroupe["Réglages"].push({ reglages: r, total: r.length })
+        }
+        var liste = [], position = 0
+        ordre.forEach(function (titre) {
+            var reste = limites[titre], sources = []
+            parGroupe[titre].forEach(function (src) {
+                var n = Math.min(src.total, reste)
+                if (n <= 0) return
+                src.debut = position
+                src.nombre = n
+                position += n
+                reste -= n
+                sources.push(src)
+            })
+            // Le groupe Applications reste affiché (« Aucune application ne correspond ») dès qu'il y a d'autres résultats
+            if (sources.length > 0 || titre === "Applications") liste.push({ titre: titre, sources: sources })
+        })
+        totalResultats = position
+        groupes = position > 0 ? liste : []
+        if (choix >= position) choix = Math.max(0, position - 1)
+    }
+    function lancerChoix() {
+        for (var g = 0; g < groupes.length; g++) {
+            var sources = groupes[g].sources
+            for (var s = 0; s < sources.length; s++) {
+                var src = sources[s]
+                if (choix < src.debut || choix >= src.debut + src.nombre) continue
+                if (src.modele) lancer(src.modele, choix - src.debut)
+                else ouvrirReglage(src.reglages[choix - src.debut].cible)
+                return
+            }
+        }
+    }
+    property P5Support.DataSource executeur: P5Support.DataSource {
+        engine: "executable"
+        onNewData: source => disconnectSource(source)
+    }
+    function ouvrirReglage(cible) {
+        executeur.connectSource("sama-reglages " + cible)
+        fenetre.toggle()
+    }
 
     // Fond dessiné par la Cour elle-même (la couleur de la fenêtre de Plasma reste trop transparente)
     backgroundColor: "transparent"
     keyEventProxy: champ
 
-    onKeyEscapePressed: {
-        if (recherche) {
-            champ.text = ""
-        } else {
-            fenetre.toggle()
-        }
-    }
+    onKeyEscapePressed: fenetre.toggle()
 
     onVisibleChanged: {
         champ.text = ""
@@ -160,121 +269,224 @@ Kicker.DashboardWindow {
             width: Math.min(parent.width - Kirigami.Units.gridUnit * 4, Kirigami.Units.gridUnit * 52)
             spacing: Kirigami.Units.gridUnit * 2
 
-            // Barre de recherche
+            // Barre de recherche (maquette bur-01 : 620 × 56, liseré latérite quand on tape)
             Rectangle {
+                id: barre
                 Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.min(parent.width, Kirigami.Units.gridUnit * 34)
-                Layout.preferredHeight: Kirigami.Units.gridUnit * 3
+                Layout.preferredWidth: Math.min(parent.width, 620)
+                Layout.preferredHeight: 56
                 radius: height / 2
-                color: Kirigami.Theme.backgroundColor
+                color: fenetre.couleurPanneau
+                border.width: champ.activeFocus ? 2 : 0
+                border.color: Qt.rgba(181 / 255, 83 / 255, 47 / 255, 0.22)
 
                 MouseArea { anchors.fill: parent; onClicked: champ.forceActiveFocus() }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Kirigami.Units.gridUnit * 1.2
-                    anchors.rightMargin: Kirigami.Units.gridUnit * 1.2
-                    spacing: Kirigami.Units.largeSpacing
+                    anchors.leftMargin: 22
+                    anchors.rightMargin: 16
+                    spacing: 14
 
                     Kirigami.Icon {
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                        Layout.preferredHeight: Layout.preferredWidth
+                        Layout.preferredWidth: 20
+                        Layout.preferredHeight: 20
                         source: "search"
-                        color: Kirigami.Theme.disabledTextColor
+                        color: fenetre.texte2
                     }
                     QQC2.TextField {
                         id: champ
                         Layout.fillWidth: true
                         background: null
-                        font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.25
+                        font.pixelSize: 16
+                        color: Kirigami.Theme.textColor
                         placeholderText: "Rechercher des applications, des fichiers, des réglages"
-                        onTextChanged: if (fenetre.modeleRecherche) fenetre.modeleRecherche.query = text
-                        Keys.onReturnPressed: {
+                        placeholderTextColor: fenetre.texte3
+                        onTextChanged: {
+                            if (fenetre.modeleRecherche) fenetre.modeleRecherche.query = text
+                            fenetre.choix = 0
+                            fenetre.regroupement.restart()
+                        }
+                        function valider() {
                             if (fenetre.recherche) {
-                                if (fenetre.resultats && fenetre.resultats.count > 0) fenetre.lancer(fenetre.resultats, 0)
+                                fenetre.lancerChoix()
                             } else if (fenetre.appsAffichees.length > 0) {
                                 var premiere = fenetre.appsAffichees[0]
                                 fenetre.lancer(premiere.modele, premiere.ligne)
                             }
                         }
+                        Keys.onReturnPressed: valider()
+                        Keys.onEnterPressed: valider()
                         Keys.onDownPressed: {
-                            if (fenetre.recherche) listeResultats.forceActiveFocus()
+                            if (fenetre.recherche) fenetre.choix = Math.min(fenetre.choix + 1, fenetre.totalResultats - 1)
                             else defilement.contentY = Math.min(defilement.contentY + 120, Math.max(0, defilement.contentHeight - defilement.height))
                         }
+                        Keys.onUpPressed: {
+                            if (fenetre.recherche) fenetre.choix = Math.max(0, fenetre.choix - 1)
+                            else defilement.contentY = Math.max(0, defilement.contentY - 120)
+                        }
+                    }
+                    Text {
+                        visible: fenetre.recherche && fenetre.totalResultats > 0
+                        text: fenetre.totalResultats + (fenetre.totalResultats > 1 ? " résultats" : " résultat")
+                        font.pixelSize: 12
+                        color: fenetre.texte3
+                    }
+                    // Effacer
+                    MouseArea {
+                        visible: fenetre.recherche
+                        Layout.preferredWidth: 24
+                        Layout.preferredHeight: 24
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { champ.text = ""; champ.forceActiveFocus() }
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 12
+                            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.09)
+                        }
+                        Text { anchors.centerIn: parent; text: "×"; font.pixelSize: 15; color: fenetre.texte2 }
                     }
                 }
             }
 
-            // Résultats de recherche
+            // Résultats, rangés par groupe : Applications, Fichiers, Réglages, Actions
             Rectangle {
+                id: panneauResultats
                 visible: fenetre.recherche
                 Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.min(parent.width, Kirigami.Units.gridUnit * 34)
-                Layout.preferredHeight: Math.min(listeResultats.contentHeight + Kirigami.Units.largeSpacing * 2,
-                                                 Kirigami.Units.gridUnit * 26)
-                radius: Kirigami.Units.gridUnit * 1.2
-                color: Kirigami.Theme.backgroundColor
+                Layout.preferredWidth: Math.min(parent.width, 620)
+                Layout.preferredHeight: Math.min(contenuResultats.implicitHeight + 10 + piedResultats.height, fond.height * 0.66)
+                Layout.topMargin: 14 - parent.spacing
+                radius: 20
+                color: fenetre.couleurPanneau
+                clip: true
 
-                Text {
-                    anchors.centerIn: parent
-                    visible: !fenetre.resultats || fenetre.resultats.count === 0
-                    text: "Aucun résultat"
-                    color: Kirigami.Theme.disabledTextColor
-                }
-
-                ListView {
-                    id: listeResultats
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.largeSpacing
+                Flickable {
+                    id: defilementResultats
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: piedResultats.top
+                    anchors.topMargin: 10
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    contentHeight: contenuResultats.implicitHeight
                     clip: true
-                    model: fenetre.resultats
-                    currentIndex: 0
-                    keyNavigationWraps: true
-                    highlightMoveDuration: 0
-                    Keys.onReturnPressed: fenetre.lancer(model, currentIndex)
-                    Keys.onUpPressed: currentIndex > 0 ? decrementCurrentIndex() : champ.forceActiveFocus()
+                    boundsBehavior: Flickable.StopAtBounds
+                    function montrer(element) {
+                        var p = element.mapToItem(contenuResultats, 0, 0)
+                        if (p.y < contentY) contentY = p.y
+                        else if (p.y + element.height > contentY + height) contentY = p.y + element.height - height
+                    }
 
-                    delegate: MouseArea {
-                        id: ligne
-                        width: ListView.view.width
-                        height: Kirigami.Units.gridUnit * 2.6
-                        hoverEnabled: true
-                        onClicked: fenetre.lancer(ListView.view.model, index)
+                    Column {
+                        id: contenuResultats
+                        width: parent.width
+                        spacing: 2
 
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Kirigami.Units.gridUnit * 0.7
-                            color: Kirigami.Theme.textColor
-                            opacity: ligne.containsMouse || (ligne.ListView.isCurrentItem && listeResultats.activeFocus) ? 0.08 : 0
-                        }
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: Kirigami.Units.largeSpacing
-                            anchors.rightMargin: Kirigami.Units.largeSpacing
-                            spacing: Kirigami.Units.largeSpacing
-                            Kirigami.Icon {
-                                Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                                Layout.preferredHeight: Layout.preferredWidth
-                                source: model.decoration
-                            }
+                        // Rien du tout
+                        Column {
+                            visible: fenetre.totalResultats === 0
+                            width: parent.width
+                            topPadding: 18
+                            bottomPadding: 18
+                            spacing: 4
                             Text {
-                                Layout.fillWidth: true
-                                text: model.display
-                                elide: Text.ElideRight
-                                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.05
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "Aucun résultat pour « " + champ.text + " »"
+                                font.pixelSize: 14
+                                font.weight: Font.Medium
                                 color: Kirigami.Theme.textColor
                             }
                             Text {
-                                text: model.description || ""
-                                visible: text.length > 0
-                                elide: Text.ElideRight
-                                Layout.maximumWidth: Kirigami.Units.gridUnit * 12
-                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                color: Kirigami.Theme.disabledTextColor
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "Vérifiez l'orthographe ou essayez un autre mot"
+                                font.pixelSize: 12
+                                color: fenetre.texte3
                             }
                         }
+
+                        Repeater {
+                            model: fenetre.totalResultats > 0 ? fenetre.groupes : []
+                            delegate: Column {
+                                id: groupe
+                                required property var modelData
+                                width: contenuResultats.width
+                                spacing: 2
+                                Text {
+                                    text: groupe.modelData.titre.toUpperCase()
+                                    leftPadding: 12
+                                    topPadding: 10
+                                    bottomPadding: 4
+                                    font.pixelSize: 11
+                                    font.weight: Font.DemiBold
+                                    font.letterSpacing: 0.3
+                                    color: fenetre.texte3
+                                }
+                                Text {
+                                    visible: groupe.modelData.sources.length === 0
+                                    height: 36
+                                    leftPadding: 12
+                                    verticalAlignment: Text.AlignVCenter
+                                    text: "Aucune application ne correspond à « " + champ.text + " »"
+                                    font.pixelSize: 13
+                                    color: fenetre.texte3
+                                }
+                                Repeater {
+                                    model: groupe.modelData.sources
+                                    delegate: Column {
+                                        id: blocSource
+                                        required property var modelData
+                                        width: contenuResultats.width
+                                        spacing: 2
+                                        Repeater {
+                                            model: blocSource.modelData.modele ? blocSource.modelData.modele : blocSource.modelData.reglages
+                                            delegate: Resultat {
+                                                width: contenuResultats.width
+                                                origine: blocSource.modelData
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Item { width: 1; height: 8 }
                     }
                 }
+
+                // Aide clavier
+                Rectangle {
+                    id: piedResultats
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 40
+                    // Coins du bas arrondis comme le panneau (le rectangle du haut cache les coins supérieurs)
+                    radius: 20
+                    color: fenetre.sombre ? "#262B3C" : "#F6F3EF"
+                    Rectangle { anchors.top: parent.top; width: parent.width; height: 20; color: parent.color }
+                    Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: fenetre.trait }
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 22
+                        anchors.rightMargin: 22
+                        spacing: 6
+                        Touche { text: "Entrée" }
+                        Text { text: "pour ouvrir"; font.pixelSize: 12; color: fenetre.texte2; Layout.rightMargin: 12 }
+                        Touche { text: "↑" }
+                        Touche { text: "↓" }
+                        Text { text: "pour naviguer"; font.pixelSize: 12; color: fenetre.texte2 }
+                        Item { Layout.fillWidth: true }
+                        Touche { text: "Échap" }
+                        Text { text: "pour fermer"; font.pixelSize: 12; color: fenetre.texte2 }
+                    }
+                }
+            }
+
+            // En recherche, l'espace libre reste sous les résultats (la barre garde sa place en haut)
+            Item {
+                visible: fenetre.recherche
+                Layout.fillHeight: true
             }
 
             // Pastilles de tri, comme le Launchpad de macOS
@@ -371,5 +583,108 @@ Kicker.DashboardWindow {
                 }
             }
         }
+    }
+
+    // Ligne de résultat (maquette : 48 px, tuile 30 px, partie tapée en gras ; « Ouvrir ↵ » sur la ligne choisie)
+    // (pas de propriétés « required » : index, model et modelData viennent du Repeater, que le modèle soit
+    //  une liste de réglages ou les résultats d'un module de recherche)
+    component Resultat: MouseArea {
+        id: resultat
+        property var origine
+        readonly property int rang: index
+        readonly property bool reglage: !origine.modele
+        readonly property var element: reglage ? modelData : null
+        readonly property int position: origine.debut + rang
+        readonly property bool selectionne: fenetre.choix === position
+        readonly property string titre: reglage ? element.titre : String(model.display || "")
+        readonly property string detail: reglage ? element.detail : String(model.description || "")
+        readonly property var icone: reglage ? "" : model.decoration
+        visible: rang < origine.nombre
+        height: visible ? 48 : 0
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: { fenetre.choix = position; fenetre.lancerChoix() }
+        onSelectionneChanged: if (selectionne) defilementResultats.montrer(resultat)
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 12
+            color: resultat.selectionne ? Qt.rgba(181 / 255, 83 / 255, 47 / 255, fenetre.sombre ? 0.2 : 0.1)
+                 : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, resultat.containsMouse ? 0.05 : 0)
+        }
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            spacing: 12
+            Item {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                // Réglage : tuile grise et pictogramme des Réglages
+                Rectangle {
+                    visible: resultat.reglage
+                    anchors.fill: parent
+                    radius: 9
+                    color: "#7D766C"
+                    Canvas {
+                        anchors.centerIn: parent
+                        width: 16
+                        height: 16
+                        onPaint: {
+                            var c = getContext("2d")
+                            c.reset()
+                            c.scale(16 / 24, 16 / 24)
+                            c.strokeStyle = "#FBF8F3"
+                            c.lineWidth = 1.8
+                            c.lineCap = "round"
+                            c.lineJoin = "round"
+                            c.path = resultat.reglage ? resultat.element.picto : ""
+                            c.stroke()
+                        }
+                    }
+                }
+                Kirigami.Icon {
+                    visible: !resultat.reglage
+                    anchors.fill: parent
+                    source: resultat.icone
+                }
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+                Text {
+                    Layout.fillWidth: true
+                    textFormat: Text.StyledText
+                    text: fenetre.surligner(resultat.titre, champ.text)
+                    elide: Text.ElideRight
+                    font.pixelSize: 14
+                    color: Kirigami.Theme.textColor
+                }
+                Text {
+                    Layout.fillWidth: true
+                    visible: resultat.detail !== "" && resultat.detail !== resultat.titre
+                    textFormat: Text.StyledText
+                    text: fenetre.surligner(resultat.detail, champ.text)
+                    elide: Text.ElideRight
+                    font.pixelSize: 12
+                    color: fenetre.texte2
+                }
+            }
+            Text { visible: resultat.selectionne; text: "Ouvrir"; font.pixelSize: 12; font.weight: Font.Medium; color: fenetre.encre }
+            Touche { visible: resultat.selectionne; text: "↵" }
+            Text { visible: !resultat.selectionne && resultat.reglage; text: "›"; font.pixelSize: 18; color: fenetre.texte3 }
+        }
+    }
+
+    // Touche de clavier dessinée (aide en bas des résultats)
+    component Touche: Rectangle {
+        property alias text: libelleTouche.text
+        implicitWidth: Math.max(20, libelleTouche.implicitWidth + 12)
+        implicitHeight: 20
+        radius: 5
+        color: fenetre.sombre ? "#2B3044" : "#FFFFFF"
+        border.width: 1
+        border.color: fenetre.trait
+        Text { id: libelleTouche; anchors.centerIn: parent; font.pixelSize: 11; font.weight: Font.DemiBold; color: fenetre.texte2 }
     }
 }

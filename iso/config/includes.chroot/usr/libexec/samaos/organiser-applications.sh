@@ -17,12 +17,14 @@ masquer() {
 	done
 }
 
-# renommer <application> <nom> [icône Sama] : nom clair en français et tuile aux couleurs de Sama
+# renommer <application> <nom> [icône Sama] : nom clair en français et tuile aux couleurs de Sama.
+# L'ancien nom (Konsole, Okular…) reste dans les mots-clés : la recherche de la Cour le trouve encore.
 renommer() {
 	app="$1"
 	nom="$2"
 	icone="${3:-}"
 	[ -f "$SOURCE/$app.desktop" ] || return 0
+	ancien=$(sed -n 's/^Name=//p' "$SOURCE/$app.desktop" | head -n 1)
 	if [ -n "$icone" ]; then
 		sed -e '/^Name\(\[[^]]*\]\)\?=/d' -e '/^Icon=/d' \
 			-e "/^\[Desktop Entry\]/a Name=$nom\nIcon=/usr/share/samaos/icones/$icone.svg" \
@@ -30,6 +32,11 @@ renommer() {
 	else
 		sed -e '/^Name\(\[[^]]*\]\)\?=/d' -e "/^\[Desktop Entry\]/a Name=$nom" \
 			"$SOURCE/$app.desktop" > "$CIBLE/$app.desktop"
+	fi
+	if grep -q '^Keywords\[fr\]=' "$CIBLE/$app.desktop"; then
+		sed -i "s/^Keywords\[fr\]=.*/&;$ancien/" "$CIBLE/$app.desktop"
+	else
+		sed -i "/^\[Desktop Entry\]/a Keywords[fr]=$ancien;" "$CIBLE/$app.desktop"
 	fi
 }
 

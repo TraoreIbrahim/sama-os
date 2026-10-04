@@ -7,7 +7,7 @@ Usage (en administrateur, dans la VM) :
   entrees.py bouger X Y             déplace la souris
   entrees.py glisser X1 Y1 X2 Y2    glisser-déposer de (X1, Y1) à (X2, Y2)
   entrees.py taper "texte"          tape un texte (clavier AZERTY)
-  entrees.py touche entree|echap|effacer|tab
+  entrees.py touche entree|echap|effacer|tab|haut|bas|gauche|droite
   entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
   entrees.py tenir alt+tab 3        combinaison dont la touche de modification reste enfoncée 3 s (ex. Alt+Tab)
 Plusieurs actions peuvent s'enchaîner, séparées par « -- ».
@@ -37,7 +37,8 @@ AZERTY["è"] = (e.KEY_7, False)
 for i, c in enumerate("1234567890"):
     AZERTY[c] = (getattr(e, "KEY_" + "1234567890"[i]), True)
 
-TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE, "tab": e.KEY_TAB}
+TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE, "tab": e.KEY_TAB,
+           "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT}
 
 capacites = {
     e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE] + [k for k, _ in AZERTY.values()]

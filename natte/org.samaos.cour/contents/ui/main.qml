@@ -60,8 +60,8 @@ PlasmoidItem {
         id: modeleRecherche
         appletInterface: cour
         favoritesModel: modeleRacine.favoritesModel
-        mergeResults: true
-        runners: ["krunner_services", "baloosearch", "locations",
+        mergeResults: false     // un modèle par module : la Cour les range en groupes
+        runners: ["krunner_services", "baloosearch", "krunner_placesrunner", "krunner_recentdocuments", "locations",
                   "calculator", "unitconverter", "krunner_sessions", "krunner_powerdevil"]
     }
 
