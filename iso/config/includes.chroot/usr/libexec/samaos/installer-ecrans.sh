@@ -3,7 +3,8 @@
 #  - l'écran de verrouillage (lockscreen/LockScreenUi.qml) ;
 #  - la galerie de widgets (explorer/WidgetExplorer.qml) ;
 #  - le mode édition du bureau (views/DesktopEditMode.qml) et les poignées des widgets (ConfigOverlay.qml) ;
-#  - la Natte sans bouton de réglage en mode édition (defaults : pas de « ToolBox » pour les barres).
+#  - la Natte sans bouton de réglage en mode édition ni menu « Modifier la barre » au clic droit
+#    (defaults : pas de « ToolBox » ni d'action de clic droit pour les barres).
 # Les fichiers d'origine sont détournés (dpkg-divert) : une mise à jour de Plasma ne remet pas les anciens écrans.
 # Relancer le script est sans effet de bord. À lancer en administrateur (construction de l'ISO, mode direct).
 set -e
@@ -25,4 +26,6 @@ remplacer "$bureau/ConfigOverlay.qml" /usr/libexec/samaos/edition/ConfigOverlay.
 
 # Réglages par défaut de la coquille : la Natte n'a pas de bouton « configurer la barre » en mode édition
 detourner "$coquille/defaults"
-sed '/^\[Panel\]$/,/^\[/ s/^ToolBox=.*/ToolBox=/' "$coquille/defaults.plasma" > "$coquille/defaults"
+sed -e '/^\[Panel\]$/,/^\[/ s/^ToolBox=.*/ToolBox=/' \
+	-e '/^\[Panel\]\[ContainmentActions\]$/,/^\[/ { /^RightButton;NoModifier=/d }' \
+	"$coquille/defaults.plasma" > "$coquille/defaults"
