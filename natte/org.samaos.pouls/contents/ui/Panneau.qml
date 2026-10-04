@@ -1,5 +1,5 @@
-// Centre de contrôle de Sama (panneau du Pouls), d'après l'écran « Centre de contrôle » de la maquette :
-//   notifications groupées ;
+// Centre de contrôle de Sama (moitié gauche du Pouls : langue, réseau, data, batterie), d'après l'écran
+// « Centre de contrôle » de la maquette ; les notifications ont leur propre centre (CentreNotifications.qml) :
 //   tuiles : Wi-Fi, Économie de data, Mode sombre, Mises à jour la nuit, Bluetooth, Ne pas déranger ;
 //   curseurs de luminosité et de volume ; data du jour ; langue.
 // Chaque source (réseau, Bluetooth, luminosité, son…) est chargée à part : si l'une manque, le reste fonctionne.
@@ -159,19 +159,6 @@ Item {
         anchors.top: parent.top
         anchors.margins: 2
         spacing: 12
-
-        // Notifications
-        Loader {
-            Layout.fillWidth: true
-            source: "ListeNotifications.qml"
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Kirigami.Theme.textColor
-            opacity: 0.08
-        }
 
         // Tuiles
         GridLayout {

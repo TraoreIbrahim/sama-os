@@ -1,6 +1,8 @@
 // Le Pouls — capsule d'état de Sama OS (Plasma 6).
 // Langue · réseau · économie de data · batterie · heure, avec les icônes de la maquette.
-// Un clic ouvre le panneau de contrôle (Panneau.qml).
+// Deux moitiés, comme sur macOS ou Windows 11 :
+//   langue, réseau, data, batterie → centre de contrôle (Panneau.qml) ;
+//   heure et compteur latérite → centre de notifications (CentreNotifications.qml).
 // Les sources de données (réseau, batterie, clavier) sont chargées à part, chacune dans un Loader :
 // si l'une manque, la capsule reste affichée avec une valeur par défaut.
 
@@ -38,10 +40,18 @@ PlasmoidItem {
     Loader { id: batterie; source: "Batterie.qml" }
     Loader { id: notifs; source: "Notifications.qml" }
 
-    readonly property bool aNonLues: notifs.item ? notifs.item.nonLues > 0 : false
+    readonly property int nonLues: notifs.item ? notifs.item.nonLues : 0
 
-    // Ouvrir le panneau marque les notifications comme lues
-    onExpandedChanged: if (expanded && notifs.item) notifs.item.marquerLues()
+    // Panneau ouvert : « controle » ou « notifications »
+    property string vue: "controle"
+    function basculer(choix) {
+        if (expanded && vue === choix) { expanded = false; return }
+        vue = choix
+        expanded = true
+    }
+    // Ouvrir le centre de notifications marque les notifications comme lues (à la fermeture, pour garder
+    // le compteur « nouvelles » lisible pendant qu'il est ouvert)
+    onExpandedChanged: if (!expanded && vue === "notifications" && notifs.item) notifs.item.marquerLues()
 
     function icone(nom) {
         return Qt.resolvedUrl("../icons/" + nom + ".svg")
@@ -52,103 +62,151 @@ PlasmoidItem {
     toolTipMainText: ""
     toolTipSubText: ""
 
-    compactRepresentation: MouseArea {
+    compactRepresentation: Item {
         id: capsule
-        hoverEnabled: true
-        onClicked: racine.expanded = !racine.expanded
 
         readonly property int hauteurCapsule: 44   // comme la maquette
-        Layout.minimumWidth: contenu.implicitWidth + 32
+        Layout.minimumWidth: etat.width + heure.width + 8
         Layout.preferredWidth: Layout.minimumWidth
         Layout.minimumHeight: hauteurCapsule
         Layout.preferredHeight: hauteurCapsule
         implicitWidth: Layout.minimumWidth
         implicitHeight: hauteurCapsule
 
+        // Fond de la capsule (une seule pilule, comme la maquette)
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width
             height: capsule.hauteurCapsule
             radius: height / 2
             color: racine.encre
-            opacity: capsule.containsMouse || racine.expanded ? 0.1 : 0.05
+            opacity: 0.05
         }
 
-        RowLayout {
-            id: contenu
-            anchors.centerIn: parent
-            spacing: 10
-
-            Text {
-                text: racine.langue
-                font.pixelSize: 11
-                font.weight: Font.DemiBold
-                font.letterSpacing: 0.4
-                color: racine.encreDouce
-            }
-
-            Kirigami.Icon {
-                Layout.preferredWidth: 16
-                Layout.preferredHeight: Layout.preferredWidth
-                isMask: true
+        // Moitié gauche : centre de contrôle
+        MouseArea {
+            id: etat
+            anchors.left: parent.left
+            anchors.leftMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            width: icones.implicitWidth + 24
+            height: capsule.hauteurCapsule - 8
+            hoverEnabled: true
+            onClicked: racine.basculer("controle")
+            Rectangle {
+                anchors.fill: parent
+                radius: height / 2
                 color: racine.encre
-                opacity: racine.etatReseau === "coupe" ? 0.5 : 1
-                source: racine.icone(racine.etatReseau === "filaire" ? "filaire"
-                                     : racine.etatReseau === "coupe" ? "wifi-coupe" : "wifi")
+                opacity: etat.containsMouse || (racine.expanded && racine.vue === "controle") ? 0.08 : 0
             }
+            RowLayout {
+                id: icones
+                anchors.centerIn: parent
+                spacing: 10
 
-            // Économie de data
-            Kirigami.Icon {
-                Layout.preferredWidth: 16
-                Layout.preferredHeight: Layout.preferredWidth
-                isMask: true
-                color: racine.foret
-                source: racine.icone("feuille")
-            }
-
-            // Batterie (seulement si l'ordinateur en a une)
-            Item {
-                visible: racine.aBatterie
-                Layout.preferredWidth: 20
-                Layout.preferredHeight: 16
+                Text {
+                    text: racine.langue
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.4
+                    color: racine.encreDouce
+                }
 
                 Kirigami.Icon {
-                    anchors.fill: parent
+                    Layout.preferredWidth: 16
+                    Layout.preferredHeight: Layout.preferredWidth
                     isMask: true
-                    color: racine.niveauBatterie <= 15 ? racine.laterite : racine.encre
-                    source: racine.icone("batterie")
+                    color: racine.encre
+                    opacity: racine.etatReseau === "coupe" ? 0.5 : 1
+                    source: racine.icone(racine.etatReseau === "filaire" ? "filaire"
+                                         : racine.etatReseau === "coupe" ? "wifi-coupe" : "wifi")
                 }
-                // Niveau de charge à l'intérieur du contour
-                Rectangle {
-                    x: parent.width * 0.21
-                    y: parent.height * 0.42
-                    height: parent.height * 0.16
-                    width: parent.width * 0.5 * Math.max(0.08, racine.niveauBatterie / 100)
-                    radius: 1
-                    color: racine.niveauBatterie <= 15 ? racine.laterite : racine.encre
+
+                // Économie de data
+                Kirigami.Icon {
+                    Layout.preferredWidth: 16
+                    Layout.preferredHeight: Layout.preferredWidth
+                    isMask: true
+                    color: racine.foret
+                    source: racine.icone("feuille")
+                }
+
+                // Batterie (seulement si l'ordinateur en a une)
+                Item {
+                    visible: racine.aBatterie
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 16
+
+                    Kirigami.Icon {
+                        anchors.fill: parent
+                        isMask: true
+                        color: racine.niveauBatterie <= 15 ? racine.laterite : racine.encre
+                        source: racine.icone("batterie")
+                    }
+                    // Niveau de charge à l'intérieur du contour
+                    Rectangle {
+                        x: parent.width * 0.21
+                        y: parent.height * 0.42
+                        height: parent.height * 0.16
+                        width: parent.width * 0.5 * Math.max(0.08, racine.niveauBatterie / 100)
+                        radius: 1
+                        color: racine.niveauBatterie <= 15 ? racine.laterite : racine.encre
+                    }
                 }
             }
+        }
 
-            Text {
-                text: racine.heure
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-                color: racine.encre
-            }
-
-            // Point latérite : notification non lue
+        // Moitié droite : centre de notifications
+        MouseArea {
+            id: heure
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            width: texteHeure.implicitWidth + (compteur.visible ? compteur.width + 8 : 0) + 24
+            height: capsule.hauteurCapsule - 8
+            hoverEnabled: true
+            onClicked: racine.basculer("notifications")
             Rectangle {
-                visible: racine.aNonLues
-                Layout.preferredWidth: 7
-                Layout.preferredHeight: 7
-                radius: 3.5
-                color: racine.laterite
+                anchors.fill: parent
+                radius: height / 2
+                color: racine.encre
+                opacity: heure.containsMouse || (racine.expanded && racine.vue === "notifications") ? 0.08 : 0
+            }
+            Row {
+                anchors.centerIn: parent
+                spacing: 8
+                Text {
+                    id: texteHeure
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: racine.heure
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    color: racine.encre
+                }
+                // Compteur latérite : notifications non lues (« 3 », « 9+ »)
+                Rectangle {
+                    id: compteur
+                    visible: racine.nonLues > 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(16, chiffre.implicitWidth + 8)
+                    height: 16
+                    radius: 8
+                    color: racine.laterite
+                    Text {
+                        id: chiffre
+                        anchors.centerIn: parent
+                        text: racine.nonLues > 9 ? "9+" : racine.nonLues
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                        color: "#FFFFFF"
+                    }
+                }
             }
         }
     }
 
     fullRepresentation: Loader {
-        source: "Panneau.qml"
+        source: racine.vue === "notifications" ? "CentreNotifications.qml" : "Panneau.qml"
         // 360 px avec les marges du cadre, comme la maquette. Hauteur imposée par le contenu :
         // Plasma mémorise sinon la taille d'une ouverture précédente et coupe le panneau.
         readonly property real hauteur: item ? item.implicitHeight : Kirigami.Units.gridUnit * 14
