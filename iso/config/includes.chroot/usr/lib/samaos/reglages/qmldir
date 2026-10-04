@@ -1,0 +1,11 @@
+singleton Couleurs 1.0 Couleurs.qml
+PageReglage 1.0 PageReglage.qml
+Groupe 1.0 Groupe.qml
+Ligne 1.0 Ligne.qml
+Interrupteur 1.0 Interrupteur.qml
+Segments 1.0 Segments.qml
+Curseur 1.0 Curseur.qml
+BoutonSama 1.0 BoutonSama.qml
+Commande 1.0 Commande.qml
+LigneAvancee 1.0 LigneAvancee.qml
+ListeDeroulante 1.0 ListeDeroulante.qml

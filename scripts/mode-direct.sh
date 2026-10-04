@@ -59,6 +59,9 @@ envoyer)
 		| vm 'sudo tar -xzf - -C /usr/share'
 	# Réglages par défaut du système (barres de titre, terminal…)
 	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc kwinrc | vm 'sudo tar -xzf - -C /etc/xdg'
+	# Applications Sama (Réglages…) : fichiers, lanceurs, raccourcis, exécutables propres
+	tar --no-xattrs -C "$inclus" -czf - usr/lib/samaos usr/bin/sama-reglages $(cd "$inclus" && ls usr/share/applications/samaos-*.desktop) \
+		| vm 'sudo tar -xzf - -C / && sudo mkdir -p /usr/lib/samaos/bin && sudo cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages'
 	# Scripts Sama (organisation du menu…) et application du tri des applications
 	tar --no-xattrs -C "$inclus/usr/libexec" -czf - samaos | vm 'sudo tar -xzf - -C /usr/libexec && sudo sh /usr/libexec/samaos/organiser-applications.sh && kbuildsycoca6 >/dev/null 2>&1'
 

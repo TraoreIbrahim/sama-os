@@ -33,7 +33,7 @@ renommer() {
 	fi
 }
 
-# Logiciels provisoires remplacés par Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos
+# Logiciels provisoires remplacés par Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos, Réglages
 masquer chromium libreoffice-writer libreoffice-calc libreoffice-impress \
 	org.kde.dolphin org.kde.discover org.kde.gwenview
 
@@ -45,11 +45,10 @@ masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.k
 	libreoffice-startcenter libreoffice-xsltfilter org.kde.kcolorschemeeditor org.kde.kfontview \
 	org.kde.keditbookmarks org.kde.plasma.emojier org.kde.knetattach org.kde.bluedevilsendfile \
 	org.kde.bluedevilwizard org.kde.gwenview_importer org.kde.vpnimport vim python3.13 \
-	org.kde.kdialog org.kde.plasmawindowed
+	org.kde.kdialog org.kde.plasmawindowed systemsettings
 
 # Noms clairs pour les applications gardées
 renommer org.kde.konsole "Terminal" terminal
-renommer systemsettings "Réglages" reglages
 renommer org.kde.khelpcenter "Aide" aide
 renommer org.kde.okular "Lecteur PDF" pdf
 renommer org.kde.ark "Archives" archives

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Réglages de Sama OS. Usage : sama-reglages [section]  (reseau, affichage, son, langue, data, apropos…)
+# L'exécutable porte le nom de l'application : son identité (tuile dans la Natte, Alt+Tab) en découle.
+exec /usr/lib/samaos/bin/samaos-reglages /usr/lib/samaos/reglages/Reglages.qml -- "$@"

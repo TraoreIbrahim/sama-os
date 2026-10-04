@@ -25,7 +25,7 @@ Kicker.DashboardWindow {
         "samaos-presentations.desktop": "Bureautique", "org.kde.okular.desktop": "Bureautique",
         "org.kde.ark.desktop": "Outils", "org.kde.spectacle.desktop": "Outils",
         "org.kde.konsole.desktop": "Outils", "org.kde.plasma-systemmonitor.desktop": "Outils",
-        "systemsettings.desktop": "Système", "org.kde.khelpcenter.desktop": "Système"
+        "systemsettings.desktop": "Système", "samaos-reglages.desktop": "Système", "org.kde.khelpcenter.desktop": "Système"
     })
     // Catégories de KDE (noms traduits) → sections de Sama
     function sectionDeCategorie(nom) {

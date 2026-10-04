@@ -1,7 +1,7 @@
 // Carte « Data consommée » du bureau de Sama OS.
 // Mesure réelle : octets reçus + envoyés par les cartes réseau depuis l'allumage
 // (hors boucle locale), comparés au forfait réglé dans la configuration (1 Go par défaut).
-// Un clic ouvre le Moniteur système, en attendant l'écran « Data » des Réglages de Sama.
+// Un clic ouvre les Réglages de Sama, section Data (forfait, connexion mesurée…).
 // Alerte (bulle de notification) à 80 % puis à 100 % du forfait, une fois par allumage.
 
 import QtQuick
@@ -20,7 +20,8 @@ PlasmoidItem {
     preferredRepresentation: fullRepresentation
 
     readonly property color foret: "#2F6B57"
-    readonly property int forfaitMo: Plasmoid.configuration.forfaitMo
+    // Forfait choisi dans les Réglages (Data et mises à jour), relu avec le compteur
+    property int forfaitMo: 1024
     property real consommeMo: 0
     readonly property real part: forfaitMo > 0 ? Math.min(1, consommeMo / forfaitMo) : 0
 
@@ -52,7 +53,7 @@ PlasmoidItem {
     }
 
     // Lecture des compteurs réseau toutes les 30 secondes
-    readonly property string commande: "awk '{ s += $1 } END { print s + 0 }' /sys/class/net/[!l]*/statistics/rx_bytes /sys/class/net/[!l]*/statistics/tx_bytes"
+    readonly property string commande: "awk '{ s += $1 } END { print s + 0 }' /sys/class/net/[!l]*/statistics/rx_bytes /sys/class/net/[!l]*/statistics/tx_bytes; kreadconfig6 --file samaosrc --group Data --key forfaitMo --default 1024"
 
     P5Support.DataSource {
         id: lecteur
@@ -60,7 +61,10 @@ PlasmoidItem {
         connectedSources: [racine.commande]
         interval: 30000
         onNewData: (source, data) => {
-            var octets = parseFloat(String(data["stdout"]).trim())
+            var lignes = String(data["stdout"]).trim().split("\n")
+            var octets = parseFloat(lignes[0])
+            var forfait = parseInt(lignes[1])
+            if (!isNaN(forfait) && forfait > 0) racine.forfaitMo = forfait
             if (!isNaN(octets)) racine.consommeMo = octets / 1048576
         }
     }
@@ -80,7 +84,7 @@ PlasmoidItem {
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: executeur.connectSource("plasma-systemmonitor")
+            onClicked: executeur.connectSource("sama-reglages data")
         }
 
         Rectangle {

@@ -193,10 +193,10 @@ Item {
                 }
                 // Filaire : ouvre les réglages réseau ; Wi-Fi : active ou coupe
                 onClicked: {
-                    if (type === "filaire" || !reseau.item) executeur.lancer("systemsettings kcm_networkmanagement")
+                    if (type === "filaire" || !reseau.item) executeur.lancer("sama-reglages reseau")
                     else reseau.item.activerWifi(!panneau.wifiActif)
                 }
-                onPressAndHold: executeur.lancer("systemsettings kcm_networkmanagement")
+                onPressAndHold: executeur.lancer("sama-reglages reseau")
             }
             Tuile {
                 titre: "Économie de data"
@@ -227,7 +227,7 @@ Item {
                 detail: !dispo ? "Aucun adaptateur" : !active ? "Désactivé"
                       : (bluetooth.item.appareil || "Activé")
                 onClicked: if (dispo) bluetooth.item.basculer()
-                onPressAndHold: executeur.lancer("systemsettings kcm_bluetooth")
+                onPressAndHold: executeur.lancer("sama-reglages bluetooth")
             }
             Tuile {
                 titre: "Ne pas déranger"
@@ -320,14 +320,14 @@ Item {
             Ligne {
                 titre: "Langue : " + ({ "FR": "Français", "EN": "English", "SW": "Kiswahili" }[racine.langue] || racine.langue)
                 nomIcone: "globe"
-                onClicked: executeur.lancer("systemsettings kcm_regionandlang")
+                onClicked: executeur.lancer("sama-reglages langue")
             }
             Ligne {
                 Layout.fillWidth: false
                 Layout.preferredWidth: 132
                 titre: "Réglages"
                 nomIcone: "reglages"
-                onClicked: executeur.lancer("systemsettings")
+                onClicked: executeur.lancer("sama-reglages")
             }
         }
     }

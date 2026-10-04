@@ -1,0 +1,6 @@
+#!/bin/sh
+# Applications QML de Sama : chacune a son propre exécutable (copie du lanceur QML de Qt) pour porter
+# son identité sous Wayland (org.qt-project.<nom>), reconnue par la Natte et Alt+Tab.
+set -e
+mkdir -p /usr/lib/samaos/bin
+cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages
