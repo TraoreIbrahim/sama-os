@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <!-- Thème Sama : pas de marges surlignées autour des éléments de la Natte en mode édition -->
+  <g fill="none" opacity="0">
+    <rect id="fill" x="0" y="0" width="4" height="4"/>
+    <rect id="topleft" x="5" y="0" width="4" height="4"/><rect id="topright" x="10" y="0" width="4" height="4"/>
+    <rect id="bottomleft" x="15" y="0" width="4" height="4"/><rect id="bottomright" x="20" y="0" width="4" height="4"/>
+    <rect id="lefttop" x="0" y="5" width="4" height="4"/><rect id="leftbottom" x="5" y="5" width="4" height="4"/>
+    <rect id="righttop" x="10" y="5" width="4" height="4"/><rect id="rightbottom" x="15" y="5" width="4" height="4"/>
+  </g>
+</svg>
