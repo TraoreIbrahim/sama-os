@@ -1,0 +1,5 @@
+#!/bin/sh
+# Écrans de Sama à la place de ceux de Plasma : verrouillage, galerie de widgets
+# (voir /usr/libexec/samaos/installer-ecrans.sh)
+set -e
+sh /usr/libexec/samaos/installer-ecrans.sh

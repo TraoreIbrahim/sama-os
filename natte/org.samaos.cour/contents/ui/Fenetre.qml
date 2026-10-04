@@ -1,5 +1,5 @@
-// Fenêtre plein écran de la Cour : barre de recherche, puis toutes les applications
-// en grille, ou les résultats de recherche quand on tape.
+// Fenêtre plein écran de la Cour : barre de recherche, puis les applications rangées
+// par sections (Essentiels, Bureautique, Gestion, Outils, Système…), ou les résultats de recherche quand on tape.
 // Échap efface la recherche, puis ferme la Cour. Entrée lance le premier résultat.
 
 import QtQuick
@@ -14,13 +14,76 @@ Kicker.DashboardWindow {
     property var modeleRacine
     property var modeleRecherche
     property var modeleApps: null
+    property var modeleCategories
+
+    // Sections de Sama : les catégories de KDE sont regroupées, les applications Sama placées à la main
+    readonly property var ordreSections: ["Essentiels", "Bureautique", "Gestion", "Éducation", "Multimédia", "Jeux", "Outils", "Système", "Autres"]
+    readonly property var placesSama: ({
+        "samaos-griot.desktop": "Essentiels", "samaos-fichiers.desktop": "Essentiels",
+        "samaos-photos.desktop": "Essentiels", "samaos-sugu.desktop": "Essentiels",
+        "samaos-docs.desktop": "Bureautique", "samaos-sheet.desktop": "Bureautique",
+        "samaos-presentations.desktop": "Bureautique", "org.kde.okular.desktop": "Bureautique",
+        "org.kde.ark.desktop": "Outils", "org.kde.spectacle.desktop": "Outils",
+        "org.kde.konsole.desktop": "Outils", "org.kde.plasma-systemmonitor.desktop": "Outils",
+        "systemsettings.desktop": "Système", "org.kde.khelpcenter.desktop": "Système"
+    })
+    // Catégories de KDE (noms traduits) → sections de Sama
+    function sectionDeCategorie(nom) {
+        var n = String(nom).toLowerCase()
+        if (n.indexOf("bureautique") >= 0 || n.indexOf("office") >= 0) return "Bureautique"
+        if (n.indexOf("gestion") >= 0 || n.indexOf("finance") >= 0) return "Gestion"
+        if (n.indexOf("éducation") >= 0 || n.indexOf("education") >= 0 || n.indexOf("science") >= 0) return "Éducation"
+        if (n.indexOf("multimédia") >= 0 || n.indexOf("multimedia") >= 0 || n.indexOf("graphi") >= 0) return "Multimédia"
+        if (n.indexOf("jeu") >= 0 || n.indexOf("game") >= 0) return "Jeux"
+        if (n.indexOf("internet") >= 0) return "Essentiels"
+        if (n.indexOf("utilitaire") >= 0 || n.indexOf("développement") >= 0 || n.indexOf("utilit") >= 0) return "Outils"
+        if (n.indexOf("système") >= 0 || n.indexOf("system") >= 0 || n.indexOf("paramètre") >= 0 || n.indexOf("setting") >= 0) return "Système"
+        return "Autres"
+    }
+    function identifiant(modele, ligne) {
+        var id = String(modele.data(modele.index(ligne, 0), Qt.UserRole + 3) || "")   // favoriteId (« applications:xxx.desktop »)
+        if (!id) id = String(modele.data(modele.index(ligne, 0), Qt.DisplayRole) || "")
+        return id.replace(/^applications:/, "")
+    }
+
+    property var sections: []
+    function construireSections() {
+        if (!modeleCategories || modeleCategories.count === 0) { relanceSections.restart(); return }
+        var parSection = {}
+        var vus = {}
+        for (var c = 0; c < modeleCategories.count; c++) {
+            var categorie = modeleCategories.modelForRow(c)
+            if (!categorie) continue
+            var nomCategorie = String(modeleCategories.data(modeleCategories.index(c, 0), Qt.DisplayRole) || "")
+            for (var a = 0; a < categorie.count; a++) {
+                if (categorie.modelForRow && categorie.modelForRow(a)) continue   // sous-catégorie : ignorée
+                var id = identifiant(categorie, a)
+                if (!id || vus[id]) continue
+                vus[id] = true
+                var section = placesSama[id] || (id.indexOf("install") >= 0 ? "Système" : sectionDeCategorie(nomCategorie))
+                if (!parSection[section]) parSection[section] = []
+                parSection[section].push({ modele: categorie, ligne: a,
+                                           nom: String(categorie.data(categorie.index(a, 0), Qt.DisplayRole) || "") })
+            }
+        }
+        var liste = []
+        for (var i = 0; i < ordreSections.length; i++) {
+            var apps = parSection[ordreSections[i]]
+            if (!apps || apps.length === 0) continue
+            apps.sort(function (x, y) { return x.nom.localeCompare(y.nom) })
+            liste.push({ titre: ordreSections[i], apps: apps })
+        }
+        sections = liste
+    }
+    property Timer relanceSections: Timer { interval: 400; onTriggered: fenetre.construireSections() }
 
     readonly property bool sombre: Kirigami.Theme.backgroundColor.hslLightness < 0.5
     readonly property bool recherche: champ.text.length > 0
     readonly property var resultats: recherche && modeleRecherche && modeleRecherche.count > 0
                                      ? modeleRecherche.modelForRow(0) : null
 
-    backgroundColor: sombre ? Qt.rgba(0.063, 0.075, 0.118, 0.84) : Qt.rgba(0.953, 0.925, 0.886, 0.88)
+    // Fond dessiné par la Cour elle-même (la couleur de la fenêtre de Plasma reste trop transparente)
+    backgroundColor: "transparent"
     keyEventProxy: champ
 
     onKeyEscapePressed: {
@@ -35,6 +98,7 @@ Kicker.DashboardWindow {
         champ.text = ""
         if (visible) {
             trouverApplications()
+            construireSections()
             champ.forceActiveFocus()
         }
     }
@@ -68,6 +132,12 @@ Kicker.DashboardWindow {
         id: fond
         anchors.fill: parent
         onClicked: fenetre.toggle()
+
+        Rectangle {
+            anchors.fill: parent
+            color: fenetre.sombre ? "#151A2B" : "#F3ECE2"
+            opacity: 0.97
+        }
 
         ColumnLayout {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -110,13 +180,14 @@ Kicker.DashboardWindow {
                         Keys.onReturnPressed: {
                             if (fenetre.recherche) {
                                 if (fenetre.resultats && fenetre.resultats.count > 0) fenetre.lancer(fenetre.resultats, 0)
-                            } else if (grille.count > 0) {
-                                fenetre.lancer(fenetre.modeleApps, Math.max(0, grille.currentIndex))
+                            } else if (fenetre.sections.length > 0) {
+                                var premiere = fenetre.sections[0].apps[0]
+                                fenetre.lancer(premiere.modele, premiere.ligne)
                             }
                         }
                         Keys.onDownPressed: {
                             if (fenetre.recherche) listeResultats.forceActiveFocus()
-                            else { grille.currentIndex = 0; grille.forceActiveFocus() }
+                            else defilement.contentY = Math.min(defilement.contentY + 120, Math.max(0, defilement.contentHeight - defilement.height))
                         }
                     }
                 }
@@ -194,59 +265,82 @@ Kicker.DashboardWindow {
                 }
             }
 
-            // Toutes les applications
-            GridView {
-                id: grille
+            // Applications rangées par sections
+            Flickable {
+                id: defilement
                 visible: !fenetre.recherche
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                contentHeight: colonneSections.implicitHeight
                 clip: true
-                model: fenetre.modeleApps
-                currentIndex: -1
-                keyNavigationWraps: true
-                highlightMoveDuration: 0
+                boundsBehavior: Flickable.StopAtBounds
 
                 readonly property int colonnes: Math.max(4, Math.floor(width / (Kirigami.Units.gridUnit * 8)))
-                cellWidth: Math.floor(width / colonnes)
-                cellHeight: Kirigami.Units.gridUnit * 8
+                readonly property real largeurTuile: Math.floor(width / colonnes)
 
-                Keys.onReturnPressed: fenetre.lancer(model, currentIndex)
+                Column {
+                    id: colonneSections
+                    width: parent.width
+                    spacing: Kirigami.Units.gridUnit * 1.2
 
-                delegate: MouseArea {
-                    id: tuile
-                    width: grille.cellWidth
-                    height: grille.cellHeight
-                    hoverEnabled: true
-                    onClicked: fenetre.lancer(grille.model, index)
+                    Repeater {
+                        model: fenetre.sections
+                        delegate: Column {
+                            width: colonneSections.width
+                            spacing: Kirigami.Units.smallSpacing
 
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        radius: Kirigami.Units.gridUnit
-                        color: Kirigami.Theme.textColor
-                        opacity: tuile.containsMouse || (tuile.GridView.isCurrentItem && grille.activeFocus) ? 0.07 : 0
-                    }
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        width: parent.width - Kirigami.Units.largeSpacing * 2
-                        spacing: Kirigami.Units.largeSpacing
+                            // Titre de la section
+                            Text {
+                                leftPadding: Kirigami.Units.largeSpacing
+                                text: modelData.titre.toUpperCase()
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: 0.6
+                                color: Kirigami.Theme.disabledTextColor
+                            }
+                            Flow {
+                                width: parent.width
+                                Repeater {
+                                    model: modelData.apps
+                                    delegate: MouseArea {
+                                        id: tuile
+                                        width: defilement.largeurTuile
+                                        height: Kirigami.Units.gridUnit * 7.5
+                                        hoverEnabled: true
+                                        onClicked: fenetre.lancer(modelData.modele, modelData.ligne)
 
-                        Kirigami.Icon {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: Kirigami.Units.iconSizes.huge
-                            Layout.preferredHeight: Layout.preferredWidth
-                            source: model.decoration
-                            scale: tuile.pressed ? 0.94 : 1
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: model.display
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                            maximumLineCount: 2
-                            wrapMode: Text.WordWrap
-                            font.weight: Font.Medium
-                            color: Kirigami.Theme.textColor
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.margins: Kirigami.Units.smallSpacing
+                                            radius: Kirigami.Units.gridUnit
+                                            color: Kirigami.Theme.textColor
+                                            opacity: tuile.containsMouse ? 0.07 : 0
+                                        }
+                                        ColumnLayout {
+                                            anchors.centerIn: parent
+                                            width: parent.width - Kirigami.Units.largeSpacing * 2
+                                            spacing: Kirigami.Units.largeSpacing
+                                            Kirigami.Icon {
+                                                Layout.alignment: Qt.AlignHCenter
+                                                Layout.preferredWidth: Kirigami.Units.iconSizes.huge
+                                                Layout.preferredHeight: Layout.preferredWidth
+                                                source: modelData.modele.data(modelData.modele.index(modelData.ligne, 0), Qt.DecorationRole)
+                                                scale: tuile.pressed ? 0.94 : 1
+                                            }
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: modelData.nom
+                                                horizontalAlignment: Text.AlignHCenter
+                                                elide: Text.ElideRight
+                                                maximumLineCount: 2
+                                                wrapMode: Text.WordWrap
+                                                font.weight: Font.Medium
+                                                color: Kirigami.Theme.textColor
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

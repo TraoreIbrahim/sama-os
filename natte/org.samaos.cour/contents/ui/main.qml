@@ -38,6 +38,23 @@ PlasmoidItem {
         Component.onCompleted: favoritesModel.initForClient("org.samaos.cour.favoris-" + Plasmoid.id)
     }
 
+    // Les mêmes applications, rangées par catégories (source des sections de la Cour)
+    Kicker.RootModel {
+        id: modeleCategories
+        autoPopulate: false
+        appNameFormat: 0
+        flat: false
+        sorted: true
+        showSeparators: false
+        appletInterface: cour
+        showAllApps: false
+        showAllAppsCategorized: false
+        showTopLevelItems: false
+        showRecentApps: false
+        showRecentDocs: false
+        showPowerSession: false
+    }
+
     // Recherche unifiée
     Kicker.RunnerModel {
         id: modeleRecherche
@@ -57,6 +74,7 @@ PlasmoidItem {
                 fenetre = composant.createObject(cour, {
                     "visualParent": source,
                     "modeleRacine": modeleRacine,
+                    "modeleCategories": modeleCategories,
                     "modeleRecherche": modeleRecherche
                 })
             } else {
@@ -108,5 +126,5 @@ PlasmoidItem {
         }
     }
 
-    Component.onCompleted: modeleRacine.refresh()
+    Component.onCompleted: { modeleRacine.refresh(); modeleCategories.refresh() }
 }
