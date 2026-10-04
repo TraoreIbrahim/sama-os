@@ -217,6 +217,7 @@ Kicker.DashboardWindow {
     onVisibleChanged: {
         champ.text = ""
         if (visible) {
+            ouverture.restart()
             filtre = "Toutes"
             trouverApplications()
             construireSections()
@@ -254,6 +255,14 @@ Kicker.DashboardWindow {
         anchors.fill: parent
         onClicked: fenetre.toggle()
 
+        // Ouverture : la Cour apparaît en fondu, son contenu monte légèrement (Qt Quick : ne dépend pas de la carte graphique)
+        ParallelAnimation {
+            id: ouverture
+            NumberAnimation { target: fond; property: "opacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
+            NumberAnimation { target: contenuCour; property: "scale"; from: 0.97; to: 1; duration: 260; easing.type: Easing.OutCubic }
+            NumberAnimation { target: decalageCour; property: "y"; from: 18; to: 0; duration: 260; easing.type: Easing.OutCubic }
+        }
+
         // Fond plein : sans flou disponible, la moindre transparence laisse voir le texte des fenêtres
         Rectangle {
             anchors.fill: parent
@@ -261,6 +270,8 @@ Kicker.DashboardWindow {
         }
 
         ColumnLayout {
+            id: contenuCour
+            transform: Translate { id: decalageCour }
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             anchors.topMargin: parent.height * 0.1

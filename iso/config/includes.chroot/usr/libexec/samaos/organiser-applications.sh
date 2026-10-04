@@ -52,7 +52,7 @@ masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.k
 	libreoffice-startcenter libreoffice-xsltfilter org.kde.kcolorschemeeditor org.kde.kfontview \
 	org.kde.keditbookmarks org.kde.plasma.emojier org.kde.knetattach org.kde.bluedevilsendfile \
 	org.kde.bluedevilwizard org.kde.gwenview_importer org.kde.vpnimport vim python3.13 \
-	org.kde.kdialog org.kde.plasmawindowed systemsettings
+	org.kde.kdialog org.kde.plasmawindowed systemsettings kvantummanager
 
 # Noms clairs pour les applications gardées
 renommer org.kde.konsole "Terminal" terminal
