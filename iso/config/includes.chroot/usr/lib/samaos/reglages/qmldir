@@ -10,3 +10,6 @@ Commande 1.0 Commande.qml
 ListeDeroulante 1.0 ListeDeroulante.qml
 LigneSousPage 1.0 LigneSousPage.qml
 ChampSama 1.0 ChampSama.qml
+Avatar 1.0 Avatar.qml
+Pastille 1.0 Pastille.qml
+singleton ForceMotDePasse 1.0 ForceMotDePasse.qml

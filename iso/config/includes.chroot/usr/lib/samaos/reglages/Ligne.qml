@@ -10,6 +10,7 @@ Item {
     property bool cliquable: false
     signal clique()
     default property alias controle: zoneControle.data
+    property alias gauche: zoneGauche.data      // facultatif : avatar ou pictogramme avant le titre
 
     Layout.fillWidth: true
     implicitHeight: Math.max(58, textes.implicitHeight + 24)
@@ -31,6 +32,11 @@ Item {
         anchors.leftMargin: 18
         anchors.rightMargin: 18
         spacing: 14
+        Row {
+            id: zoneGauche
+            visible: children.length > 0
+            Layout.alignment: Qt.AlignVCenter
+        }
         ColumnLayout {
             id: textes
             Layout.fillWidth: true

@@ -51,14 +51,16 @@ Window {
 
     // Sous-page ouverte dans la section (ex. « Vpn » dans Réseau et Internet) ; vide : la page de la section
     property string sousPage: ""
+    property var parametre: null      // ce que la sous-page doit afficher (ex. le compte choisi)
     onSectionCouranteChanged: sousPage = ""
     // « sama-reglages reseau/vpn » : ouvre directement la sous-page
     Component.onCompleted: {
         var a = Qt.application.arguments
         var p = a.length > 0 ? String(a[a.length - 1]).split("/") : []
         if (p.length > 1) sousPage = p[1].charAt(0).toUpperCase() + p[1].slice(1)
+        relireComptes()
     }
-    function ouvrir(nom) { sousPage = nom }
+    function ouvrir(nom, param) { parametre = param === undefined ? null : param; sousPage = nom }
 
     property string recherche: ""
     readonly property var sectionsVisibles: {
@@ -67,7 +69,24 @@ Window {
         return sections.filter(function (s) { return (s.titre + " " + s.mots).toLowerCase().indexOf(q) >= 0 })
     }
 
+    // Comptes de l'ordinateur (lus par compte.sh) ; « moi » : la personne connectée
     KCoreAddons.KUser { id: utilisateur }
+    Commande { id: commandeComptes }
+    property var comptes: []
+    property int revisionPhotos: 0     // change après un changement de photo pour recharger les images
+    readonly property var moi: {
+        for (var i = 0; i < comptes.length; i++) if (comptes[i].identifiant === utilisateur.loginName) return comptes[i]
+        return { uid: 1000, identifiant: utilisateur.loginName, nom: utilisateur.fullName || utilisateur.loginName, admin: true, photo: "" }
+    }
+    function relireComptes() {
+        commandeComptes.lancer("/usr/libexec/samaos/compte.sh liste", function (s) {
+            fenetre.comptes = s.trim().split("\n").filter(function (l) { return l }).map(function (l) {
+                var p = l.split("|")
+                return { uid: Number(p[0]), identifiant: p[1], nom: p[2] || p[1], admin: p[3] === "1", photo: p[4] ? p[4] + "?r=" + fenetre.revisionPhotos : "" }
+            })
+        })
+    }
+    function photosModifiees() { revisionPhotos++; relireComptes() }
 
     RowLayout {
         anchors.fill: parent
@@ -116,24 +135,17 @@ Window {
                         anchors.fill: parent
                         anchors.leftMargin: 8
                         spacing: 10
-                        Rectangle {
+                        Avatar {
                             Layout.preferredWidth: 36
                             Layout.preferredHeight: 36
-                            radius: 18
-                            color: Couleurs.laterite
-                            Image {
-                                anchors.fill: parent
-                                source: utilisateur.faceIconUrl
-                                visible: status === Image.Ready
-                                fillMode: Image.PreserveAspectCrop
-                                sourceSize.width: 72
-                                sourceSize.height: 72
-                            }
+                            moi: true
+                            nom: fenetre.moi.nom
+                            photo: fenetre.moi.photo
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 0
-                            Text { Layout.fillWidth: true; text: utilisateur.fullName || utilisateur.loginName; elide: Text.ElideRight; font.pixelSize: 13; font.weight: Font.DemiBold; color: Couleurs.texte }
+                            Text { Layout.fillWidth: true; text: fenetre.moi.nom; elide: Text.ElideRight; font.pixelSize: 13; font.weight: Font.DemiBold; color: Couleurs.texte }
                             Text { text: "Votre compte"; font.pixelSize: 11; color: Couleurs.texte2 }
                         }
                     }
