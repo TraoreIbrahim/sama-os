@@ -26,6 +26,7 @@ lb config noauto \
 	--mirror-binary "http://deb.debian.org/debian/" \
 	--mirror-binary-security "http://security.debian.org/debian-security/" \
 	--apt-options "--yes -o Acquire::Retries=20 -o Acquire::http::Timeout=60 -o Acquire::Queue-Mode=access -o Acquire::http::Pipeline-Depth=0" \
+	--apt-source-archives false \
 	--debian-installer none \
 	--binary-images iso-hybrid \
 	--bootloaders "$CHARGEURS" \
