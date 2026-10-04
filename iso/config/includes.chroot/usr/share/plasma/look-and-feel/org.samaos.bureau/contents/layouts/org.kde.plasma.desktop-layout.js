@@ -38,9 +38,10 @@ for (var i = 0; i < bureaux.length; i++) {
     var y = marge;
     [["org.samaos.carte.heure", 10.5], ["org.samaos.carte.data", 6.5],
      ["org.samaos.carte.meteo", 5.5], ["org.samaos.carte.agenda", 9]].forEach(function (c) {
-        var carte = bureau.addWidget(c[0], gauche, y, largeur, Math.round(gridUnit * c[1]));
-        // Plasma arrondit à sa grille : on repart de la place réellement occupée, plus 16 px d'écart
-        y = carte.geometry.y + carte.geometry.height + 16;
+        var h = Math.round(gridUnit * c[1]);
+        bureau.addWidget(c[0], gauche, y, largeur, h);
+        // Plasma arrondit tailles et positions à sa grille de 16 px : on fait le même arrondi, plus 16 px d'écart
+        y += Math.ceil(h / 16) * 16 + 16;
     });
 }
 
