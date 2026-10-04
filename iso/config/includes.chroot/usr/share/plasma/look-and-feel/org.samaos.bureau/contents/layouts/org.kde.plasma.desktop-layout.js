@@ -30,12 +30,18 @@ for (var i = 0; i < bureaux.length; i++) {
     bureau.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
     bureau.writeConfig("Image", "file:///usr/share/wallpapers/SamaAube/");
 
-    // Cartes du bureau, en haut à gauche : heure et salutation, puis data consommée
+    // Cartes du bureau, en haut à gauche : heure et salutation, data consommée, météo, agenda
     var marge = Math.round(gridUnit * 1.5);
     var gauche = Math.round(gridUnit * 7);
     var largeur = Math.round(gridUnit * 17);
-    bureau.addWidget("org.samaos.carte.heure", gauche, marge, largeur, Math.round(gridUnit * 10.5));
-    bureau.addWidget("org.samaos.carte.data", gauche, marge + Math.round(gridUnit * 11.2), largeur, Math.round(gridUnit * 6.5));
+    var y = marge;
+    bureau.addWidget("org.samaos.carte.heure", gauche, y, largeur, Math.round(gridUnit * 10.5));
+    y += Math.round(gridUnit * 11.2);
+    bureau.addWidget("org.samaos.carte.data", gauche, y, largeur, Math.round(gridUnit * 6.5));
+    y += Math.round(gridUnit * 7.2);
+    bureau.addWidget("org.samaos.carte.meteo", gauche, y, largeur, Math.round(gridUnit * 5.5));
+    y += Math.round(gridUnit * 6.2);
+    bureau.addWidget("org.samaos.carte.agenda", gauche, y, largeur, Math.round(gridUnit * 9));
 }
 
 // Bureau verrouillé : pas de poignées ni de déplacements accidentels des cartes

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="ville" type="String"><default>Abidjan</default></entry>
+    <entry name="latitude" type="Double"><default>5.36</default></entry>
+    <entry name="longitude" type="Double"><default>-4.008</default></entry>
+    <!-- Dernière météo reçue (JSON) et son heure : affichée hors ligne -->
+    <entry name="derniereMeteo" type="String"><default></default></entry>
+    <entry name="miseAJour" type="String"><default></default></entry>
+  </group>
+</kcfg>

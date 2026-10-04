@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPlugin": {
+        "Id": "org.samaos.carte.meteo",
+        "Name": "Météo",
+        "Description": "Carte du bureau de Sama OS : le temps qu'il fait dans votre ville, disponible même hors ligne",
+        "Category": "Environment and Weather",
+        "Icon": "weather-few-clouds",
+        "Authors": [{ "Name": "Projet Sama OS" }],
+        "License": "GPL-3.0-or-later",
+        "Version": "0.1"
+    }
+}

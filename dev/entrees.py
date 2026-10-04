@@ -28,6 +28,9 @@ for c, k in zip("wxcvbn", ["Z", "X", "C", "V", "B", "N"]):
 for c in list(AZERTY):
     AZERTY[c.upper()] = (AZERTY[c][0], True)
 AZERTY[" "] = (e.KEY_SPACE, False)
+AZERTY["-"] = (e.KEY_6, False)
+AZERTY["'"] = (e.KEY_4, False)
+AZERTY[":"] = (e.KEY_DOT, False)
 AZERTY["é"] = (e.KEY_2, False)
 AZERTY["è"] = (e.KEY_7, False)
 for i, c in enumerate("1234567890"):

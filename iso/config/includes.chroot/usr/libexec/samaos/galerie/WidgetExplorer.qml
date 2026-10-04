@@ -46,8 +46,8 @@ PC3.Page {
     readonly property var catalogue: [
         { plugin: "org.samaos.carte.heure", nom: "Heure et salutation", taille: "Moyen", categorie: "Informations", apercu: "heure" },
         { plugin: "org.samaos.carte.data", nom: "Data depuis l'allumage", taille: "Moyen", categorie: "Data et énergie", apercu: "data" },
-        { plugin: "", nom: "Météo", taille: "Moyen", categorie: "Informations", apercu: "meteo", bientot: true },
-        { plugin: "", nom: "Agenda", taille: "Moyen", categorie: "Productivité", apercu: "agenda", bientot: true }
+        { plugin: "org.samaos.carte.meteo", nom: "Météo", taille: "Moyen", categorie: "Informations", apercu: "meteo" },
+        { plugin: "org.samaos.carte.agenda", nom: "Agenda", taille: "Moyen", categorie: "Productivité", apercu: "agenda" }
     ]
     readonly property var categories: ["Tous", "Productivité", "Data et énergie", "Informations"]
     property string categorie: "Tous"
