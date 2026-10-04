@@ -6,4 +6,4 @@ Exec=sama-reglages %u
 Icon=/usr/share/samaos/icones/reglages.svg
 Categories=Settings;System;
 StartupWMClass=org.qt-project.samaos-reglages
-Keywords=réglages;paramètres;préférences;wifi;écran;son;langue;
+Keywords=réglages;paramètres;préférences;wifi;réseau;écran;affichage;son;volume;langue;clavier;compte;mot de passe;imprimante;vpn;proxy;énergie;batterie;data;forfait;bluetooth;accessibilité;

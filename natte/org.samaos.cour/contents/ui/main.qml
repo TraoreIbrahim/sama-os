@@ -61,7 +61,7 @@ PlasmoidItem {
         appletInterface: cour
         favoritesModel: modeleRacine.favoritesModel
         mergeResults: true
-        runners: ["krunner_services", "krunner_systemsettings", "baloosearch", "locations",
+        runners: ["krunner_services", "baloosearch", "locations",
                   "calculator", "unitconverter", "krunner_sessions", "krunner_powerdevil"]
     }
 
