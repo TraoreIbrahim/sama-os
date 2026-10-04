@@ -47,6 +47,13 @@ Kicker.DashboardWindow {
     }
 
     property var sections: []
+    // Pastille de filtre choisie (« Toutes » ou le titre d'une section)
+    property string filtre: "Toutes"
+    readonly property var sectionsAffichees: {
+        if (filtre === "Toutes") return sections
+        for (var i = 0; i < sections.length; i++) if (sections[i].titre === filtre) return [sections[i]]
+        return sections
+    }
     function construireSections() {
         if (!modeleCategories || modeleCategories.count === 0) { relanceSections.restart(); return }
         var parSection = {}
@@ -97,6 +104,7 @@ Kicker.DashboardWindow {
     onVisibleChanged: {
         champ.text = ""
         if (visible) {
+            filtre = "Toutes"
             trouverApplications()
             construireSections()
             champ.forceActiveFocus()
@@ -133,10 +141,10 @@ Kicker.DashboardWindow {
         anchors.fill: parent
         onClicked: fenetre.toggle()
 
+        // Fond plein : sans flou disponible, la moindre transparence laisse voir le texte des fenêtres
         Rectangle {
             anchors.fill: parent
             color: fenetre.sombre ? "#151A2B" : "#F3ECE2"
-            opacity: 0.97
         }
 
         ColumnLayout {
@@ -265,6 +273,40 @@ Kicker.DashboardWindow {
                 }
             }
 
+            // Pastilles de tri, comme le Launchpad de macOS
+            Row {
+                visible: !fenetre.recherche && fenetre.sections.length > 1
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 8
+                Repeater {
+                    model: ["Toutes"].concat(fenetre.sections.map(function (x) { return x.titre }))
+                    delegate: MouseArea {
+                        id: pastille
+                        readonly property bool choisie: fenetre.filtre === modelData
+                        width: libelle.implicitWidth + 28
+                        height: 30
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: fenetre.filtre = modelData
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: height / 2
+                            color: pastille.choisie ? "#B5532F"
+                                 : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b,
+                                           pastille.containsMouse ? 0.12 : 0.06)
+                        }
+                        Text {
+                            id: libelle
+                            anchors.centerIn: parent
+                            text: modelData
+                            font.pixelSize: 13
+                            font.weight: pastille.choisie ? Font.DemiBold : Font.Medium
+                            color: pastille.choisie ? "#FFFFFF" : Kirigami.Theme.textColor
+                        }
+                    }
+                }
+            }
+
             // Applications rangées par sections
             Flickable {
                 id: defilement
@@ -284,13 +326,14 @@ Kicker.DashboardWindow {
                     spacing: Kirigami.Units.gridUnit * 1.2
 
                     Repeater {
-                        model: fenetre.sections
+                        model: fenetre.sectionsAffichees
                         delegate: Column {
                             width: colonneSections.width
                             spacing: Kirigami.Units.smallSpacing
 
-                            // Titre de la section
+                            // Titre de la section (masqué quand une pastille filtre déjà)
                             Text {
+                                visible: fenetre.filtre === "Toutes"
                                 leftPadding: Kirigami.Units.largeSpacing
                                 text: modelData.titre.toUpperCase()
                                 font.pixelSize: 11
