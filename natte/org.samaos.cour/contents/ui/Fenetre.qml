@@ -49,10 +49,14 @@ Kicker.DashboardWindow {
     property var sections: []
     // Pastille de filtre choisie (« Toutes » ou le titre d'une section)
     property string filtre: "Toutes"
-    readonly property var sectionsAffichees: {
-        if (filtre === "Toutes") return sections
-        for (var i = 0; i < sections.length; i++) if (sections[i].titre === filtre) return [sections[i]]
-        return sections
+    // Applications affichées : toutes (ordre alphabétique) ou celles de la catégorie choisie
+    readonly property var appsAffichees: {
+        var liste = []
+        for (var i = 0; i < sections.length; i++) {
+            if (filtre === "Toutes" || sections[i].titre === filtre) liste = liste.concat(sections[i].apps)
+        }
+        if (filtre === "Toutes") liste.sort(function (x, y) { return x.nom.localeCompare(y.nom) })
+        return liste
     }
     function construireSections() {
         if (!modeleCategories || modeleCategories.count === 0) { relanceSections.restart(); return }
@@ -188,8 +192,8 @@ Kicker.DashboardWindow {
                         Keys.onReturnPressed: {
                             if (fenetre.recherche) {
                                 if (fenetre.resultats && fenetre.resultats.count > 0) fenetre.lancer(fenetre.resultats, 0)
-                            } else if (fenetre.sections.length > 0) {
-                                var premiere = fenetre.sections[0].apps[0]
+                            } else if (fenetre.appsAffichees.length > 0) {
+                                var premiere = fenetre.appsAffichees[0]
                                 fenetre.lancer(premiere.modele, premiere.ligne)
                             }
                         }
@@ -307,7 +311,7 @@ Kicker.DashboardWindow {
                 }
             }
 
-            // Applications rangées par sections
+            // Applications (toutes, ou la catégorie choisie)
             Flickable {
                 id: defilement
                 visible: !fenetre.recherche
@@ -320,68 +324,46 @@ Kicker.DashboardWindow {
                 readonly property int colonnes: Math.max(4, Math.floor(width / (Kirigami.Units.gridUnit * 8)))
                 readonly property real largeurTuile: Math.floor(width / colonnes)
 
-                Column {
+                // Une seule grille, comme avant : les pastilles ne font que filtrer
+                Flow {
                     id: colonneSections
                     width: parent.width
-                    spacing: Kirigami.Units.gridUnit * 1.2
-
                     Repeater {
-                        model: fenetre.sectionsAffichees
-                        delegate: Column {
-                            width: colonneSections.width
-                            spacing: Kirigami.Units.smallSpacing
+                        model: fenetre.appsAffichees
+                        delegate: MouseArea {
+                            id: tuile
+                            width: defilement.largeurTuile
+                            height: Kirigami.Units.gridUnit * 8
+                            hoverEnabled: true
+                            onClicked: fenetre.lancer(modelData.modele, modelData.ligne)
 
-                            // Titre de la section (masqué quand une pastille filtre déjà)
-                            Text {
-                                visible: fenetre.filtre === "Toutes"
-                                leftPadding: Kirigami.Units.largeSpacing
-                                text: modelData.titre.toUpperCase()
-                                font.pixelSize: 11
-                                font.weight: Font.DemiBold
-                                font.letterSpacing: 0.6
-                                color: Kirigami.Theme.disabledTextColor
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: Kirigami.Units.smallSpacing
+                                radius: Kirigami.Units.gridUnit
+                                color: Kirigami.Theme.textColor
+                                opacity: tuile.containsMouse ? 0.07 : 0
                             }
-                            Flow {
-                                width: parent.width
-                                Repeater {
-                                    model: modelData.apps
-                                    delegate: MouseArea {
-                                        id: tuile
-                                        width: defilement.largeurTuile
-                                        height: Kirigami.Units.gridUnit * 7.5
-                                        hoverEnabled: true
-                                        onClicked: fenetre.lancer(modelData.modele, modelData.ligne)
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            anchors.margins: Kirigami.Units.smallSpacing
-                                            radius: Kirigami.Units.gridUnit
-                                            color: Kirigami.Theme.textColor
-                                            opacity: tuile.containsMouse ? 0.07 : 0
-                                        }
-                                        ColumnLayout {
-                                            anchors.centerIn: parent
-                                            width: parent.width - Kirigami.Units.largeSpacing * 2
-                                            spacing: Kirigami.Units.largeSpacing
-                                            Kirigami.Icon {
-                                                Layout.alignment: Qt.AlignHCenter
-                                                Layout.preferredWidth: Kirigami.Units.iconSizes.huge
-                                                Layout.preferredHeight: Layout.preferredWidth
-                                                source: modelData.modele.data(modelData.modele.index(modelData.ligne, 0), Qt.DecorationRole)
-                                                scale: tuile.pressed ? 0.94 : 1
-                                            }
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: modelData.nom
-                                                horizontalAlignment: Text.AlignHCenter
-                                                elide: Text.ElideRight
-                                                maximumLineCount: 2
-                                                wrapMode: Text.WordWrap
-                                                font.weight: Font.Medium
-                                                color: Kirigami.Theme.textColor
-                                            }
-                                        }
-                                    }
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                width: parent.width - Kirigami.Units.largeSpacing * 2
+                                spacing: Kirigami.Units.largeSpacing
+                                Kirigami.Icon {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.preferredWidth: Kirigami.Units.iconSizes.huge
+                                    Layout.preferredHeight: Layout.preferredWidth
+                                    source: modelData.modele.data(modelData.modele.index(modelData.ligne, 0), Qt.DecorationRole)
+                                    scale: tuile.pressed ? 0.94 : 1
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.nom
+                                    horizontalAlignment: Text.AlignHCenter
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 2
+                                    wrapMode: Text.WordWrap
+                                    font.weight: Font.Medium
+                                    color: Kirigami.Theme.textColor
                                 }
                             }
                         }
