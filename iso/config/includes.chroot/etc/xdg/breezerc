@@ -1,10 +1,12 @@
-# Barres de titre de Sama : sans liseré ni séparateur, titre centré, ombre large et douce
+# Barres de titre de Sama (d'après les fenêtres de la maquette) : icône de l'application et titre à gauche,
+# barre haute de la couleur de la fenêtre, fin trait de séparation, sans liseré ; ombre large et douce
 [Common]
 OutlineIntensity=OutlineOff
 ShadowSize=ShadowLarge
 ShadowStrength=60
 
 [Windeco]
-TitleAlignment=AlignCenterFullWidth
-DrawTitleBarSeparator=false
+TitleAlignment=AlignLeft
+ButtonSize=ButtonLarge
+DrawTitleBarSeparator=true
 DrawBackgroundGradient=false

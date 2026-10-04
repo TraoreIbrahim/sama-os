@@ -48,7 +48,7 @@ ForegroundVisited=196,182,232
 
 [Colors:Header]
 BackgroundAlternate=27,33,53
-BackgroundNormal=27,33,53
+BackgroundNormal=30,34,51
 DecorationFocus=217,120,79
 DecorationHover=230,154,114
 ForegroundActive=240,179,146
@@ -139,7 +139,7 @@ shadeSortColumn=true
 contrast=4
 
 [WM]
-activeBackground=27,33,53
+activeBackground=30,34,51
 activeBlend=241,235,225
 activeForeground=241,235,225
 inactiveBackground=30,34,51

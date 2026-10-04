@@ -1,0 +1,2 @@
+// Après une mise à jour des traductions de KDE, remettre le vocabulaire de Sama (« Espaces »…)
+DPkg::Post-Invoke { "python3 /usr/libexec/samaos/vocabulaire.py >/dev/null 2>&1 || true"; };

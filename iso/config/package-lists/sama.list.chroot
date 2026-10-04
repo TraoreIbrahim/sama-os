@@ -73,3 +73,4 @@ network-manager-openvpn
 wireguard-tools
 # Réglages Sama : accessibilité (lecteur d'écran)
 orca
+qt6-style-kvantum

@@ -1,6 +1,6 @@
 [KDE]
 LookAndFeelPackage=org.samaos.bureau
-widgetStyle=Breeze
+widgetStyle=kvantum
 
 [General]
 ColorScheme=SamaClair

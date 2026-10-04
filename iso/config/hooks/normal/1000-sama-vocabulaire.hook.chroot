@@ -1,0 +1,4 @@
+#!/bin/sh
+# Vocabulaire de Sama dans les traductions de KDE (« activités » → « Espaces »…)
+set -e
+python3 /usr/libexec/samaos/vocabulaire.py

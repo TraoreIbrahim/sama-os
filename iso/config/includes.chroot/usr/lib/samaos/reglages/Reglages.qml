@@ -15,7 +15,7 @@ Window {
     height: 700
     minimumWidth: 860
     minimumHeight: 560
-    visible: true
+    visible: false      // montrée une fois l'identité de l'application posée (voir Component.onCompleted)
     title: "Réglages"
     color: Couleurs.fond
 
@@ -59,6 +59,11 @@ Window {
         var p = a.length > 0 ? String(a[a.length - 1]).split("/") : []
         if (p.length > 1) sousPage = p[1].charAt(0).toUpperCase() + p[1].slice(1)
         relireComptes()
+        // Identité Wayland « samaos-reglages » (comme le fichier .desktop) : la barre de titre et la Natte
+        // trouvent ainsi l'icône des Réglages au lieu du « W » générique
+        Qt.application.domain = ""
+        Qt.application.name = "samaos-reglages"
+        visible = true
     }
     function ouvrir(nom, param) { parametre = param === undefined ? null : param; sousPage = nom }
 

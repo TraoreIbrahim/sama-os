@@ -5,5 +5,5 @@ Comment=Réglages de Sama OS
 Exec=sama-reglages %u
 Icon=/usr/share/samaos/icones/reglages.svg
 Categories=Settings;System;
-StartupWMClass=org.qt-project.samaos-reglages
+StartupWMClass=samaos-reglages
 Keywords=réglages;paramètres;préférences;wifi;réseau;écran;affichage;son;volume;langue;clavier;compte;mot de passe;imprimante;vpn;proxy;énergie;batterie;data;forfait;bluetooth;accessibilité;
