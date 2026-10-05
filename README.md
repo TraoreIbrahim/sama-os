@@ -22,7 +22,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Accueil du premier démarrage : Espaces, puis réglages pour bien démarrer | fait |
 | Data : suivi du forfait au mois (vnstat), alertes à 80 % et 100 % | fait |
 | Mises à jour la nuit (sur secteur, hors forfait) ; celles qui dérangeraient une session ouverte, au redémarrage (écran de démarrage) | fait |
-| Instantanés du système (Btrfs) avant chaque mise à jour et chaque semaine ; une mise à jour coupée net est annulée au démarrage suivant | fait (à essayer sur un Sama installé) |
+| Instantanés du système (Btrfs) avant chaque mise à jour et chaque semaine ; une mise à jour coupée net est annulée au démarrage suivant | fait (essayé sur un Sama installé dans la VM, coupure réelle comprise) |
 | Sauvegarde sur clé USB ou disque externe | fait (Sama Grenier, le nuage : à venir) |
 | Session invitée | fait |
 | Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |
@@ -68,8 +68,7 @@ Session live : utilisateur `sama`, sans mot de passe à la connexion automatique
 ## Prochaines étapes
 
 1. Construire et tester l'ISO avec tout ce qui précède (paquets ajoutés : unattended-upgrades, vnstat, rsync, poppler-utils,
-   ffmpegthumbnailer, haruna, libreoffice-kf6, libreoffice-l10n-fr, hunspell-fr, hyphen-fr), puis l'installer pour
-   essayer le retour en arrière des instantanés (menu de démarrage) sur un vrai disque Btrfs.
+   ffmpegthumbnailer, haruna, libreoffice-kf6, libreoffice-l10n-fr, hunspell-fr, hyphen-fr, pkexec).
 2. Applications de la suite Sama après Fichiers.
 3. Natte sur les côtés de l'écran, Sama Grenier, partage des mises à jour en réseau local.
 4. Préparer la forge, la chaîne de construction automatique et les dépôts souverains.

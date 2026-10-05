@@ -29,8 +29,13 @@ else
 	message "Sama revient à l'instantané choisi…"
 fi
 
-if python3 /usr/libexec/samaos/instantanes.py restaurer "$instantane" "$raison" >/run/samaos-restauration.log 2>&1; then
+python3 /usr/libexec/samaos/instantanes.py restaurer "$instantane" "$raison" >/run/samaos-restauration.log 2>&1
+code=$?
+if [ $code = 0 ]; then
 	message "Sama a été restauré. Redémarrage…"
+elif [ $code = 2 ]; then
+	# (marque restée sans dégât : APT arrêté avant de toucher aux paquets)
+	message "La mise à jour n'avait rien abîmé : Sama redémarre normalement…"
 else
 	cat /run/samaos-restauration.log >/dev/console 2>/dev/null
 	message "La restauration n'a pas abouti. Redémarrage sur le système tel qu'il est…"

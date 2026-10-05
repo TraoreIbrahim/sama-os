@@ -5,7 +5,8 @@ redémarrage suivant, avant que le bureau ne s'ouvre, sur l'écran de démarrage
 3 sur 5 »). Un instantané est pris juste avant : une coupure de courant pendant l'installation est annulée au
 démarrage suivant (voir instantanes.py).
 
-Le redémarrage passe par system-update.target de systemd : /system-update (lien) le déclenche.
+Le redémarrage passe par system-update.target de systemd : le lien /etc/system-update le déclenche (pas
+/system-update, que PackageKit efface dès que la liste des paquets change : il le croit à lui).
 
   maj-redemarrage.py preparer      après les mises à jour de la nuit : prépare celles déjà téléchargées
   maj-redemarrage.py etat          JSON : {nombre, taille} des mises à jour prévues au redémarrage (0 : aucune)
@@ -22,7 +23,8 @@ import subprocess
 import sys
 import time
 
-LIEN = "/system-update"
+LIEN = "/etc/system-update"
+JOURNAL = "/var/log/samaos-mises-a-jour.log"       # (ce qu'APT a dit, pour comprendre un échec)
 PREVUES = "/var/lib/samaos/maj-redemarrage.json"
 ACTION = "/var/lib/samaos/maj-redemarrage-action"
 APT = ["apt-get", "-q", "-y", "-o", "Dpkg::Options::=--force-confdef", "-o", "Dpkg::Options::=--force-confold"]
@@ -126,6 +128,15 @@ def temps_restant(debut, pourcent):
     return "environ %d minute%s" % (minutes, "s" if minutes > 1 else "")
 
 
+def noter(texte):
+    try:
+        with open(JOURNAL, "a") as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + texte.rstrip() + "\n")
+    except OSError:
+        pass
+    print(texte, flush=True)
+
+
 def installer(essai=0):
     """Au redémarrage (system-update.target) : instantané, installation avec l'avancement à l'écran, puis
     redémarrage ou extinction."""
@@ -155,6 +166,8 @@ def installer(essai=0):
         paquets = a_installer()
         tailles_ = tailles([p for p, v in paquets])
     n = len(paquets)
+    if not essai:
+        noter("Mises à jour au redémarrage (%s) : %s" % (action, " ".join("%s %s" % p for p in paquets) or "aucune"))
     versions = dict(paquets)
     ordre = [p for p, v in paquets]
     code = 0
@@ -186,8 +199,12 @@ def installer(essai=0):
                 time.sleep(0.12)
         else:
             lecture, ecriture = os.pipe()
+            try:
+                sortie = open(JOURNAL, "a")
+            except OSError:
+                sortie = subprocess.DEVNULL
             proc = subprocess.Popen(APT + ["--no-download", "-o", "APT::Status-Fd=%d" % ecriture, "upgrade", "--with-new-pkgs"],
-                                    env=ENV, pass_fds=(ecriture,), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                    env=ENV, pass_fds=(ecriture,), stdout=sortie, stderr=sortie)
             os.close(ecriture)
             with os.fdopen(lecture) as flux:
                 for ligne in flux:
@@ -199,6 +216,7 @@ def installer(essai=0):
                         except ValueError:
                             pass
             code = proc.wait()
+            noter("APT a terminé (code %d)" % code)
             try:
                 import instantanes
                 instantanes.apres_maj("redemarrage")

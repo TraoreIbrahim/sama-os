@@ -1,4 +1,4 @@
-# Mises à jour au redémarrage (maquette ses-05) : quand /system-update existe (préparé la nuit par
+# Mises à jour au redémarrage (maquette ses-05) : quand /etc/system-update existe (préparé la nuit par
 # /usr/libexec/samaos/maj-redemarrage.py), systemd démarre sur system-update.target au lieu du bureau ; ce service
 # installe les mises à jour sur l'écran de démarrage, puis redémarre ou éteint l'ordinateur.
 [Unit]

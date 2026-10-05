@@ -73,3 +73,15 @@ scripts/mode-direct.sh commande 'export DISPLAY=:0 XAUTHORITY=$(ls /run/user/100
 ```
 
 Le vrai retour en arrière (menu de démarrage, `restauration-init`) ne s'essaie que sur un Sama installé.
+
+## Sama installé dans la machine virtuelle
+
+Depuis le 5 octobre, la VM a aussi un Sama installé sur son disque (Btrfs) : compte `sama`, mot de passe de test dans
+`.vm-identifiants` (fichier local, jamais versionné), connexion automatique, accès SSH de développement et `sudo` sans
+mot de passe (`/etc/sudoers.d/90-sama-vm-dev`, propre à cette VM). Sans ISO dans le lecteur CD/DVD d'UTM, la VM
+démarre sur ce disque ; pour revenir à la session d'essai, remettre l'ISO dans le lecteur.
+
+Essai d'une coupure de courant pendant une mise à jour : un faux paquet `sama-essai` dont la version 2 coupe la machine
+pendant son installation (`echo b > /proc/sysrq-trigger`), servi par un dépôt local en `copy:` (une source `file:` ne
+passe pas par le cache d'APT, que l'installation au redémarrage utilise). Au démarrage suivant, le menu de démarrage
+ramène l'instantané pris juste avant, et la fenêtre « Sama a été restauré » s'ouvre.

@@ -23,10 +23,12 @@ Window {
     readonly property var note: infos.note || {}
     readonly property var liste: (infos.etat && infos.etat.liste) || []
     readonly property string raison: note.raison || "menu"
-    // Les instantanés proposés : celui qui vient d'être restauré en premier, puis les plus récents
+    // Les instantanés proposés : celui qui vient d'être restauré en premier ; après un retour demandé, l'état d'avant
+    // ce retour (pour l'annuler) ; puis les plus récents
     readonly property var proposes: {
         var l = liste.filter(function (i) { return i.id === note.instantane })
-        return l.concat(liste.filter(function (i) { return i.id !== note.instantane && i.type !== "restauration" })).slice(0, 4)
+        var avant = raison !== "maj-interrompue" ? liste.filter(function (i) { return i.type === "restauration" }).slice(0, 1) : []
+        return l.concat(avant, liste.filter(function (i) { return i.id !== note.instantane && i.type !== "restauration" })).slice(0, 4)
     }
     property int choisi: 0
     readonly property bool autre: proposes.length > 0 && proposes[choisi].id !== note.instantane
@@ -46,6 +48,7 @@ Window {
     function dateLongue(s) { var d = new Date(s * 1000); return d.getDate() + (d.getDate() === 1 ? "er " : " ") + mois[d.getMonth()] + ", " + heure(d) }
     function dateCourte(s) { var d = new Date(s * 1000); return d.getDate() + " " + moisCourts[d.getMonth()] + " · " + heure(d) }
     function description(i) {
+        if (i.type === "restauration") return "Juste avant ce retour en arrière"
         if (i.type === "hebdo") return "Instantané hebdomadaire"
         if (i.type === "manuel") return "Créé à la main" + (i.detail ? " · « " + i.detail + " »" : "")
         return i.detail || i.libelle
@@ -68,7 +71,7 @@ Window {
         if (!autre) { fermer(); return }
         etape = "retour"
         executeur.lancer("pkexec /usr/libexec/samaos/restaurer-instantane " + executeur.q(proposes[choisi].id), function (s, code) {
-            if (code === 0) executeur.lancer("dbus-send --session --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logoutAndReboot", function () {})
+            if (code === 0) executeur.lancer("dbus-send --session --print-reply --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logoutAndReboot >/dev/null 2>&1 || systemctl reboot", function () {})
             else fenetre.etape = ""
         })
     }

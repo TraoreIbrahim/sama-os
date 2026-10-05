@@ -281,6 +281,23 @@ def menu():
     if not disponible():
         return
     uuid = os.environ.get("SAMA_UUID") or montage(RACINE, "UUID")
+    entrees = []
+    for i in liste():
+        n = noyau(i["id"])
+        if not n:
+            continue
+        chemin = "/%s/%s/systeme" % (INSTANTANES, i["id"])
+        titre = date_courte(i["quand"]) + " · " + (i["libelle"] if i["type"] != "manuel" else "manuel" + (" « %s »" % i["detail"] if i["detail"] else ""))
+        titre = titre.replace('"', "'").replace("$", "")
+        entrees += [
+            '\tmenuentry "%s" --id sama-instantane-%s {' % (titre, i["id"]),
+            "\t\tsearch --no-floppy --fs-uuid --set=root %s" % uuid,
+            "\t\techo \"Sama revient à l'état du %s…\"" % date_courte(i["quand"]),
+            "\t\tlinux %s%s root=UUID=%s ro rootflags=subvol=%s quiet splash init=/usr/libexec/samaos/restauration-init"
+            " samaos.instantane=%s samaos.raison=$sama_raison" % (chemin, n[0], uuid, chemin.lstrip("/"), i["id"]),
+            "\t\tinitrd %s%s" % (chemin, n[1]),
+            "\t}",
+        ]
     lignes = [
         "# Instantanés de Sama : écrit par /usr/libexec/samaos/instantanes.py à chaque changement (ne pas modifier).",
         "# Lu par le menu de démarrage (/etc/grub.d/41_samaos_instantanes), où $sama_disque est ce disque.",
@@ -301,24 +318,9 @@ def menu():
         "\tset timeout_style=hidden",
         "fi",
         'submenu "Revenir à un instantané de Sama" --id sama-instantanes {',
-    ]
-    for i in liste():
-        n = noyau(i["id"])
-        if not n:
-            continue
-        chemin = "/%s/%s/systeme" % (INSTANTANES, i["id"])
-        titre = date_courte(i["quand"]) + " · " + (i["libelle"] if i["type"] != "manuel" else "manuel" + (" « %s »" % i["detail"] if i["detail"] else ""))
-        titre = titre.replace('"', "'").replace("$", "")
-        lignes += [
-            '\tmenuentry "%s" --id sama-instantane-%s {' % (titre, i["id"]),
-            "\t\tsearch --no-floppy --fs-uuid --set=root %s" % uuid,
-            "\t\techo \"Sama revient à l'état du %s…\"" % date_courte(i["quand"]),
-            "\t\tlinux %s%s root=UUID=%s ro rootflags=subvol=%s quiet splash init=/usr/libexec/samaos/restauration-init"
-            " samaos.instantane=%s samaos.raison=$sama_raison" % (chemin, n[0], uuid, chemin.lstrip("/"), i["id"]),
-            "\t\tinitrd %s%s" % (chemin, n[1]),
-            "\t}",
-        ]
-    lignes.append("}")
+    ] + entrees + ["}"]
+    if not entrees:            # (GRUB refuse un sous-menu vide)
+        lignes = lignes[:2] + ["# Aucun instantané pour l'instant."]
     ecrire(os.path.join(DOSSIER, "grub.cfg"), "\n".join(lignes) + "\n")
 
 
@@ -358,8 +360,11 @@ def apres_maj(proprietaire=None):
 
 def avant_dpkg():
     """Installation ou suppression par Sugu, Discover ou apt : instantané (sauf s'il y en a un de moins de 5 minutes)."""
-    if not disponible() or dans_un_chroot() or marque(MARQUE_MAJ) or not automatiques():
-        return          # (les mises à jour de la nuit ont déjà le leur)
+    m = marque(MARQUE_MAJ)
+    # (les mises à jour de la nuit ou du redémarrage ont déjà le leur ; une marque « dpkg » restée d'une opération
+    # précédente arrêtée sur une erreur est remplacée : APT empêche deux opérations à la fois)
+    if not disponible() or dans_un_chroot() or (m and m.get("proprietaire") != "dpkg") or not automatiques():
+        return
     recents = [i for i in liste() if i["type"] in ("maj", "appli") and time.time() - i["quand"] < 300]
     identifiant = recents[0]["id"] if recents else creer("appli", "Avant des changements d'applications")
     poser_marque(MARQUE_MAJ, identifiant, "dpkg")
@@ -386,6 +391,8 @@ def paquets():
         if len(champs) != 5:
             continue
         nom, avant, sens, apres, action = champs
+        if nom in installes + mis_a_jour + supprimes:
+            continue             # (APT cite chaque paquet deux fois : à déballer, puis à configurer)
         if action == "**REMOVE**":
             supprimes.append(nom)
         elif avant == "-":
@@ -452,6 +459,29 @@ def conserver(ancien, nouveau):
             print("Non conservé : %s (%s)" % (chemin, e), file=sys.stderr)
 
 
+def paquets_abimes(racine):
+    """Paquets laissés à moitié installés par une coupure (états de dpkg), ou opération de dpkg inachevée."""
+    try:
+        if os.listdir(os.path.join(racine, "var/lib/dpkg/updates")):
+            return ["(opération de dpkg inachevée)"]
+    except OSError:
+        pass
+    abimes, nom = [], ""
+    try:
+        for ligne in open(os.path.join(racine, "var/lib/dpkg/status"), errors="replace"):
+            if ligne.startswith("Package: "):
+                nom = ligne[9:].strip()
+            elif ligne.startswith("Status: ") and ligne.split()[-1] in ("half-installed", "unpacked", "half-configured"):
+                abimes.append(nom)
+    except OSError:
+        pass
+    return abimes
+
+
+class RienAbime(Exception):
+    pass
+
+
 def restaurer(identifiant, raison):
     """Remplace @ par une copie de l'instantané (échange atomique : jamais de moment sans système), garde ce qui
     appartient aux personnes, laisse une note pour l'ouverture de session. L'ancien système est effacé au
@@ -463,6 +493,16 @@ def restaurer(identifiant, raison):
         actuel, nouveau = os.path.join(haut, SYSTEME), os.path.join(haut, "@nouveau")
         if not os.path.isdir(source) or not os.path.isdir(actuel):
             raise SystemExit("Instantané introuvable : %s" % identifiant)
+        # Marque « mise à jour en cours » restée alors que rien n'est abîmé (APT arrêté sur une erreur avant de
+        # toucher aux paquets, opération finie juste avant la coupure) : pas de retour en arrière
+        if raison == "maj-interrompue" and not paquets_abimes(actuel):
+            for nom in (MARQUE_MAJ, MARQUE_RESTAURER):
+                try:
+                    os.remove(os.path.join(actuel, ETAT, nom))
+                except OSError:
+                    pass
+            subprocess.run(["btrfs", "filesystem", "sync", haut], check=False, stdout=subprocess.DEVNULL)
+            raise RienAbime()
         detruire(nouveau)            # (reste d'une restauration coupée elle aussi)
         # Retour demandé : l'état présent devient lui-même un instantané, pour pouvoir y revenir
         if raison != "maj-interrompue":
@@ -528,8 +568,9 @@ def demarrage():
                 f.write("UUID=%s /.instantanes btrfs subvol=/%s,noatime 0 0\n" % (uuid, INSTANTANES))
         os.makedirs(DOSSIER, exist_ok=True)
         subprocess.run(["mount", DOSSIER], check=False)
-    # Une mise à jour coupée que le menu de démarrage n'a pas pu annuler (instantané sans noyau…) : la terminer
-    if marque(MARQUE_MAJ):
+    # Une mise à jour coupée que le menu de démarrage n'a pas pu annuler (instantané sans noyau…), ou des paquets
+    # restés à moitié configurés : la terminer
+    if marque(MARQUE_MAJ) or paquets_abimes(RACINE):
         oter_marque(MARQUE_MAJ)
         subprocess.run(["dpkg", "--configure", "-a", "--force-confold"], env=dict(os.environ, DEBIAN_FRONTEND="noninteractive"),
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
@@ -576,7 +617,10 @@ def main(a):
     elif action == "menu":
         menu()
     elif action == "restaurer" and len(a) > 2:
-        restaurer(a[1], a[2])
+        try:
+            restaurer(a[1], a[2])
+        except RienAbime:
+            return 2
     elif action == "abandonner":
         abandonner()
     else:

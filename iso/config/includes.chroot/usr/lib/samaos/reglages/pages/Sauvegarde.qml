@@ -281,7 +281,7 @@ PageReglage {
         return l.length ? l[0] : null
     }
     function redemarrer() {
-        commande.lancer("dbus-send --session --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logoutAndReboot")
+        commande.lancer("dbus-send --session --print-reply --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logoutAndReboot >/dev/null 2>&1 || systemctl reboot")
     }
 
     Groupe {

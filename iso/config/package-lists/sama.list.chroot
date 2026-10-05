@@ -5,6 +5,9 @@ kde-plasma-desktop
 sddm
 plasma-nm
 plasma-pa
+# Autorisations des Réglages (pkexec) : à garder explicitement, sinon l'installateur l'efface avec Calamares
+# (apt autoremove) et plus aucun réglage d'administrateur ne fonctionne sur l'ordinateur installé
+pkexec
 # Accueil du premier démarrage (Bienvenue.qml)
 qml-qt6
 # Fichiers, l'explorateur de Sama (liste des dossiers en QML, aperçus des PDF et des vidéos)
