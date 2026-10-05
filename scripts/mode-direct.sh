@@ -105,7 +105,7 @@ rattraper)
 	# Une VM live repart de son ISO à chaque démarrage : on lui redonne tout ce que la prochaine ISO contiendra.
 	inclus="$racine/iso/config/includes.chroot"
 	echo "1/5 Paquets légers ajoutés depuis l'ISO (style Kvantum, lanceur QML des Réglages, mises à jour la nuit, suivi de la data)…"
-	vm 'sudo apt-get install -y -q --no-install-recommends qt6-style-kvantum qml-qt6 unattended-upgrades vnstat >/dev/null 2>&1 || echo "  (paquets non installés : pas de réseau ?)"'
+	vm 'sudo apt-get install -y -q --no-install-recommends qt6-style-kvantum qml-qt6 unattended-upgrades vnstat rsync >/dev/null 2>&1 || echo "  (paquets non installés : pas de réseau ?)"'
 	echo "2/5 Fichiers système de Sama (2 Mo)…"
 	tar --no-xattrs -C "$inclus" -czf - . | vm 'sudo tar -xzf - -C / --no-same-owner --no-overwrite-dir 2>/dev/null; sudo chmod +x /usr/libexec/samaos/*.sh /usr/libexec/samaos/*.py /usr/bin/sama-reglages 2>/dev/null; true'
 	echo "3/5 Ce que font les scripts de construction de l'ISO…"
@@ -123,7 +123,8 @@ rattraper)
 	    cp -n /etc/xdg/baloofilerc ~/.config/baloofilerc 2>/dev/null; (balooctl6 enable >/dev/null 2>&1 &);
 	    sh /usr/libexec/samaos/apparence.sh clair >/dev/null 2>&1;
 	    qdbus6 org.kde.KWin /KWin reconfigure;
-	    systemctl --user daemon-reload; systemctl --user restart plasma-polkit-agent; true'
+	    systemctl --user daemon-reload; systemctl --user restart plasma-polkit-agent;
+	    systemctl --user enable --now samaos-sauvegarde.timer >/dev/null 2>&1; true'
 	echo "Rattrapage terminé. (Le menu des fenêtres de KWin et le menu de démarrage attendent la prochaine ISO.)"
 	;;
 

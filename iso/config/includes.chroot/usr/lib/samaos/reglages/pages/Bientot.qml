@@ -1,4 +1,4 @@
-// Section qui arrive avec une prochaine version de Sama (Sauvegarde avec Sama Grenier, Organisation avec Sama Parc).
+// Section qui arrive avec une prochaine version de Sama (Organisation avec Sama Parc).
 import QtQuick
 import QtQuick.Layouts
 import ".."
@@ -7,7 +7,6 @@ PageReglage {
     id: page
     titre: fenetre.section.titre
     readonly property var textes: ({
-        "sauvegarde": "La sauvegarde chiffrée de vos documents arrive avec Sama Grenier, le nuage de Sama.",
         "organisation": "Les réglages pour les ordinateurs d'une école, d'une entreprise ou d'une administration (gérés à plusieurs) arrivent avec une prochaine version de Sama."
     })
     Rectangle {

@@ -43,8 +43,10 @@ PageReglage {
     // « aujourd'hui à 09:12 », « hier à 22:40 », « le 3 octobre »
     function quand(secondes) {
         if (!secondes) return ""
-        var d = new Date(secondes * 1000), maintenant = new Date()
-        var jours = Math.round((new Date(maintenant.toDateString()) - new Date(d.toDateString())) / 86400000)
+        var d = new Date(secondes * 1000)
+        var minuitJour = new Date(d.getTime()); minuitJour.setHours(0, 0, 0, 0)
+        var minuit = new Date(); minuit.setHours(0, 0, 0, 0)
+        var jours = Math.round((minuit.getTime() - minuitJour.getTime()) / 86400000)
         var heure = d.toLocaleTimeString(Qt.locale(), "HH:mm")
         if (jours === 0) return "aujourd'hui à " + heure
         if (jours === 1) return "hier à " + heure

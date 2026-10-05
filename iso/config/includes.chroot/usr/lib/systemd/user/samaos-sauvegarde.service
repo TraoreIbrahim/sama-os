@@ -1,0 +1,9 @@
+# Sauvegarde automatique sur clé USB ou disque externe (Réglages › Sauvegarde) : /usr/libexec/samaos/sauvegarde.py
+[Unit]
+Description=Sauvegarde de vos documents (Sama)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/libexec/samaos/sauvegarde.py auto
+Nice=15
+IOSchedulingClass=idle

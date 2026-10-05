@@ -1,0 +1,5 @@
+#!/bin/sh
+# Sauvegarde automatique sur clé USB ou disque externe (Réglages › Sauvegarde), pour chaque compte :
+# le minuteur ne fait rien tant qu'aucun disque n'a été choisi.
+set -e
+systemctl --global enable samaos-sauvegarde.timer

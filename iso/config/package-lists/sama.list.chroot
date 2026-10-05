@@ -32,6 +32,8 @@ flatpak
 unattended-upgrades
 # Data consommée jour par jour, gardée d'un allumage à l'autre (carte Data, Réglages › Data)
 vnstat
+# Sauvegarde sur clé USB ou disque externe (Réglages › Sauvegarde)
+rsync
 
 # Installation sur disque (sera rebrandée aux couleurs de Sama)
 calamares

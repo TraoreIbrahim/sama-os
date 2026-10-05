@@ -1,0 +1,10 @@
+# Toutes les 10 minutes : la sauvegarde ne se fait que si elle est due (heure, jour ou semaine) et le disque branché.
+[Unit]
+Description=Sauvegarde de vos documents (Sama)
+
+[Timer]
+OnStartupSec=3min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target
