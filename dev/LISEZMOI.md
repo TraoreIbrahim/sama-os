@@ -20,7 +20,14 @@ scripts/mode-direct.sh connecter 192.168.64.5
 scripts/mode-direct.sh envoyer       # envoie les changements et recharge le bureau
 scripts/mode-direct.sh natte         # recrée la Natte et les cartes du bureau
 scripts/mode-direct.sh capture       # capture d'écran dans sortie/captures/
+scripts/mode-direct.sh rattraper     # met une VM démarrée sur une ancienne ISO au niveau du projet
+scripts/mode-direct.sh installateur  # envoie les pages de l'installateur et le relance
+scripts/mode-direct.sh installateur essai   # idem, avec une installation factice (pauses, aucun disque touché)
 ```
+
+En mode « essai », « Installer maintenant » ne fait que deux pauses de 20 secondes : on peut parcourir
+toutes les pages jusqu'à « Sama est installé » sans risque. Sans « essai », c'est le vrai installateur :
+ne jamais cliquer « Installer maintenant » dans la VM de développement (le disque serait effacé).
 
 ## Sécurité
 

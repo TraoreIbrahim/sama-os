@@ -10,23 +10,29 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 
 | Élément | État |
 |---|---|
-| Identité système (`Sama OS 0.1`, `ID=samaos`, `ID_LIKE=debian`) | fait |
-| Fonds d'écran Aube et Nuit, logo de l'éléphant | fait |
-| Palettes de couleurs Sama Clair et Sama Sombre | fait |
-| Barre flottante en bas (première approximation de la Natte) | fait, avec les composants standards de Plasma |
-| Espaces Travail, École, Maison (activités Plasma) créés au premier démarrage | fait |
-| Langues : français par défaut, anglais, swahili ; police Andika pour l'apprentissage | fait |
-| Écran de connexion avec le fond Sama | fait |
-| La Natte maison (widget QML) | squelette expérimental, installé mais pas encore dans la disposition par défaut |
-| Installateur aux couleurs de Sama (Calamares) | à faire : il garde l'apparence Debian |
-| Écran de démarrage (GRUB, Plymouth) aux couleurs de Sama | à faire |
-| Suite Sama (Griot, Sugu, Sama Docs, Sama Sheet…) | à faire : des logiciels provisoires les remplacent (Chromium, LibreOffice, Discover) |
+| Identité système (`Sama OS 0.1`, `ID=samaos`, `ID_LIKE=debian`), logo de l'éléphant, fonds Aube et Nuit | fait |
+| Thème clair et sombre : couleurs, icônes, fenêtres (style Kvantum Sama), menus, bascule en direct | fait |
+| Démarrage : menu (GRUB) et écran animé (la trompe de l'éléphant) | fait |
+| Écran de connexion, verrouillage, extinction, changement d'utilisateur | fait |
+| La Natte : la Cour (applications et recherche), les Espaces, le Pouls (centre de contrôle et notifications) | fait |
+| Bureau : cartes Heure, Data, Météo, Agenda ; vue des Espaces (Méta+Tab), transition entre Espaces | fait |
+| Réglages Sama : réseau, Bluetooth, affichage, Bureau et Natte, notifications, son, langue et clavier, comptes, confidentialité, data et mises à jour, énergie, imprimantes, sauvegarde, accessibilité, à propos | fait (Organisation : à venir) |
+| Fenêtre « Autorisation requise » de Sama (à la place de celle de KDE) | fait |
+| Installateur aux couleurs de Sama (Calamares, pages en QML d'après la maquette) | fait |
+| Accueil du premier démarrage : Espaces, puis réglages pour bien démarrer | fait |
+| Data : suivi du forfait au mois (vnstat), alertes à 80 % et 100 % | fait |
+| Mises à jour la nuit (sur secteur, hors forfait) | fait |
+| Sauvegarde sur clé USB ou disque externe | fait (Sama Grenier, le nuage : à venir) |
+| Session invitée | fait |
+| Suite Sama (Griot, Sugu, Sama Docs, Fichiers…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, LibreOffice, Discover, Dolphin) |
 
 ## Arborescence
 
 ```
 branding/            Identité visuelle : logo, fonds d'écran, palette (source unique)
-natte/               La Natte, barre de navigation de Sama (widget Plasma en QML)
+natte/               La Natte, barre de navigation de Sama : la Cour, les Espaces, le Pouls (widgets Plasma en QML)
+bureau/              Cartes du bureau : Heure, Data, Météo, Agenda (widgets Plasma en QML)
+dev/                 Mode direct : voir les changements dans une machine virtuelle sans reconstruire l'ISO
 iso/                 Configuration live-build de l'ISO
   auto/              Scripts config / build / clean de live-build
   config/package-lists/   Liste des paquets installés
@@ -59,7 +65,7 @@ Session live : utilisateur `sama`, sans mot de passe à la connexion automatique
 
 ## Prochaines étapes
 
-1. Construire et tester la première ISO, corriger ce qui ne démarre pas.
-2. Tester la Natte maison et la mettre dans la disposition par défaut.
-3. Habiller l'installateur, GRUB et l'écran de démarrage.
+1. Construire et tester l'ISO avec tout ce qui précède (paquets ajoutés : unattended-upgrades, vnstat, rsync).
+2. Applications de la suite Sama, à commencer par Fichiers.
+3. Natte sur les côtés de l'écran, Sama Grenier, partage des mises à jour en réseau local.
 4. Préparer la forge, la chaîne de construction automatique et les dépôts souverains.
