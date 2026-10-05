@@ -11,6 +11,8 @@ ColumnLayout {
     spacing: 0
     property var elements: []
     property bool confirmer: false
+    onConfirmerChanged: fenetre.dialogue = confirmer
+    Component.onDestruction: fenetre.dialogue = false
     readonly property real total: elements.reduce(function (t, e) { return t + e.taille }, 0)
 
     Commande { id: commande }
@@ -70,41 +72,6 @@ ColumnLayout {
             }
         }
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Couleurs.ligne }
-    }
-
-    // Confirmation
-    Rectangle {
-        visible: vue.confirmer
-        Layout.fillWidth: true
-        Layout.margins: 20
-        Layout.bottomMargin: 0
-        Layout.preferredHeight: 64
-        radius: 14
-        color: Qt.rgba(163 / 255, 50 / 255, 42 / 255, Couleurs.sombre ? 0.2 : 0.09)
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 16
-            anchors.rightMargin: 14
-            spacing: 12
-            Picto { trace: "M12 4l9 16H3z M12 10v4 M12 17h.01"; encre: "#A3322A" }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-                Text {
-                    text: "Supprimer définitivement " + (vue.elements.length > 1 ? "ces " + vue.elements.length + " éléments" : "cet élément") + " ?"
-                    font.pixelSize: 14; font.weight: Font.DemiBold; color: "#A3322A"
-                }
-                Text { text: "Cette action est irréversible. " + Types.taille(vue.total) + " seront libérés."; font.pixelSize: 12; color: Couleurs.texte2 }
-            }
-            BoutonSama { text: "Annuler"; onClicked: vue.confirmer = false }
-            QQC2.AbstractButton {
-                implicitHeight: 30
-                implicitWidth: 70
-                onClicked: { vue.confirmer = false; commande.lancer(fenetre.moteur + "vider", function () { vue.relire() }) }
-                background: Rectangle { radius: 15; color: "#A3322A"; opacity: parent.down ? 0.85 : 1 }
-                contentItem: Text { text: "Vider"; font.pixelSize: 13; font.weight: Font.DemiBold; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-            }
-        }
     }
 
     ListView {
@@ -198,6 +165,105 @@ ColumnLayout {
             text: vue.elements.length + (vue.elements.length > 1 ? " éléments" : " élément") + (vue.elements.length ? " · " + Types.taille(vue.total) : "")
             font.pixelSize: 11
             color: Couleurs.texte3
+        }
+    }
+    // ——— Confirmation : fenêtre posée au centre, sur un voile ———
+    function vider() {
+        confirmer = false
+        commande.lancer(fenetre.moteur + "vider", function () { vue.relire() })
+    }
+    Item {
+        id: voile
+        parent: fenetre.contentItem
+        anchors.fill: parent
+        z: 60
+        visible: opacity > 0
+        opacity: vue.confirmer ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+        // Échap : annuler (le raccourci Échap de la fenêtre est suspendu pendant ce temps)
+        Shortcut { sequence: "Escape"; enabled: vue.confirmer; onActivated: vue.confirmer = false }
+
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.45 : 0.28)
+            // Clic à côté de la carte : annuler
+            MouseArea { anchors.fill: parent; onClicked: vue.confirmer = false }
+        }
+
+        Rectangle {
+            id: carteConfirmation
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 60, 420)
+            height: contenuConfirmation.implicitHeight + 56
+            radius: 20
+            color: Couleurs.fond
+            border.width: 1
+            border.color: Couleurs.bord
+            scale: vue.confirmer ? 1 : 0.96
+            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+            MouseArea { anchors.fill: parent }      // (les clics sur la carte ne la ferment pas)
+
+            ColumnLayout {
+                id: contenuConfirmation
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 28
+                spacing: 0
+
+                Rectangle {
+                    Layout.preferredWidth: 52
+                    Layout.preferredHeight: 52
+                    radius: 16
+                    color: Qt.rgba(163 / 255, 50 / 255, 42 / 255, Couleurs.sombre ? 0.25 : 0.1)
+                    Picto {
+                        anchors.centerIn: parent
+                        taillePicto: 24
+                        trace: "M5 7h14 M10 7V5h4v2 M7 7l1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12 M10 11v6 M14 11v6"
+                        encre: "#A3322A"
+                    }
+                }
+                Text {
+                    Layout.topMargin: 18
+                    text: "Vider la corbeille ?"
+                    font.pixelSize: 20
+                    font.weight: Font.Medium
+                    color: Couleurs.texte
+                }
+                Text {
+                    Layout.topMargin: 8
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.2
+                    text: (vue.elements.length > 1 ? "Les " + vue.elements.length + " éléments de la corbeille seront supprimés"
+                                                   : "L'élément de la corbeille sera supprimé")
+                          + " définitivement, sans retour possible. " + Types.taille(vue.total) + " seront libérés sur le disque."
+                    font.pixelSize: 14
+                    color: Couleurs.texte2
+                }
+                RowLayout {
+                    Layout.topMargin: 26
+                    Layout.alignment: Qt.AlignRight
+                    spacing: 10
+                    BoutonSama { text: "Annuler"; implicitHeight: 38; onClicked: vue.confirmer = false }
+                    QQC2.AbstractButton {
+                        implicitHeight: 38
+                        implicitWidth: libelleVider.implicitWidth + 40
+                        hoverEnabled: true
+                        onClicked: vue.vider()
+                        background: Rectangle { radius: 19; color: "#A3322A"; opacity: parent.down ? 0.85 : (parent.hovered ? 0.93 : 1) }
+                        contentItem: Text {
+                            id: libelleVider
+                            text: "Vider la corbeille"
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                            color: "#FFFFFF"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -46,6 +46,7 @@ Window {
     property var presse: ({ operation: "", chemins: [] })
     property var appareils: []
     property string renommage: ""            // chemin en cours de renommage
+    property bool dialogue: false            // une fenêtre de confirmation est ouverte (Échap lui revient)
 
     readonly property string titreDossier: {
         var f = favoris.filter(function (x) { return x.chemin === dossier })
@@ -188,7 +189,7 @@ Window {
     Shortcut { sequences: ["Alt+Up", "Backspace"]; enabled: fenetre.renommage === ""; onActivated: fenetre.remonter() }
     Shortcut { sequence: "Ctrl+Shift+N"; onActivated: fenetre.nouveauDossier() }
     Shortcut { sequence: "Ctrl+H"; onActivated: fenetre.caches = !fenetre.caches }
-    Shortcut { sequence: "Escape"; onActivated: { if (fenetre.renommage) fenetre.renommage = ""; else fenetre.selection = [] } }
+    Shortcut { sequence: "Escape"; enabled: !fenetre.dialogue; onActivated: { if (fenetre.renommage) fenetre.renommage = ""; else fenetre.selection = [] } }
 
     RowLayout {
         anchors.fill: parent
