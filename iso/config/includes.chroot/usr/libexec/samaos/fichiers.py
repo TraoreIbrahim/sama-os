@@ -12,6 +12,10 @@
   fichiers.py renommer CHEMIN NOM         renomme (refuse d'écraser)
   fichiers.py nouveau-dossier DOSSIER     crée « Nouveau dossier » (numéroté s'il existe), affiche son chemin
   fichiers.py recents                     JSON : fichiers ouverts récemment (toutes applications)
+  fichiers.py ouvrir CHEMIN               ouvre dans l'application par défaut (code 3 : aucune)
+  fichiers.py applis CHEMIN               JSON : applications qui ouvrent ce type de fichier (par défaut en premier)
+  fichiers.py ouvrir-avec APPLI CHEMIN [toujours]   ouvre avec cette application (« toujours » : par défaut)
+  fichiers.py vignette CHEMIN             chemin de l'aperçu (PDF : première page, vidéo : une image), créé au besoin
   fichiers.py chercher DOSSIER TEXTE      JSON : éléments du dossier et de ses sous-dossiers dont le nom contient tous
                                           les mots du texte (sans tenir compte des accents ni des majuscules)
   fichiers.py analyser PÉRIPHÉRIQUE       JSON : clé montée au besoin, espace utilisé, nombre de photos, documents…
@@ -56,7 +60,11 @@ APPLIS_SAMA = {
     "libreoffice-impress.desktop": "samaos-presentations.desktop", "org.kde.gwenview.desktop": "samaos-photos.desktop",
     "chromium.desktop": "samaos-griot.desktop",
 }
-DOSSIERS_APPLIS = ["/usr/share/applications", os.path.expanduser("~/.local/share/applications")]
+# (dans l'ordre de priorité : personnel, puis copies renommées par Sama, puis paquets)
+DOSSIERS_APPLIS = [os.path.expanduser("~/.local/share/applications"), "/usr/local/share/applications", "/usr/share/applications"]
+# Tuiles Sama des logiciels provisoires (leur copie masquée garde l'icône d'origine)
+ICONES_SAMA = {"samaos-docs.desktop": "docs", "samaos-sheet.desktop": "sheet", "samaos-presentations.desktop": "presentations",
+               "samaos-photos.desktop": "photos", "samaos-griot.desktop": "griot"}
 
 
 def sortie(objet):
@@ -105,6 +113,8 @@ def appli_par_defaut(chemin):
         return mime, "", ""
     appli = APPLIS_SAMA.get(appli, appli)
     nom, icone = entree_desktop(appli)
+    if appli in ICONES_SAMA:
+        icone = "/usr/share/samaos/icones/%s.svg" % ICONES_SAMA[appli]
     return mime, nom, icone
 
 
@@ -355,6 +365,173 @@ def recents():
 
 
 # ——— Copie et déplacement, avec avancement et conflits ———
+
+# ——— Ouvrir avec… ———
+
+def lire_desktop(chemin):
+    infos, dans = {}, False
+    for ligne in open(chemin, encoding="utf-8", errors="replace"):
+        ligne = ligne.strip()
+        if ligne.startswith("["):
+            dans = ligne == "[Desktop Entry]"
+        elif dans and "=" in ligne:
+            cle, valeur = ligne.split("=", 1)
+            infos.setdefault(cle, valeur)
+    return infos
+
+
+def types_parents(mime):
+    """Le type et ceux dont il dérive (text/x-python → text/plain) : leurs applications conviennent aussi."""
+    parents = {}
+    for f in ("/usr/share/mime/subclasses", os.path.expanduser("~/.local/share/mime/subclasses")):
+        try:
+            for ligne in open(f):
+                enfant, parent = ligne.split()
+                parents.setdefault(enfant, []).append(parent)
+        except (OSError, ValueError):
+            pass
+    resultat, a_voir = [], [mime]
+    while a_voir:
+        t = a_voir.pop(0)
+        if t not in resultat:
+            resultat.append(t)
+            a_voir += parents.get(t, [])
+    return resultat
+
+
+def applis(chemin):
+    mime = subprocess.run(["xdg-mime", "query", "filetype", chemin], capture_output=True, text=True).stdout.strip()
+    defaut = subprocess.run(["xdg-mime", "query", "default", mime], capture_output=True, text=True).stdout.strip()
+    # Types parents (text/x-python → text/plain), sauf « c'est un zip » ou « c'est du XML » : un .xlsx ne
+    # s'ouvre pas dans le gestionnaire d'archives
+    types = [t for t in types_parents(mime) if t == mime or t not in ("application/zip", "application/xml", "text/xml")]
+    entrees, vues = [], set()
+    for dossier in DOSSIERS_APPLIS:
+        if not os.path.isdir(dossier):
+            continue
+        for f in sorted(os.listdir(dossier)):
+            if f.endswith(".desktop") and f not in vues:
+                vues.add(f)      # (une copie de priorité plus haute masque l'original)
+                try:
+                    d = lire_desktop(os.path.join(dossier, f))
+                except OSError:
+                    continue
+                if d.get("Type") == "Application" and d.get("Hidden") != "true":
+                    entrees.append((f, d))
+
+    def programme(d):
+        return os.path.basename((d.get("Exec", "").split() or [""])[0])
+    # Applications visibles, par programme : un gestionnaire masqué (okularApplication_pdf…) prend leur nom et leur icône
+    # (seulement si une seule application visible lance ce programme : toutes celles de LibreOffice lancent « libreoffice »)
+    compte = {}
+    for f, d in entrees:
+        if d.get("NoDisplay") != "true":
+            compte[programme(d)] = compte.get(programme(d), 0) + 1
+    visibles = {programme(d): (f, d) for f, d in entrees if d.get("NoDisplay") != "true" and compte[programme(d)] == 1}
+
+    res, noms = [], set()
+    def ajouter(f, d):
+        sama = APPLIS_SAMA.get(f)
+        if d.get("NoDisplay") == "true" and not sama:
+            if mime.startswith("text/") and f != defaut:
+                return       # (le lecteur PDF sait afficher du texte, mais personne ne l'y cherche)
+            if programme(d) in visibles:
+                d = visibles[programme(d)][1]
+            elif f != defaut:
+                return       # (outils techniques masqués par Sama, aides internes de KDE…)
+        nom, icone = d.get("Name[fr]") or d.get("Name", f), d.get("Icon", "")
+        if sama:
+            nom, icone = entree_desktop(sama)[0] or nom, "/usr/share/samaos/icones/%s.svg" % ICONES_SAMA.get(sama, "")
+        if nom in noms or f == "samaos-fichiers.desktop":
+            return
+        noms.add(nom)
+        res.append({"id": f, "nom": nom, "icone": icone, "defaut": f == defaut})
+    # L'application par défaut d'abord (même si elle ne déclare pas ce type elle-même)
+    for f, d in entrees:
+        if f == defaut:
+            ajouter(f, d)
+    for f, d in entrees:
+        if f != defaut and any(t in [x for x in d.get("MimeType", "").split(";") if x] for t in types):
+            ajouter(f, d)
+    res[1:] = sorted(res[1:], key=lambda a: a["nom"].lower())
+    libelle, _ = famille(os.path.basename(chemin))
+    sortie({"mime": mime, "type": libelle, "extension": os.path.splitext(chemin)[1].lstrip(".").lower(), "applis": res})
+
+
+def fichier_desktop(appli):
+    return next((os.path.join(d, appli) for d in DOSSIERS_APPLIS if os.path.isfile(os.path.join(d, appli))), None)
+
+
+def ouvrir(chemin):
+    """Ouvre le fichier dans son application par défaut ; code 3 s'il n'y en a pas (Fichiers propose alors le choix)."""
+    mime = subprocess.run(["xdg-mime", "query", "filetype", chemin], capture_output=True, text=True).stdout.strip()
+    defaut = subprocess.run(["xdg-mime", "query", "default", mime], capture_output=True, text=True).stdout.strip()
+    fichier = fichier_desktop(defaut) if defaut else None
+    if not fichier:
+        return 3
+    subprocess.Popen(["gio", "launch", fichier, chemin], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    return 0
+
+
+def ouvrir_avec(appli, chemin, toujours=False):
+    if toujours:
+        mime = subprocess.run(["xdg-mime", "query", "filetype", chemin], capture_output=True, text=True).stdout.strip()
+        subprocess.run(["xdg-mime", "default", appli, mime], check=False)
+    fichier = fichier_desktop(appli)
+    if not fichier:
+        return 1
+    subprocess.Popen(["gio", "launch", fichier, chemin], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    return 0
+
+
+# ——— Aperçus (cache des miniatures de freedesktop, partagé avec les autres applications) ———
+
+def vignette(chemin):
+    import hashlib
+    adresse = "file://" + urllib.parse.quote(os.path.abspath(chemin))
+    cache = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "thumbnails", "large")
+    cible = os.path.join(cache, hashlib.md5(adresse.encode()).hexdigest() + ".png")
+    # (un échec est noté à part, comme le veut la norme : un PDF abîmé n'est pas relu à chaque passage)
+    echec = os.path.join(os.path.dirname(cache), "fail", "samaos-fichiers", os.path.basename(cible))
+    try:
+        if os.path.getmtime(cible) >= os.path.getmtime(chemin):
+            print(cible)
+            return 0
+    except OSError:
+        pass
+    try:
+        if os.path.getmtime(echec) >= os.path.getmtime(chemin):
+            return 1
+    except OSError:
+        pass
+    os.makedirs(cache, exist_ok=True)
+    fam = famille(os.path.basename(chemin))[1]
+    temporaire = cible + ".%d" % os.getpid()
+    try:
+        if fam == "pdf":
+            r = subprocess.run(["pdftoppm", "-png", "-f", "1", "-l", "1", "-singlefile", "-scale-to", "256", chemin, temporaire],
+                               capture_output=True, timeout=20)
+            temporaire += ".png"
+        elif fam == "video":
+            r = subprocess.run(["ffmpegthumbnailer", "-i", chemin, "-o", temporaire, "-s", "256", "-c", "png", "-t", "15%"],
+                               capture_output=True, timeout=20)
+        else:
+            return 1
+        reussi = r.returncode == 0 and os.path.isfile(temporaire)
+    except (OSError, subprocess.SubprocessError):
+        reussi = False
+    if not reussi:
+        try:
+            os.makedirs(os.path.dirname(echec), exist_ok=True)
+            open(echec, "w").close()
+            os.remove(temporaire)
+        except OSError:
+            pass
+        return 1
+    os.replace(temporaire, cible)
+    print(cible)
+    return 0
+
 
 # ——— Recherche par nom ———
 
@@ -651,6 +828,14 @@ if __name__ == "__main__":
         code = nouveau_dossier(a[1])
     elif action == "recents":
         recents()
+    elif action == "applis" and len(a) > 1:
+        applis(a[1])
+    elif action == "ouvrir" and len(a) > 1:
+        code = ouvrir(a[1])
+    elif action == "ouvrir-avec" and len(a) > 2:
+        code = ouvrir_avec(a[1], a[2], len(a) > 3 and a[3] == "toujours")
+    elif action == "vignette" and len(a) > 1:
+        code = vignette(a[1])
     elif action == "chercher" and len(a) > 2:
         chercher(a[1], " ".join(a[2:]))
     elif action == "analyser" and len(a) > 1:

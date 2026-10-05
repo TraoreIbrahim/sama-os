@@ -46,7 +46,7 @@ masquer chromium libreoffice-writer libreoffice-calc libreoffice-impress \
 
 # Outils techniques, doublons et utilitaires réservés aux experts
 masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.kwalletmanager \
-	org.kde.konqueror konqbrowser org.kde.kfind org.kde.kwrite org.kde.kate org.kde.kinfocenter \
+	org.kde.konqueror konqbrowser org.kde.kfind org.kde.kate org.kde.kinfocenter \
 	system-config-printer org.kde.partitionmanager org.kde.kdeconnect.app org.kde.kdeconnect.sms \
 	org.kde.kdeconnect-settings org.kde.kdeconnect.nonplasma libreoffice-draw libreoffice-math \
 	libreoffice-startcenter libreoffice-xsltfilter org.kde.kcolorschemeeditor org.kde.kfontview \
@@ -61,3 +61,5 @@ renommer org.kde.okular "Lecteur PDF" pdf
 renommer org.kde.ark "Archives" archives
 renommer org.kde.plasma-systemmonitor "Moniteur système" moniteur
 renommer org.kde.spectacle "Capture d'écran" capture
+renommer org.kde.haruna "Lecteur vidéo" lecteur
+renommer org.kde.kwrite "Éditeur de texte" editeur

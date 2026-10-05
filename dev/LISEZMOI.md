@@ -44,3 +44,13 @@ jamais dans les ISO destinées aux utilisateurs.
 scripts/mode-direct.sh commande 'sudo apt-get install -y python3-evdev; cat > /tmp/entrees.py' < dev/entrees.py
 scripts/mode-direct.sh commande 'sudo python3 /tmp/entrees.py clic 993 1041 -- taper Boutique -- touche entree'
 ```
+
+## Fenêtres X11 toutes noires
+
+Après de longues heures et plusieurs mises en veille de l'écran, XWayland peut ne plus afficher que du noir dans
+la machine virtuelle (Calamares, LibreOffice sans `libreoffice-kf6`, toute application lancée en X11). KWin le
+relance aussitôt qu'on l'arrête (les applications X11 ouvertes se ferment) :
+
+```bash
+scripts/mode-direct.sh commande 'kill $(pgrep -x Xwayland)'
+```

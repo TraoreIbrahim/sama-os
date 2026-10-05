@@ -111,7 +111,7 @@ rattraper)
 	# Une VM live repart de son ISO à chaque démarrage : on lui redonne tout ce que la prochaine ISO contiendra.
 	inclus="$racine/iso/config/includes.chroot"
 	echo "1/5 Paquets légers ajoutés depuis l'ISO (style Kvantum, lanceur QML des Réglages, mises à jour la nuit, suivi de la data)…"
-	vm 'sudo apt-get install -y -q --no-install-recommends qt6-style-kvantum qml-qt6 unattended-upgrades vnstat rsync >/dev/null 2>&1 || echo "  (paquets non installés : pas de réseau ?)"'
+	vm 'sudo apt-get install -y -q --no-install-recommends qt6-style-kvantum qml-qt6 unattended-upgrades vnstat rsync poppler-utils ffmpegthumbnailer haruna libreoffice-kf6 libreoffice-l10n-fr hunspell-fr hyphen-fr >/dev/null 2>&1 || echo "  (paquets non installés : pas de réseau ?)"'
 	echo "2/5 Fichiers système de Sama (2 Mo)…"
 	tar --no-xattrs -C "$inclus" -czf - . | vm 'sudo tar -xzf - -C / --no-same-owner --no-overwrite-dir 2>/dev/null; sudo chmod +x /usr/libexec/samaos/*.sh /usr/libexec/samaos/*.py /usr/bin/sama-reglages 2>/dev/null; true'
 	echo "3/5 Ce que font les scripts de construction de l'ISO…"

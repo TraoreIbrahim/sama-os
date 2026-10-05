@@ -1,6 +1,22 @@
 # Applications par défaut de Sama : les dossiers s'ouvrent dans Fichiers, les PDF dans le lecteur de documents,
-# le texte brut dans l'éditeur de texte (et non dans le traitement de texte).
+# le texte brut dans l'éditeur de texte (et non dans le traitement de texte), vidéos et musique dans le lecteur.
 [Default Applications]
 inode/directory=samaos-fichiers.desktop
 application/pdf=org.kde.okular.desktop
-text/plain=org.kde.kate.desktop
+text/plain=org.kde.kwrite.desktop
+video/mp4=org.kde.haruna.desktop
+video/x-matroska=org.kde.haruna.desktop
+video/webm=org.kde.haruna.desktop
+video/x-msvideo=org.kde.haruna.desktop
+video/quicktime=org.kde.haruna.desktop
+video/3gpp=org.kde.haruna.desktop
+video/mpeg=org.kde.haruna.desktop
+video/ogg=org.kde.haruna.desktop
+audio/mpeg=org.kde.haruna.desktop
+audio/ogg=org.kde.haruna.desktop
+audio/x-wav=org.kde.haruna.desktop
+audio/flac=org.kde.haruna.desktop
+audio/mp4=org.kde.haruna.desktop
+audio/aac=org.kde.haruna.desktop
+audio/x-opus+ogg=org.kde.haruna.desktop
+audio/x-m4a=org.kde.haruna.desktop

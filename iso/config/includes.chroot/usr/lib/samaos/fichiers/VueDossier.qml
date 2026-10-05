@@ -110,24 +110,24 @@ ColumnLayout {
         vueActive.positionViewAtIndex(i, fenetre.vue === "grille" ? GridView.Contain : ListView.Contain)
     }
     readonly property int colonnes: Math.max(1, Math.floor(grille.width / grille.cellWidth))
-    Shortcut { sequence: "Right"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(1) }
-    Shortcut { sequence: "Left"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(-1) }
-    Shortcut { sequence: "Down"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(fenetre.vue === "grille" ? vue.colonnes : 1) }
-    Shortcut { sequence: "Up"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(fenetre.vue === "grille" ? -vue.colonnes : -1) }
-    Shortcut { sequence: "Home"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(-vue.nombre) }
-    Shortcut { sequence: "End"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(vue.nombre) }
+    Shortcut { sequence: "Right"; enabled: fenetre.clavierLibre; onActivated: vue.deplacer(1) }
+    Shortcut { sequence: "Left"; enabled: fenetre.clavierLibre; onActivated: vue.deplacer(-1) }
+    Shortcut { sequence: "Down"; enabled: fenetre.clavierLibre; onActivated: vue.deplacer(fenetre.vue === "grille" ? vue.colonnes : 1) }
+    Shortcut { sequence: "Up"; enabled: fenetre.clavierLibre; onActivated: vue.deplacer(fenetre.vue === "grille" ? -vue.colonnes : -1) }
+    Shortcut { sequence: "Home"; enabled: fenetre.clavierLibre; onActivated: vue.deplacer(-vue.nombre) }
+    Shortcut { sequence: "End"; enabled: fenetre.clavierLibre; onActivated: vue.deplacer(vue.nombre) }
     Shortcut {
         sequences: ["Return", "Enter"]
-        enabled: fenetre.renommage === "" && !fenetre.saisieActive && fenetre.selection.length === 1
+        enabled: fenetre.clavierLibre && fenetre.selection.length === 1
         onActivated: { var i = vue.courant; fenetre.ouvrir(fenetre.selection[0], i >= 0 && vue.cheminA(i) === fenetre.selection[0] ? vue.estDossierA(i) : false) }
     }
     Connections { target: fenetre; function onDossierChanged() { vue.courant = -1; vue.ancre = -1 } }
-    Shortcut { sequences: [StandardKey.Find, "Ctrl+F"]; onActivated: champRecherche.saisie.forceActiveFocus() }
+    Shortcut { sequences: [StandardKey.Find, "Ctrl+F"]; enabled: !fenetre.dialogue; onActivated: champRecherche.saisie.forceActiveFocus() }
     // Taper des lettres dans la vue lance la recherche
     focus: true
     Component.onCompleted: forceActiveFocus()
     Keys.onPressed: touche => {
-        if (fenetre.renommage || !touche.text || touche.text.trim() === "" || (touche.modifiers & (Qt.ControlModifier | Qt.AltModifier))) return
+        if (fenetre.renommage || fenetre.dialogue || !touche.text || touche.text.trim() === "" || (touche.modifiers & (Qt.ControlModifier | Qt.AltModifier))) return
         fenetre.recherche += touche.text
         champRecherche.saisie.forceActiveFocus()
         touche.accepted = true
@@ -501,6 +501,7 @@ ColumnLayout {
                         nom: tuile.el.nom
                         dossier: tuile.el.dossier
                         apercu: tuile.el.adresse
+                        chemin: tuile.el.dossier ? "" : tuile.el.chemin
                         opacity: tuile.coupe ? 0.45 : 1
                     }
                     Text {
@@ -685,6 +686,8 @@ ColumnLayout {
         property bool estDossier: false
         property string chemin: ""
         QQC2.MenuItem { text: "Ouvrir"; onTriggered: fenetre.ouvrir(menuElement.chemin, menuElement.estDossier) }
+        QQC2.MenuItem { text: "Ouvrir avec…"; visible: !menuElement.estDossier; height: visible ? implicitHeight : 0
+                        onTriggered: fenetre.ouvrirAvec(menuElement.chemin) }
         QQC2.MenuSeparator {}
         QQC2.MenuItem { text: "Couper"; onTriggered: fenetre.copier(true) }
         QQC2.MenuItem { text: "Copier"; onTriggered: fenetre.copier(false) }

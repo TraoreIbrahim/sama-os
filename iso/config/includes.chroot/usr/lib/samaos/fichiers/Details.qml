@@ -21,6 +21,7 @@ Item {
         function onCountChanged() { if (details.cible === fenetre.dossier) relecture.restart() }
     }
     Timer { id: relecture; interval: 300; onTriggered: details.lire() }
+    Connections { target: fenetre; function onAssociationsChangees() { details.lire() } }
     function lire() {
         info = null
         if (!cible) return
@@ -65,10 +66,20 @@ Item {
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
             }
+            // PDF : la première page ; vidéo : une image du film
+            IconeFichier {
+                id: apercuDetails
+                anchors.centerIn: parent
+                visible: !details.plusieurs && (pagePrete || filmPret)
+                width: famille === "video" ? 170 : 100
+                height: 100
+                nom: details.info ? details.info.nom : ""
+                chemin: details.info && !details.estDossier && !details.plusieurs ? details.info.chemin : ""
+            }
             // Tuile de l'application qui ouvre le fichier (comme dans la Natte), sinon l'icône du fichier
             Image {
                 anchors.centerIn: parent
-                visible: !vignette.visible && !details.plusieurs && source != ""
+                visible: !vignette.visible && !apercuDetails.visible && !details.plusieurs && source != ""
                 width: 64
                 height: 64
                 sourceSize.width: 128
@@ -77,7 +88,8 @@ Item {
             }
             IconeFichier {
                 anchors.centerIn: parent
-                visible: !vignette.visible && (details.plusieurs || !(details.info && details.info.icone && details.info.icone.indexOf("/") === 0))
+                visible: !vignette.visible && !apercuDetails.visible
+                         && (details.plusieurs || !(details.info && details.info.icone && details.info.icone.indexOf("/") === 0))
                 width: 64
                 height: 64
                 nom: details.plusieurs ? "" : (details.info ? details.info.nom : "")
@@ -124,6 +136,25 @@ Item {
             principal: true
             text: details.estDossier ? "Ouvrir" : (details.info && details.info.appli ? "Ouvrir avec " + details.info.appli : "Ouvrir")
             onClicked: fenetre.ouvrir(details.info.chemin, details.estDossier)
+        }
+        // Une autre application
+        QQC2.AbstractButton {
+            id: autreAppli
+            visible: fenetre.selection.length === 1 && details.info !== null && !details.estDossier
+            Layout.topMargin: 4
+            Layout.fillWidth: true
+            implicitHeight: 28
+            hoverEnabled: true
+            onClicked: fenetre.ouvrirAvec(details.info.chemin)
+            contentItem: Text {
+                text: "Ouvrir avec une autre application…"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                font.pixelSize: 12
+                font.underline: autreAppli.hovered
+                color: Couleurs.lateriteEncre
+            }
+            background: Item {}
         }
         // « Supprimer » : à la corbeille (30 jours pour changer d'avis)
         QQC2.AbstractButton {

@@ -48,6 +48,7 @@ Window {
     property string renommage: ""            // chemin en cours de renommage
     property bool dialogue: false            // une fenêtre de confirmation est ouverte (Échap lui revient)
     property bool saisieActive: false        // on écrit dans le champ de recherche : les touches d'édition lui reviennent
+    readonly property bool clavierLibre: renommage === "" && !saisieActive && !dialogue
 
     // ——— Recherche dans le dossier et ses sous-dossiers (fichiers.py chercher) ———
     property string recherche: ""
@@ -103,10 +104,37 @@ Window {
     function suivant() { if (position < historique.length - 1) { position++; ouvrirDossier(historique[position], true) } }
     function remonter() { if (dossier !== "/") ouvrirDossier(dossier.substring(0, dossier.lastIndexOf("/")) || "/") }
 
-    // Ouvrir : un dossier s'ouvre ici, un fichier dans son application
+    // Ouvrir : un dossier s'ouvre ici, un fichier dans son application (s'il n'en a pas : « Ouvrir avec… »)
     function ouvrir(p, estDossier) {
         if (estDossier) ouvrirDossier(p)
-        else Qt.openUrlExternally(adresse(p))
+        else commande.lancer(moteur + "ouvrir " + commande.q(p), function (s, code) { if (code === 3) choixAppli.montrer(p) })
+    }
+    function ouvrirAvec(p) { choixAppli.montrer(p) }
+    signal associationsChangees()            // une application par défaut a changé (« Toujours ouvrir… »)
+
+    // ——— Aperçus des PDF et des vidéos (fichiers.py vignette : cache des miniatures partagé avec KDE) ———
+    // Deux à la fois, dans l'ordre où les icônes les demandent ; chemin → adresse de l'image ("" : pas d'aperçu)
+    property var apercus: ({})
+    property var apercusAFaire: []
+    property int apercusEnCours: 0
+    signal apercuPret(string chemin, string source)
+    function apercu(p) {
+        if (apercus[p] !== undefined) return apercus[p]
+        if (apercusAFaire.indexOf(p) < 0) { apercusAFaire.push(p); suiteApercus() }
+        return ""
+    }
+    function suiteApercus() {
+        while (apercusEnCours < 2 && apercusAFaire.length) creerApercu(apercusAFaire.shift())
+    }
+    function creerApercu(p) {
+        apercusEnCours++
+        commande.lancer(moteur + "vignette " + commande.q(p), function (s, code) {
+            var source = code === 0 && s.trim() ? "file://" + s.trim() : ""
+            fenetre.apercus[p] = source
+            fenetre.apercusEnCours--
+            fenetre.apercuPret(p, source)
+            fenetre.suiteApercus()
+        })
     }
     function choisir(p, mode) {
         if (mode === "ajout") {
@@ -198,17 +226,17 @@ Window {
     }
 
     // ——— Raccourcis clavier ———
-    Shortcut { sequences: [StandardKey.Copy]; enabled: !fenetre.saisieActive; onActivated: fenetre.copier(false) }
-    Shortcut { sequences: [StandardKey.Cut]; enabled: !fenetre.saisieActive; onActivated: fenetre.copier(true) }
-    Shortcut { sequences: [StandardKey.Paste]; enabled: !fenetre.saisieActive; onActivated: fenetre.coller() }
-    Shortcut { sequences: [StandardKey.Delete]; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: fenetre.jeter(fenetre.selection) }
-    Shortcut { sequence: "F2"; onActivated: if (fenetre.selection.length === 1) fenetre.renommage = fenetre.selection[0] }
-    Shortcut { sequences: [StandardKey.SelectAll]; enabled: fenetre.renommage === "" && !fenetre.saisieActive
+    Shortcut { sequences: [StandardKey.Copy]; enabled: !fenetre.saisieActive && !fenetre.dialogue; onActivated: fenetre.copier(false) }
+    Shortcut { sequences: [StandardKey.Cut]; enabled: !fenetre.saisieActive && !fenetre.dialogue; onActivated: fenetre.copier(true) }
+    Shortcut { sequences: [StandardKey.Paste]; enabled: !fenetre.saisieActive && !fenetre.dialogue; onActivated: fenetre.coller() }
+    Shortcut { sequences: [StandardKey.Delete]; enabled: fenetre.clavierLibre; onActivated: fenetre.jeter(fenetre.selection) }
+    Shortcut { sequence: "F2"; enabled: !fenetre.dialogue; onActivated: if (fenetre.selection.length === 1) fenetre.renommage = fenetre.selection[0] }
+    Shortcut { sequences: [StandardKey.SelectAll]; enabled: fenetre.clavierLibre
                onActivated: { var l = []; for (var i = 0; i < contenu.count; i++) l.push(contenu.get(i, "filePath")); fenetre.selection = l } }
     Shortcut { sequences: ["Alt+Left", StandardKey.Back]; onActivated: fenetre.precedent() }
     Shortcut { sequences: ["Alt+Right", StandardKey.Forward]; onActivated: fenetre.suivant() }
-    Shortcut { sequences: ["Alt+Up", "Backspace"]; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: fenetre.remonter() }
-    Shortcut { sequence: "Ctrl+Shift+N"; onActivated: fenetre.nouveauDossier() }
+    Shortcut { sequences: ["Alt+Up", "Backspace"]; enabled: fenetre.clavierLibre; onActivated: fenetre.remonter() }
+    Shortcut { sequence: "Ctrl+Shift+N"; enabled: !fenetre.dialogue; onActivated: fenetre.nouveauDossier() }
     Shortcut { sequence: "Ctrl+H"; onActivated: fenetre.caches = !fenetre.caches }
     Shortcut { sequence: "Escape"; enabled: !fenetre.dialogue
                onActivated: { if (fenetre.renommage) fenetre.renommage = ""; else if (fenetre.recherche) fenetre.recherche = ""; else fenetre.selection = [] } }
@@ -238,6 +266,8 @@ Window {
     Component { id: vueDossier; VueDossier {} }
     Component { id: vueCorbeille; VueCorbeille {} }
     Component { id: vueGrenier; VueGrenier {} }
+
+    OuvrirAvec { id: choixAppli }
 
     // Copies et déplacements en cours (en bas à droite), conflits
     CarteCopie {

@@ -7,8 +7,12 @@ plasma-nm
 plasma-pa
 # Accueil du premier démarrage (Bienvenue.qml)
 qml-qt6
-# Fichiers, l'explorateur de Sama (liste des dossiers en QML)
+# Fichiers, l'explorateur de Sama (liste des dossiers en QML, aperçus des PDF et des vidéos)
 qml6-module-qt-labs-folderlistmodel
+poppler-utils
+ffmpegthumbnailer
+# Lecteur vidéo et audio (provisoire, renommé « Lecteur vidéo »)
+haruna
 powerdevil
 kscreen
 bluedevil
@@ -26,6 +30,12 @@ chromium
 libreoffice-writer
 libreoffice-calc
 libreoffice-impress
+# LibreOffice en Wayland natif, avec les fenêtres de Plasma (sans lui : rendu X11, parfois noir sous XWayland),
+# en français, avec l'orthographe et la césure
+libreoffice-kf6
+libreoffice-l10n-fr
+hunspell-fr
+hyphen-fr
 plasma-discover
 plasma-discover-backend-flatpak
 flatpak

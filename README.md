@@ -24,7 +24,8 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Mises à jour la nuit (sur secteur, hors forfait) | fait |
 | Sauvegarde sur clé USB ou disque externe | fait (Sama Grenier, le nuage : à venir) |
 | Session invitée | fait |
-| Suite Sama (Griot, Sugu, Sama Docs, Fichiers…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, LibreOffice, Discover, Dolphin) |
+| Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |
+| Suite Sama (Griot, Sugu, Sama Docs…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, Discover, LibreOffice en français, Haruna, KWrite) |
 
 ## Arborescence
 
@@ -65,7 +66,8 @@ Session live : utilisateur `sama`, sans mot de passe à la connexion automatique
 
 ## Prochaines étapes
 
-1. Construire et tester l'ISO avec tout ce qui précède (paquets ajoutés : unattended-upgrades, vnstat, rsync).
-2. Applications de la suite Sama, à commencer par Fichiers.
+1. Construire et tester l'ISO avec tout ce qui précède (paquets ajoutés : unattended-upgrades, vnstat, rsync, poppler-utils,
+   ffmpegthumbnailer, haruna, libreoffice-kf6, libreoffice-l10n-fr, hunspell-fr, hyphen-fr).
+2. Applications de la suite Sama après Fichiers.
 3. Natte sur les côtés de l'écran, Sama Grenier, partage des mises à jour en réseau local.
 4. Préparer la forge, la chaîne de construction automatique et les dépôts souverains.
