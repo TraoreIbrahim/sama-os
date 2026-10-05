@@ -7,7 +7,9 @@
 	sans_mot_de_passe=false
 	grep -qw 'boot=live' /proc/cmdline && sans_mot_de_passe=true
 	[ "$(id -un)" = sama-invite ] && sans_mot_de_passe=true
-	grep -qs "^User=$(id -un)$" /etc/sddm.conf.d/60-sama-connexion-auto.conf && sans_mot_de_passe=true
+	# (connexion automatique choisie à l'installation : /etc/sddm.conf ; dans Réglages : sddm.conf.d)
+	sed -n '/^\[Autologin\]/,/^\[/s/^User=//p' /etc/sddm.conf.d/60-sama-connexion-auto.conf /etc/sddm.conf 2>/dev/null \
+		| grep -qx "$(id -un)" && sans_mot_de_passe=true
 	if [ "$sans_mot_de_passe" = true ]; then
 		kwriteconfig6 --file kwalletrc --group Wallet --key Enabled false
 		kwriteconfig6 --file kwalletrc --group Wallet --key "First Use" false

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Retour du courant
+Comment=Note ce qui est ouvert toutes les 30 secondes ; après une coupure de courant, propose de tout rouvrir
+Exec=/usr/libexec/samaos/courant.py demarrer
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=2

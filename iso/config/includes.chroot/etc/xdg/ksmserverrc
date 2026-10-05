@@ -1,0 +1,4 @@
+# Sama : une session neuve à chaque ouverture (Plasma ne rouvre pas d'anciennes fenêtres) ; après une coupure de
+# courant, c'est Sama qui propose de rouvrir ce qui était ouvert (/usr/libexec/samaos/courant.py, maquette ale-04).
+[General]
+loginMode=emptySession

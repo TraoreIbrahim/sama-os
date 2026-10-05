@@ -25,6 +25,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Instantanés du système (Btrfs) avant chaque mise à jour et chaque semaine ; une mise à jour coupée net est annulée au démarrage suivant | fait (essayé sur un Sama installé dans la VM, coupure réelle comprise) |
 | Sauvegarde sur clé USB ou disque externe | fait (Sama Grenier, le nuage : à venir) |
 | Session invitée | fait |
+| Retour du courant : ce qui était ouvert est noté toutes les 30 s ; après une coupure, « Tout rouvrir » (documents de Sama Docs récupérés) | fait |
 | Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |
 | Suite Sama (Griot, Sugu, Sama Docs…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, Discover, LibreOffice en français, Haruna, KWrite) |
 

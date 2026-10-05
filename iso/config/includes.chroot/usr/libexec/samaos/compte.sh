@@ -50,14 +50,22 @@ supprimer)
 	appel /org/freedesktop/Accounts "$A" DeleteUser xb "$2" "$effacer"
 	;;
 connexion-auto)
+	# (l'installateur l'écrit dans /etc/sddm.conf, qui passe avant sddm.conf.d : retirée de là, elle est réglée ici)
+	case "$2" in aucun | [a-z_]*) ;; *) exit 1 ;; esac
+	printf '%s' "$2" | grep -qx '[a-z_][a-z0-9_-]*' || exit 1      # (un identifiant de compte, rien d'autre)
+	retirer="sed -i '/^\[Autologin\]/,/^\[/{/^User=/d;/^Session=/d}' /etc/sddm.conf 2>/dev/null; true"
 	if [ "$2" = aucun ]; then
-		pkexec rm -f "$conf_auto"
+		pkexec sh -c "rm -f '$conf_auto'; $retirer"
 	else
-		printf '[Autologin]\nUser=%s\nSession=plasma\nRelogin=false\n' "$2" | pkexec tee "$conf_auto" >/dev/null
+		pkexec sh -c "printf '[Autologin]\nUser=%s\nSession=plasma\nRelogin=false\n' '$2' > '$conf_auto'; $retirer"
 	fi
 	;;
 connexion-auto-actuelle)
-	[ -f "$conf_auto" ] && sed -n 's/^User=//p' "$conf_auto" || true
+	for f in "$conf_auto" /etc/sddm.conf; do
+		u=$(sed -n '/^\[Autologin\]/,/^\[/s/^User=//p' "$f" 2>/dev/null | head -n 1)
+		[ -n "$u" ] && { echo "$u"; break; }
+	done
+	true
 	;;
 *) echo "Usage : $0 liste|nom|photo|type|motdepasse|creer|supprimer|connexion-auto …" >&2; exit 1 ;;
 esac

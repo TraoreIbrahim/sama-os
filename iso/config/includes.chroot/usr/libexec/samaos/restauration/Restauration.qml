@@ -126,6 +126,17 @@ Window {
         }
     }
 
+    // Ombre douce sous la carte
+    MultiEffect {
+        source: carte
+        anchors.fill: carte
+        shadowEnabled: true
+        shadowColor: Qt.rgba(70 / 255, 45 / 255, 20 / 255, 0.2)
+        shadowBlur: 1.0
+        blurMax: 64
+        shadowVerticalOffset: 16
+        opacity: carte.opacity
+    }
     Rectangle {
         id: carte
         anchors.centerIn: parent
@@ -135,8 +146,6 @@ Window {
         color: Qt.rgba(252 / 255, 250 / 255, 247 / 255, 0.96)
         border.width: 0.5
         border.color: Qt.rgba(70 / 255, 45 / 255, 20 / 255, 0.12)
-        layer.enabled: true
-        layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Qt.rgba(70 / 255, 45 / 255, 20 / 255, 0.22); shadowBlur: 1.0; shadowVerticalOffset: 20 }
 
         ColumnLayout {
             id: colonne
