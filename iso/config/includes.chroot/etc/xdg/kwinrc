@@ -1,3 +1,7 @@
 # Alt+Tab de Sama (paquet /usr/share/kwin/tabbox/samaos)
 [TabBox]
 LayoutName=samaos
+
+[Plugins]
+# Transition entre les Espaces (effet Sama)
+samaos_espacesEnabled=true

@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Authors": [ { "Name": "Sama OS" } ],
+        "Category": "Virtual Desktop Switching Animation",
+        "Description": "Transition between Sama Espaces (Plasma activities)",
+        "Description[fr]": "Transition quand on change d'Espace : les fenêtres de l'Espace quitté s'éloignent, celles de l'Espace choisi arrivent",
+        "EnabledByDefault": true,
+        "Id": "samaos_espaces",
+        "License": "GPL",
+        "Name": "Sama Spaces",
+        "Name[fr]": "Espaces de Sama"
+    },
+    "X-KDE-Ordering": 50,
+    "X-Plasma-API": "javascript"
+}

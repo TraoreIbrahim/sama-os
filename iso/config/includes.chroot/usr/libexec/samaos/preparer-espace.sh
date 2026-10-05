@@ -67,20 +67,20 @@ if (ajouter || malPlacees) {
         cartes.push({ type: p[0], hauteur: p[1], reglages: reglages });
     });
 }
-print(JSON.stringify(cartes));
+print(cartes.length > 0 ? JSON.stringify({ bureau: d.id, cartes: cartes }) : '');
 ")
 
-case "$sauvegarde" in
-	"[]"|"") exit 0 ;;
-esac
+[ -n "$sauvegarde" ] || exit 0
 sleep 1
 
-# 2. Reposer les cartes en colonne, avec leurs réglages
+# 2. Reposer les cartes en colonne, avec leurs réglages — sur le même bureau qu'à l'étape 1, même si
+#    l'Espace a changé entre-temps (sinon les cartes iraient sur le bureau de l'Espace qu'on vient d'ouvrir)
 plasma "
-var d = desktopForScreen(0);
+var donnees = $sauvegarde;
+var d = desktopById(donnees.bureau);
 var g = gridUnit;
 var gauche = Math.round(g * 7), largeur = Math.round(g * 17), y = 32;
-var cartes = $sauvegarde;
+var cartes = donnees.cartes;
 cartes.forEach(function (c) {
     var h = Math.round(g * c.hauteur);
     var n = d.addWidget(c.type, gauche, y, largeur, h);
