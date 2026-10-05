@@ -67,6 +67,9 @@ Item {
 
     KCoreAddons.KUser { id: utilisateur }
 
+    // Changer d'utilisateur : la session reste ouverte, l'écran de connexion s'affiche pour une autre personne
+    SessionManagement { id: gestionSessions }
+
     // Autres sessions ouvertes : on prévient avant d'éteindre
     SessionsModel {
         id: sessions
@@ -112,8 +115,9 @@ Item {
                 font.weight: Font.Medium
                 color: "#FFFFFF"
             }
-            Image {
+            Kirigami.ShadowedImage {
                 id: avatar
+                radius: width / 2   // photo découpée en rond (Image seule laisse dépasser les coins)
                 anchors.fill: parent
                 anchors.margins: 4
                 source: utilisateur.faceIconUrl
@@ -205,6 +209,9 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: rond.bottom
                     anchors.topMargin: 10
+                    width: 104
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
                     text: bouton.libelle
                     font.pixelSize: 13
                     font.weight: Font.Medium
@@ -245,6 +252,15 @@ Item {
                 focus: sdtype === ShutdownType.ShutdownTypeHalt || root.showAllOptions
                 visible: maysd && (sdtype === ShutdownType.ShutdownTypeHalt || root.showAllOptions)
                 onClicked: softwareUpdatePending ? root.haltUpdateRequested() : root.haltRequested()
+            }
+            Bouton {
+                libelle: "Changer d'utilisateur"
+                icone: "changer-utilisateur"
+                visible: gestionSessions.canSwitchUser && root.showAllOptions
+                onClicked: {
+                    root.cancelRequested()
+                    gestionSessions.switchUser()
+                }
             }
             Bouton {
                 libelle: "Se déconnecter"

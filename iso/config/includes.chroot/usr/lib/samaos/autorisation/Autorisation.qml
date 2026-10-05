@@ -3,6 +3,7 @@
 // Argument : JSON { message, nom, role, photo, initiales, erreur, details }.
 // Le mot de passe repart vers l'agent par le tube privé qui les relie (sortie d'erreur, ligne « SAMA_MDP=… »).
 import QtQuick
+import org.kde.kirigami as Kirigami
 import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -136,8 +137,9 @@ Window {
                         font.weight: Font.Medium
                         color: "#FFFFFF"
                     }
-                    Image {
+                    Kirigami.ShadowedImage {
                         id: photo
+                        radius: width / 2   // photo découpée en rond (Image seule laisse dépasser les coins)
                         anchors.fill: parent
                         source: fenetre.infos.photo ? "file://" + fenetre.infos.photo : ""
                         fillMode: Image.PreserveAspectCrop

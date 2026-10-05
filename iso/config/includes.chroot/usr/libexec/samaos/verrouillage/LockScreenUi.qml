@@ -220,8 +220,9 @@ Item {
                     font.weight: Font.Medium
                     color: "#FFFFFF"
                 }
-                Image {
+                Kirigami.ShadowedImage {
                     id: photo
+                    radius: width / 2   // photo découpée en rond (Image seule laisse dépasser les coins)
                     anchors.fill: parent
                     anchors.margins: 4
                     visible: status === Image.Ready && kscreenlocker_userImage !== ""

@@ -5,6 +5,7 @@
 // Seuls QtQuick et QtQuick.Controls sont utilisés : pas de dépendance à Plasma.
 
 import QtQuick
+import org.kde.kirigami as Kirigami
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -31,6 +32,12 @@ Rectangle {
         running: true
         repeat: true
         onTriggered: racine.maintenant = new Date()
+    }
+
+    // Photo choisie par la personne ; l'avatar générique de SDDM compte comme « pas de photo » (initiales)
+    function photoReelle(icone) {
+        var chemin = icone ? String(icone) : ""
+        return chemin.indexOf("/sddm/faces/") >= 0 ? "" : chemin
     }
 
     // Salutation en dioula : I ni sogoma (matin), I ni tile (après-midi), I ni wula (soir)
@@ -96,7 +103,7 @@ Rectangle {
             function choisir() {
                 racine.nomChoisi = model.name
                 racine.nomComplet = model.realName || model.name
-                racine.photoChoisie = model.icon ? String(model.icon) : ""
+                racine.photoChoisie = racine.photoReelle(model.icon)
             }
         }
     }
@@ -132,8 +139,9 @@ Rectangle {
                 font.weight: Font.Medium
                 color: "#FFFFFF"
             }
-            Image {
+            Kirigami.ShadowedImage {
                 id: photo
+                radius: width / 2   // photo découpée en rond (Image seule laisse dépasser les coins)
                 anchors.fill: parent
                 anchors.margins: 4
                 source: racine.photoChoisie
@@ -234,7 +242,7 @@ Rectangle {
             model: userModel
             delegate: MouseArea {
                 width: 72
-                height: 72
+                height: 80
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     racine.compteChoisi = index
@@ -242,21 +250,49 @@ Rectangle {
                     racine.message = ""
                     motDePasse.forceActiveFocus()
                 }
+                // Compte choisi : anneau blanc puis anneau latérite (maquette ses-02)
+                Rectangle {
+                    anchors.centerIn: pastille
+                    visible: index === racine.compteChoisi
+                    width: 52
+                    height: 52
+                    radius: 26
+                    color: racine.laterite
+                }
+                Rectangle {
+                    anchors.centerIn: pastille
+                    visible: index === racine.compteChoisi
+                    width: 48
+                    height: 48
+                    radius: 24
+                    color: "#FBF9F6"
+                }
                 Rectangle {
                     id: pastille
                     anchors.horizontalCenter: parent.horizontalCenter
+                    y: 4
                     width: 44
                     height: 44
                     radius: 22
                     color: racine.teintesAvatars[index % racine.teintesAvatars.length]
-                    border.width: index === racine.compteChoisi ? 2 : 0
-                    border.color: "#FBF9F6"
+                    clip: true
                     Text {
                         anchors.centerIn: parent
+                        visible: photoCompte.status !== Image.Ready
                         text: racine.initiales(model.realName || model.name)
                         font.pixelSize: 15
                         font.weight: Font.Medium
                         color: "#FFFFFF"
+                    }
+                    Kirigami.ShadowedImage {
+                        id: photoCompte
+                        radius: width / 2   // photo découpée en rond (Image seule laisse dépasser les coins)
+                        anchors.fill: parent
+                        source: racine.photoReelle(model.icon)
+                        fillMode: Image.PreserveAspectCrop
+                        sourceSize.width: 88
+                        sourceSize.height: 88
+                        visible: status === Image.Ready
                     }
                 }
                 Text {

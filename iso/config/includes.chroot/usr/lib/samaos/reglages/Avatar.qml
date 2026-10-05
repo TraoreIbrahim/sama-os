@@ -1,5 +1,6 @@
 // Pastille de compte : la photo de la personne, sinon ses initiales sur une couleur qui lui est propre.
 import QtQuick
+import org.kde.kirigami as Kirigami
 
 Rectangle {
     id: avatar
@@ -26,14 +27,14 @@ Rectangle {
         font.weight: Font.DemiBold
         color: "#FFFFFF"
     }
-    Image {
+    Kirigami.ShadowedImage {
         id: image
         anchors.fill: parent
+        radius: width / 2   // photo découpée en rond
         source: avatar.photo === "" ? "" : (avatar.photo.indexOf(":/") > 0 ? avatar.photo : "file://" + avatar.photo)
         fillMode: Image.PreserveAspectCrop
         sourceSize.width: avatar.width * 2
         sourceSize.height: avatar.height * 2
-        cache: false
         visible: status === Image.Ready
     }
 }
