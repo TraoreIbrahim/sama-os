@@ -1,0 +1,21 @@
+# Mises à jour au redémarrage (maquette ses-05) : quand /system-update existe (préparé la nuit par
+# /usr/libexec/samaos/maj-redemarrage.py), systemd démarre sur system-update.target au lieu du bureau ; ce service
+# installe les mises à jour sur l'écran de démarrage, puis redémarre ou éteint l'ordinateur.
+[Unit]
+Description=Installation des mises à jour de Sama au redémarrage
+Documentation=file:/usr/libexec/samaos/maj-redemarrage.py
+DefaultDependencies=no
+Requires=sysinit.target dbus.socket
+After=sysinit.target system-update-pre.target dbus.socket systemd-journald.socket local-fs.target
+Before=shutdown.target system-update.target
+ConditionPathExists=/var/lib/samaos/maj-redemarrage.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/libexec/samaos/maj-redemarrage.py installer
+TimeoutStartSec=3h
+# (en cas d'échec, redémarrer sur le système : le lien /system-update est déjà effacé)
+FailureAction=reboot
+
+[Install]
+WantedBy=system-update.target

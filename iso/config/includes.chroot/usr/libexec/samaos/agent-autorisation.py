@@ -43,6 +43,7 @@ ACTIONS = [
     ("org.freedesktop.Flatpak.", "installer ou mettre à jour des logiciels pour tous les utilisateurs"),
     ("org.freedesktop.udisks2.", "gérer les disques"),
     ("org.bluez.", "gérer le Bluetooth"),
+    ("org.samaos.mises-a-jour.redemarrage", "choisir quand installer les mises à jour"),
     ("org.samaos.mises-a-jour", "changer les mises à jour automatiques"),
     ("org.samaos.invite", "activer ou désactiver la session invitée"),
     ("org.samaos.instantanes.restaurer", "ramener le système à un instantané"),

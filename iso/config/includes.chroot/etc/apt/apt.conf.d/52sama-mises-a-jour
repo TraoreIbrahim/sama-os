@@ -7,6 +7,15 @@ Unattended-Upgrade::Origins-Pattern {
         "origin=Debian,codename=${distro_codename},label=Debian-Security";
         "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
 };
+// Ce qui dérangerait une session ouverte (noyau, systemd, bureau, applications souvent ouvertes) ne s'installe pas
+// la nuit : téléchargé, puis installé au redémarrage suivant (/usr/libexec/samaos/maj-redemarrage.py, maquette ses-05)
+Unattended-Upgrade::Package-Blacklist {
+        "linux-image-.*"; "linux-headers-.*"; "linux-modules-.*"; "linux-kbuild-.*";
+        "systemd.*"; "libsystemd.*"; "udev"; "libudev.*"; "libc6.*"; "libc-bin"; "dbus.*"; "libdbus-.*";
+        "plasma-.*"; "kwin-.*"; "libkf6.*"; "kf6-.*"; "libqt6.*"; "qt6-.*"; "qml6-.*"; "sddm.*"; "xwayland";
+        "mesa-.*"; "libgl1-mesa-.*"; "libegl-mesa.*"; "grub-.*"; "shim-.*"; "firmware-.*";
+        "libreoffice.*"; "chromium.*"; "okular.*"; "haruna.*"; "gwenview.*";
+};
 Unattended-Upgrade::Skip-Updates-On-Metered-Connections "true";
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-New-Unused-Dependencies "true";

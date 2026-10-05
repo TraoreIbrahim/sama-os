@@ -16,4 +16,18 @@
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/samaos/mises-a-jour-nuit.sh</annotate>
   </action>
+  <!-- Menu d'extinction : installer les mises à jour prévues à ce redémarrage-ci, ou plus tard (le moment
+       seulement : les mises à jour elles-mêmes sont choisies et vérifiées par Sama, la nuit) -->
+  <action id="org.samaos.mises-a-jour.redemarrage">
+    <description>Choose when to install updates</description>
+    <description xml:lang="fr">Choisir quand installer les mises à jour</description>
+    <message>Authentication is required to choose when to install updates</message>
+    <message xml:lang="fr">Une autorisation est nécessaire pour choisir quand installer les mises à jour</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/samaos/maj-redemarrage.py</annotate>
+  </action>
 </policyconfig>

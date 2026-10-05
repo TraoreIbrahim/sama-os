@@ -82,8 +82,85 @@ fun progression(duree, avancement) {
 }
 Plymouth.SetBootProgressFunction(progression);
 
-# Mises à jour : la trompe se dessine en or (0 à 100 %)
+# --- Mises à jour au redémarrage (maquette ses-05) ----------------------------------
+# /usr/libexec/samaos/maj-redemarrage.py envoie « plymouth update --status=sama-titre:… » (titre, paquet, temps,
+# fin) et « plymouth system-update --progress=N » : l'écran passe alors à l'installation des mises à jour.
+# Maquette dessinée à 1440 × 900 : tout est mis à l'échelle de l'écran.
+e = hauteur / 900;
+en_maj = 0;
+maj_l = Math.Int(420 * e);
+maj_x = x0 + largeur / 2 - maj_l / 2;
+maj_haut = y0 + hauteur / 2 - 180 * e;
+maj_fond = Sprite();
+maj_logo = Sprite();
+maj_titre = Sprite();
+maj_paquet = Sprite();
+maj_piste = Sprite();
+maj_barre = Sprite();
+maj_pourcent = Sprite();
+maj_temps = Sprite();
+maj_carte = Sprite();
+maj_fin = Sprite();
+maj_barre_source = Image("maj-barre.png");
+
+# Texte à la taille de la maquette (pixels), en points pour Pango
+fun texte_maj(chaine, taille, rouge, vert, bleu, graisse) {
+    return Image.Text(chaine, rouge, vert, bleu, 1, "Noto Sans " + graisse + Math.Int(taille * e * 0.75 + 0.5));
+}
+fun centrer(sprite, image, y) {
+    sprite.SetImage(image);
+    sprite.SetPosition(x0 + largeur / 2 - image.GetWidth() / 2, y, 10);
+}
+
+fun passer_en_maj() {
+    if (en_maj == 1) return;
+    en_maj = 1;
+    logo.sprite.SetOpacity(0);
+    fond.sprite.SetOpacity(0);
+    remplissage.sprite.SetOpacity(0);
+    message.sprite.SetOpacity(0);
+    maj_fond.SetImage(Image("maj-fond.png").Scale(largeur, hauteur));
+    maj_fond.SetPosition(x0, y0, 5);
+    image = Image("maj-logo.png").Scale(Math.Int(72 * e), Math.Int(72 * e));
+    centrer(maj_logo, image, maj_haut);
+    maj_piste.SetImage(Image("maj-piste.png").Scale(maj_l, Math.Int(6 * e)));
+    maj_piste.SetPosition(maj_x, maj_haut + 199 * e, 10);
+    maj_barre.SetPosition(maj_x, maj_haut + 199 * e, 11);
+    image = Image("maj-carte.png");
+    image = image.Scale(Math.Int(520 * e), Math.Int(520 * e * image.GetHeight() / image.GetWidth()));
+    centrer(maj_carte, image, maj_haut + 285 * e);
+}
+
+fun statut_maj(texte) {
+    if (texte.SubString(0, 11) == "sama-titre:") {
+        passer_en_maj();
+        centrer(maj_titre, texte_maj(texte.SubString(11, 400), 26, 0.945, 0.922, 0.882, "Medium "), maj_haut + 108 * e);
+    } else if (texte.SubString(0, 12) == "sama-paquet:") {
+        passer_en_maj();
+        centrer(maj_paquet, texte_maj(texte.SubString(12, 400), 14, 0.678, 0.651, 0.596, ""), maj_haut + 151 * e);
+    } else if (texte.SubString(0, 11) == "sama-temps:") {
+        passer_en_maj();
+        image = texte_maj(texte.SubString(11, 400), 12, 0.678, 0.651, 0.596, "");
+        maj_temps.SetImage(image);
+        maj_temps.SetPosition(maj_x + maj_l - image.GetWidth(), maj_haut + 215 * e, 10);
+    } else if (texte.SubString(0, 9) == "sama-fin:") {
+        passer_en_maj();
+        centrer(maj_fin, texte_maj(texte.SubString(9, 400), 12, 0.557, 0.533, 0.486, ""), y0 + hauteur - 52 * e);
+    }
+}
+Plymouth.SetUpdateStatusFunction(statut_maj);
+
+# Mises à jour : la trompe se dessine en or (0 à 100 %) ; au redémarrage (ses-05), la barre avance
 fun mise_a_jour(pourcentage) {
+    if (en_maj == 1) {
+        l = Math.Int(maj_l * pourcentage / 100);
+        if (l < 1) l = 1;
+        maj_barre.SetImage(maj_barre_source.Scale(l, Math.Int(6 * e)));
+        image = texte_maj(pourcentage + " %", 12, 0.678, 0.651, 0.596, "");
+        maj_pourcent.SetImage(image);
+        maj_pourcent.SetPosition(maj_x, maj_haut + 215 * e, 10);
+        return;
+    }
     n = Math.Int(pourcentage * (nombre - 1) / 100);
     if (n < 0) n = 0;
     if (n > nombre - 1) n = nombre - 1;

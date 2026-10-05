@@ -98,5 +98,47 @@ printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect 
 printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#F2C879"/></svg>' \
 	| rsvg-convert -o "$THEME/barre.png"
 
+# --- Mises à jour au redémarrage (maquette ses-05, dessinée à 1440 × 900 puis mise à l'échelle) ----------------
+# Fond : les dunes de Sama sous un voile nuit
+cat > /tmp/sama-maj.svg <<FIN
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+ <rect width="1440" height="900" fill="$NUIT"/>
+ <circle cx="1030" cy="300" r="54" fill="$IVOIRE"/>
+ <path d="M0 560 C 240 505, 430 520, 650 548 S 1100 498, 1440 532 L1440 900 L0 900 Z" fill="#1B2135"/>
+ <path d="M0 645 C 210 605, 470 612, 710 642 S 1180 600, 1440 628 L1440 900 L0 900 Z" fill="#20273F"/>
+ <path d="M0 725 C 260 692, 530 702, 770 728 S 1200 690, 1440 714 L1440 900 L0 900 Z" fill="#252E4A"/>
+ <path d="M0 805 C 300 778, 610 792, 870 808 S 1260 782, 1440 798 L1440 900 L0 900 Z" fill="$SOCLE"/>
+ <rect width="1440" height="900" fill="$NUIT" fill-opacity="0.85"/>
+</svg>
+FIN
+rsvg-convert /tmp/sama-maj.svg -o "$THEME/maj-fond.png"
+# L'éléphant seul (72 px dans la maquette)
+cat > /tmp/sama-maj.svg <<FIN
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+$(tete)
+ <path d="$REPOS" fill="none" stroke="$IVOIRE" stroke-width="10" stroke-linecap="round"/>
+</svg>
+FIN
+rsvg-convert --width 288 --height 288 /tmp/sama-maj.svg -o "$THEME/maj-logo.png"
+# « Ne débranchez pas l'ordinateur » (carte de 520 px, dessinée au triple)
+cat > /tmp/sama-maj.svg <<'FIN'
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="76" viewBox="0 0 520 76">
+ <rect x="0.25" y="0.25" width="519.5" height="75.5" rx="16" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="0.5"/>
+ <circle cx="35" cy="33" r="17" fill="#2F6B57" fill-opacity="0.4"/>
+ <g transform="translate(26 24) scale(0.75)" fill="none" stroke="#A3D6C1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3l8 3v6c0 5-3.5 8-8 9c-4.5-1-8-4-8-9V6z M8.8 12.2l2.2 2.2l4.2-4.4"/>
+ </g>
+ <text x="66" y="31" font-family="Noto Sans" font-weight="500" font-size="14" fill="#F1EBE1">Ne débranchez pas l'ordinateur.</text>
+ <text x="66" y="54" font-family="Noto Sans" font-size="13" fill="#ADA698">En cas de coupure, Sama reviendra automatiquement à l'état précédent.</text>
+</svg>
+FIN
+rsvg-convert --width 1560 /tmp/sama-maj.svg -o "$THEME/maj-carte.png"
+rm -f /tmp/sama-maj.svg
+# Barre : piste discrète et remplissage ivoire
+printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#FFFFFF" fill-opacity="0.1"/></svg>' \
+	| rsvg-convert -o "$THEME/maj-piste.png"
+printf '%s' "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"8\" height=\"8\"><rect width=\"8\" height=\"8\" fill=\"$IVOIRE\"/></svg>" \
+	| rsvg-convert -o "$THEME/maj-barre.png"
+
 # Thème par défaut (l'image de démarrage est régénérée plus tard par live-build)
 plymouth-set-default-theme samaos

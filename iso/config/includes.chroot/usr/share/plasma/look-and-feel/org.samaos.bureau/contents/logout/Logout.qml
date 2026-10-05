@@ -1,7 +1,9 @@
 /*
-    Fenêtre « Éteindre, redémarrer, se déconnecter » de Sama OS.
+    Fenêtre « Éteindre, redémarrer, se déconnecter » de Sama OS (maquette ses-04).
     Voile sur le bureau, salutation, grands boutons ronds comme sur l'écran de connexion de la maquette.
     Quand une action précise est demandée (ex. « Redémarrer »), elle se lance seule au bout de 30 s, sauf annulation.
+    Des mises à jour attendent le redémarrage (/usr/libexec/samaos/maj-redemarrage.py) : « 2 mises à jour seront
+    installées au redémarrage », case « Installer maintenant » ; cochée, Éteindre installe puis éteint (ses-05).
 
     Mêmes signaux que l'écran de déconnexion de Plasma (Breeze) —
     SPDX-FileCopyrightText: 2014 Aleix Pol Gonzalez <aleixpol@blue-systems.com>
@@ -15,6 +17,7 @@ import QtQuick.Controls as QQC2
 import org.kde.coreaddons 1.0 as KCoreAddons
 import org.kde.kirigami 2.20 as Kirigami
 import org.kde.plasma.private.sessions
+import org.kde.plasma.plasma5support as P5Support
 
 Item {
     id: root
@@ -47,12 +50,45 @@ Item {
     property var currentAction: {
         switch (sdtype) {
         case ShutdownType.ShutdownTypeReboot:
-            return () => softwareUpdatePending ? rebootUpdateRequested() : rebootRequested();
+            return () => root.redemarrer();
         case ShutdownType.ShutdownTypeHalt:
-            return () => softwareUpdatePending ? haltUpdateRequested() : haltRequested();
+            return () => root.eteindre();
         default:
             return () => logoutRequested();
         }
+    }
+
+    // ——— Mises à jour de Sama prévues au redémarrage ———
+    property int majPrevues: 0
+    property bool installerMaj: true
+    readonly property bool majSama: majPrevues > 0
+    P5Support.DataSource {
+        id: executeur
+        engine: "executable"
+        property var rappels: ({})
+        function lancer(commande, rappel) { var r = rappels; r[commande] = rappel; rappels = r; connectSource(commande) }
+        onNewData: (source, donnees) => {
+            var rappel = rappels[source]
+            disconnectSource(source)
+            if (rappel) rappel(String(donnees["stdout"] || ""))
+        }
+        Component.onCompleted: lancer("python3 /usr/libexec/samaos/maj-redemarrage.py etat", function (s) {
+            try { root.majPrevues = JSON.parse(s).nombre || 0 } catch (e) {}
+        })
+    }
+    // Installer : redémarrage sur l'installation (qui éteint à la fin si on éteignait) ; sinon, à une autre fois
+    function avecMaj(choix, ensuite) {
+        executeur.lancer("pkexec /usr/libexec/samaos/maj-redemarrage.py " + choix + " >/dev/null 2>&1; echo fini", ensuite)
+    }
+    function redemarrer() {
+        if (majSama) avecMaj(installerMaj ? "redemarrer" : "plus-tard", function () { root.rebootRequested() })
+        else if (softwareUpdatePending) rebootUpdateRequested()
+        else rebootRequested()
+    }
+    function eteindre() {
+        if (majSama) avecMaj(installerMaj ? "eteindre" : "plus-tard", function () { installerMaj ? root.rebootRequested() : root.haltRequested() })
+        else if (softwareUpdatePending) haltUpdateRequested()
+        else haltRequested()
     }
 
     onRemainingTimeChanged: if (remainingTime <= 0) (currentAction)()
@@ -238,20 +274,20 @@ Item {
                 onClicked: root.suspendRequested(4)
             }
             Bouton {
-                libelle: softwareUpdatePending ? "Mettre à jour et redémarrer" : "Redémarrer"
+                libelle: softwareUpdatePending && !root.majSama ? "Mettre à jour et redémarrer" : "Redémarrer"
                 icone: "redemarrer"
                 principal: sdtype === ShutdownType.ShutdownTypeReboot
                 focus: sdtype === ShutdownType.ShutdownTypeReboot
                 visible: maysd && (sdtype === ShutdownType.ShutdownTypeReboot || root.showAllOptions)
-                onClicked: softwareUpdatePending ? root.rebootUpdateRequested() : root.rebootRequested()
+                onClicked: root.redemarrer()
             }
             Bouton {
-                libelle: softwareUpdatePending ? "Mettre à jour et éteindre" : "Éteindre"
+                libelle: softwareUpdatePending && !root.majSama ? "Mettre à jour et éteindre" : "Éteindre"
                 icone: "eteindre"
                 principal: sdtype === ShutdownType.ShutdownTypeHalt || root.showAllOptions
                 focus: sdtype === ShutdownType.ShutdownTypeHalt || root.showAllOptions
                 visible: maysd && (sdtype === ShutdownType.ShutdownTypeHalt || root.showAllOptions)
-                onClicked: softwareUpdatePending ? root.haltUpdateRequested() : root.haltRequested()
+                onClicked: root.eteindre()
             }
             Bouton {
                 libelle: "Changer d'utilisateur"
@@ -272,10 +308,75 @@ Item {
             }
         }
 
+        // Mises à jour prévues au redémarrage
+        Rectangle {
+            visible: root.majSama && maysd && sdtype !== ShutdownType.ShutdownTypeNone
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 40
+            implicitWidth: ligneMaj.implicitWidth + 36
+            implicitHeight: 48
+            radius: 14
+            color: root.sombre ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(252 / 255, 250 / 255, 247 / 255, 0.7)
+            border.width: 0.5
+            border.color: root.sombre ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.08)
+            RowLayout {
+                id: ligneMaj
+                anchors.centerIn: parent
+                spacing: 16
+                Canvas {
+                    Layout.preferredWidth: 18
+                    Layout.preferredHeight: 18
+                    onPaint: {
+                        var c = getContext("2d"); c.reset(); c.scale(18 / 24, 18 / 24)
+                        c.strokeStyle = root.sombre ? "#A3D6C1" : "#2F6B57"; c.lineWidth = 2; c.lineCap = "round"; c.lineJoin = "round"
+                        c.path = "M12 4v11 M7 10l5 5l5-5 M5 20h14"; c.stroke()
+                    }
+                }
+                Text {
+                    text: (root.majPrevues > 1 ? root.majPrevues + " mises à jour seront installées" : "1 mise à jour sera installée")
+                          + (sdtype === ShutdownType.ShutdownTypeHalt ? " avant l'extinction" : " au redémarrage")
+                    font.pixelSize: 14
+                    color: root.texte
+                }
+                Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 20; color: root.sombre ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.16) }
+                MouseArea {
+                    id: caseMaj
+                    Layout.preferredWidth: rangeeCase.implicitWidth
+                    Layout.preferredHeight: 24
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    onClicked: root.installerMaj = !root.installerMaj
+                    RowLayout {
+                        id: rangeeCase
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 8
+                        Rectangle {
+                            Layout.preferredWidth: 18
+                            Layout.preferredHeight: 18
+                            radius: 5
+                            color: root.installerMaj ? root.laterite : "transparent"
+                            border.width: root.installerMaj ? 0 : 1.5
+                            border.color: caseMaj.containsMouse ? root.laterite : (root.sombre ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.3))
+                            Canvas {
+                                anchors.fill: parent
+                                visible: root.installerMaj
+                                onPaint: {
+                                    var c = getContext("2d"); c.reset(); c.scale(width / 24, height / 24)
+                                    c.strokeStyle = "#FFFFFF"; c.lineWidth = 3; c.lineCap = "round"; c.lineJoin = "round"
+                                    c.path = "M6 12.5l4 4l8-9"; c.stroke()
+                                }
+                            }
+                        }
+                        Text { text: "Installer maintenant"; font.pixelSize: 14; font.weight: Font.Medium; color: root.texte }
+                    }
+                }
+            }
+        }
+
         // Annuler
         QQC2.AbstractButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: 18
+            Layout.topMargin: root.majSama ? 24 : 18
             contentItem: Text {
                 text: "Annuler"
                 font.pixelSize: 14

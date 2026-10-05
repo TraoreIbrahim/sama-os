@@ -54,3 +54,22 @@ relance aussitôt qu'on l'arrête (les applications X11 ouvertes se ferment) :
 ```bash
 scripts/mode-direct.sh commande 'kill $(pgrep -x Xwayland)'
 ```
+
+## Instantanés et mises à jour au redémarrage
+
+La session d'essai ne tourne pas sur Btrfs : `dev/essai-instantanes.sh` monte un petit disque Btrfs fictif et y
+joue tout le scénario (instantané, mise à jour coupée net, restauration, rangement) avec les variables `SAMA_*`
+d'`instantanes.py`. Réglages › Sauvegarde peut afficher ce disque d'essai :
+
+```bash
+scripts/mode-direct.sh commande 'E=/tmp/essai-btrfs; systemd-run --user --collect -E SAMA_RACINE_SYSTEME=$E/racine -E SAMA_INSTANTANES=$E/racine/.instantanes sama-reglages sauvegarde'
+```
+
+L'écran de mise à jour au redémarrage (ses-05) se voit dans une fenêtre, avec le module X11 de Plymouth
+(`plymouth-x11`, 12 Ko) et des paquets fictifs (rien n'est installé) :
+
+```bash
+scripts/mode-direct.sh commande 'export DISPLAY=:0 XAUTHORITY=$(ls /run/user/1000/xauth_*); sudo -E plymouthd --mode=boot --kernel-command-line="splash plymouth.ignore-udev plymouth.ignore-serial-consoles"; sudo plymouth show-splash; sudo python3 /usr/libexec/samaos/maj-redemarrage.py essai 5; sudo plymouth quit'
+```
+
+Le vrai retour en arrière (menu de démarrage, `restauration-init`) ne s'essaie que sur un Sama installé.

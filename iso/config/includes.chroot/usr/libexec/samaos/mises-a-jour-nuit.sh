@@ -3,7 +3,7 @@
 #   mises-a-jour-nuit.sh etat                  « actif » ou « inactif »
 #   mises-a-jour-nuit.sh activer|desactiver    administrateur (pkexec : action org.samaos.mises-a-jour)
 #   mises-a-jour-nuit.sh lancer                lancé par samaos-mises-a-jour-nuit.timer, entre 1 h et 4 h
-#   mises-a-jour-nuit.sh statut                « verifie=<date, secondes> disponibles=<nombre> » (sans droits)
+#   mises-a-jour-nuit.sh statut                « verifie=<date> disponibles=<nombre> redemarrage=<nombre> » (sans droits)
 #   mises-a-jour-nuit.sh verifier              recherche des mises à jour maintenant (administrateur : pkexec)
 #   mises-a-jour-nuit.sh maintenant            installe les mises à jour tout de suite (administrateur : pkexec)
 # Avant d'installer, Sama prend un instantané du système : si la mise à jour est coupée net (coupure de courant),
@@ -50,6 +50,12 @@ installer() {
 	unattended-upgrade
 	code=$?
 	python3 /usr/libexec/samaos/instantanes.py apres-maj || true
+	# Le reste (noyau, bureau, applications souvent ouvertes) : téléchargé maintenant, installé au prochain
+	# redémarrage, sur l'écran de démarrage (maj-redemarrage.py)
+	if apt-get -s -o Debug::NoLocking=1 upgrade --with-new-pkgs 2>/dev/null | grep -q '^Inst ' &&
+		apt-get -q -y -d upgrade --with-new-pkgs >/dev/null; then
+		python3 /usr/libexec/samaos/maj-redemarrage.py preparer || true
+	fi
 	return $code
 }
 
@@ -67,7 +73,8 @@ statut)
 	# Dernière vérification : la nôtre, sinon celle de Debian ou de Sugu (listes des dépôts)
 	date=$(stat -c %Y "$VERIFIE" 2>/dev/null || ls -t /var/lib/apt/lists/*Release 2>/dev/null | head -n 1 | xargs -r stat -c %Y)
 	nombre=$(apt-get -s -o Debug::NoLocking=1 dist-upgrade 2>/dev/null | grep -c '^Inst ')
-	echo "verifie=${date:-0} disponibles=${nombre:-0}"
+	redemarrage=$(python3 /usr/libexec/samaos/maj-redemarrage.py etat 2>/dev/null | sed -n 's/.*"nombre": *\([0-9]*\).*/\1/p')
+	echo "verifie=${date:-0} disponibles=${nombre:-0} redemarrage=${redemarrage:-0}"
 	;;
 verifier)
 	verifier
