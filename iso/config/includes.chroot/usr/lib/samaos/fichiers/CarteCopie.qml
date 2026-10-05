@@ -75,6 +75,8 @@ Column {
             id: carte
             readonly property var e: modelData.etat
             readonly property bool fini: e.etat === "termine" || e.etat === "erreur"
+            // (« deposer » : déplacement ou copie, décidé par fichiers.py selon le disque)
+            readonly property string operation: e.operation || modelData.operation
             width: copies.width
             height: colonne.implicitHeight + 32
             radius: 16
@@ -82,7 +84,7 @@ Column {
             border.width: 1
             border.color: Couleurs.bord
             // Terminé : la carte s'efface toute seule
-            Timer { running: carte.e.etat === "termine"; interval: 2500; onTriggered: copies.retirer(modelData.id) }
+            Timer { running: carte.e.etat === "termine" && !carte.e.erreurs; interval: 2500; onTriggered: copies.retirer(modelData.id) }
             ColumnLayout {
                 id: colonne
                 anchors.left: parent.left
@@ -110,8 +112,8 @@ Column {
                         Text {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
-                            text: (carte.e.etat === "termine" ? (modelData.operation === "deplacer" ? "Déplacement terminé" : "Copie terminée")
-                                   : (modelData.operation === "deplacer" ? "Déplacement de " : "Copie de ") + carte.e.elements
+                            text: (carte.e.etat === "termine" ? (carte.operation === "deplacer" ? "Déplacement terminé" : "Copie terminée")
+                                   : (carte.operation === "deplacer" ? "Déplacement de " : "Copie de ") + carte.e.elements
                                      + (carte.e.elements > 1 ? " éléments" : " élément")) + " vers " + carte.e.nomDestination
                             font.pixelSize: 14
                             font.weight: Font.Medium
@@ -121,11 +123,13 @@ Column {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: carte.e.etat === "erreur" ? (carte.e.message || "Une erreur a interrompu la copie")
+                                : carte.e.etat === "termine" && carte.e.erreurs ? carte.e.erreurs + (carte.e.erreurs > 1 ? " éléments n'ont" : " élément n'a")
+                                                                                 + " pas pu être " + (carte.operation === "deplacer" ? "déplacé" : "copié")
                                 : carte.e.total > 0 ? Types.taille(carte.e.fait) + " sur " + Types.taille(carte.e.total)
                                                       + (copies.restant(carte.e) ? " — " + copies.restant(carte.e) : "")
                                 : "Préparation…"
                             font.pixelSize: 12
-                            color: carte.e.etat === "erreur" ? "#A3322A" : Couleurs.texte2
+                            color: carte.e.etat === "erreur" || carte.e.erreurs ? "#A3322A" : Couleurs.texte2
                         }
                     }
                     MouseArea {

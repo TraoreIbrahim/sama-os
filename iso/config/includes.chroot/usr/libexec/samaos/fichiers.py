@@ -12,8 +12,9 @@
   fichiers.py renommer CHEMIN NOM         renomme (refuse d'écraser)
   fichiers.py nouveau-dossier DOSSIER     crée « Nouveau dossier » (numéroté s'il existe), affiche son chemin
   fichiers.py recents                     JSON : fichiers ouverts récemment (toutes applications)
-  fichiers.py copier|deplacer TACHE DESTINATION SOURCE…
-                                          copie ou déplace ; l'avancement est écrit dans TACHE.json (dossier
+  fichiers.py copier|deplacer|deposer TACHE DESTINATION SOURCE…
+                                          copie ou déplace (« deposer », glisser-déposer : déplace sur le même disque,
+                                          copie vers un autre) ; l'avancement est écrit dans TACHE.json (dossier
                                           $XDG_RUNTIME_DIR/samaos-fichiers), les choix en cas de conflit sont lus
                                           dans TACHE.choix (« remplacer|garder|ignorer [tous] »), les ordres dans
                                           TACHE.ordre (« pause|reprendre|annuler »)
@@ -349,6 +350,13 @@ def recents():
 
 # ——— Copie et déplacement, avec avancement et conflits ———
 
+def point_de_montage(chemin):
+    chemin = os.path.realpath(chemin)
+    while not os.path.ismount(chemin):
+        chemin = os.path.dirname(chemin)
+    return chemin
+
+
 class Tache:
     def __init__(self, nom, operation, destination, sources):
         os.makedirs(TACHES, exist_ok=True)
@@ -463,12 +471,24 @@ class Tache:
 
     def lancer(self):
         try:
+            if self.operation == "deposer":
+                # Glisser-déposer : déplacer sur le même disque, copier vers une clé ou un autre disque
+                # (même point de montage : les numéros de périphérique ne suffisent pas, overlayfs de la session
+                # d'essai en donne de différents aux fichiers et aux dossiers d'un même disque)
+                disque = point_de_montage(self.destination)
+                meme = all(point_de_montage(os.path.dirname(os.path.abspath(s))) == disque for s in self.sources)
+                self.operation = "deplacer" if meme else "copier"
+                self.etat["operation"] = self.operation
             for s in self.sources:
                 self.etat["total"] += taille_dossier(s)[0] if os.path.isdir(s) else os.lstat(s).st_size
             self.etat["etat"] = "en_cours"
             self.ecrire(True)
             for s in self.sources:
                 cible = os.path.join(self.destination, os.path.basename(s.rstrip("/")))
+                source_abs = os.path.abspath(s)
+                if os.path.abspath(self.destination) == source_abs or os.path.abspath(self.destination).startswith(source_abs + "/"):
+                    self.etat["erreurs"] += 1           # un dossier ne peut pas aller dans lui-même
+                    continue
                 if os.path.abspath(cible) == os.path.abspath(s):
                     if self.operation == "deplacer":
                         continue                        # déplacé vers son propre dossier : rien à faire
@@ -525,7 +545,7 @@ if __name__ == "__main__":
         code = nouveau_dossier(a[1])
     elif action == "recents":
         recents()
-    elif action in ("copier", "deplacer") and len(a) > 3:
+    elif action in ("copier", "deplacer", "deposer") and len(a) > 3:
         Tache(a[1], action, a[2], a[3:]).lancer()
     else:
         print(__doc__, file=sys.stderr)

@@ -35,15 +35,19 @@ Rectangle {
         property string picto
         property bool choisie: false
         property string pastille: ""
+        property alias depot: zoneDepot.destination      // dossier (ou « corbeille ») qui reçoit ce qu'on lâche dessus
         default property alias fin: coin.data
         Layout.fillWidth: true
         Layout.preferredHeight: 34
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        Depot { id: zoneDepot; anchors.fill: parent }
         Rectangle {
             anchors.fill: parent
             radius: 9
-            color: entree.choisie ? Couleurs.selection : (entree.containsMouse ? Couleurs.carte : "transparent")
+            color: entree.choisie || zoneDepot.containsDrag ? Couleurs.selection : (entree.containsMouse ? Couleurs.carte : "transparent")
+            border.width: zoneDepot.containsDrag ? 1.5 : 0
+            border.color: Couleurs.laterite
         }
         RowLayout {
             anchors.fill: parent
@@ -77,6 +81,7 @@ Rectangle {
                 nom: modelData.nom
                 picto: modelData.picto
                 choisie: fenetre.lieu === "dossier" && fenetre.dossier === modelData.chemin
+                depot: modelData.chemin
                 onClicked: fenetre.ouvrirDossier(modelData.chemin)
             }
         }
@@ -93,6 +98,7 @@ Rectangle {
                     nom: modelData.nom
                     picto: appareil.externe ? "M9 3h6v6H9z M7 9h10v8a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4z" : "M3 6h18v12H3z M7 14h.01"
                     choisie: fenetre.lieu === "dossier" && appareil.externe && modelData.montage !== "" && fenetre.dossier.indexOf(modelData.montage) === 0
+                    depot: appareil.externe ? modelData.montage : ""      // (une clé montée reçoit des copies)
                     onClicked: {
                         if (!appareil.externe) { fenetre.ouvrirDossier("/"); return }
                         if (modelData.montage) fenetre.ouvrirDossier(modelData.montage)
@@ -154,6 +160,7 @@ Rectangle {
             picto: "M5 7h14 M10 7V5h4v2 M7 7l1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12"
             pastille: fenetre.nombreCorbeille > 0 ? String(fenetre.nombreCorbeille) : ""
             choisie: fenetre.lieu === "corbeille"
+            depot: "corbeille"
             onClicked: { fenetre.lieu = "corbeille"; fenetre.selection = [] }
         }
         Item { Layout.fillHeight: true }

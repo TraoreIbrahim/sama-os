@@ -102,6 +102,18 @@ Window {
         carteCopie.lancer(presse.operation, dossier, presse.chemins)
         if (presse.operation === "deplacer") presse = { operation: "", chemins: [] }
     }
+    // Glisser-déposer : « Ctrl » (copie demandée) copie ; sinon déplace sur le même disque et copie vers un autre
+    function deposer(adresses, destination, action) {
+        var chemins = []
+        for (var i = 0; i < adresses.length; i++) {
+            var a = String(adresses[i])
+            if (a.indexOf("file://") === 0) chemins.push(chemin(a))
+        }
+        // (rien à faire si on lâche des éléments dans le dossier où ils sont déjà)
+        chemins = chemins.filter(function (c) { return c.substring(0, c.lastIndexOf("/")) !== destination && c !== destination })
+        if (!chemins.length) return
+        carteCopie.lancer(action === Qt.CopyAction ? "copier" : "deposer", destination, chemins)
+    }
     function jeter(chemins) {
         if (!chemins.length) return
         commande.lancer(moteur + "jeter " + chemins.map(commande.q).join(" "), function () { relireCorbeille() })
