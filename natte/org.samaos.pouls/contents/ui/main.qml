@@ -39,6 +39,8 @@ PlasmoidItem {
     Loader { id: reseau; source: "Reseau.qml" }
     Loader { id: batterie; source: "Batterie.qml" }
     Loader { id: notifs; source: "Notifications.qml" }
+    Loader { id: son; source: "Son.qml" }
+    readonly property bool sonCoupe: son.item ? son.item.coupe : false
 
     readonly property int nonLues: notifs.item ? notifs.item.nonLues : 0
 
@@ -122,6 +124,16 @@ PlasmoidItem {
                     opacity: racine.etatReseau === "coupe" ? 0.5 : 1
                     source: racine.icone(racine.etatReseau === "filaire" ? "filaire"
                                          : racine.etatReseau === "coupe" ? "wifi-coupe" : "wifi")
+                }
+
+                // Son coupé : haut-parleur barré (rien quand le son est normal, comme sur macOS)
+                Kirigami.Icon {
+                    visible: racine.sonCoupe
+                    Layout.preferredWidth: 16
+                    Layout.preferredHeight: Layout.preferredWidth
+                    isMask: true
+                    color: racine.encre
+                    source: racine.icone("volume-coupe")
                 }
 
                 // Économie de data

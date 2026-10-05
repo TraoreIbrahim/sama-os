@@ -8,15 +8,18 @@ RowLayout {
     property string nomIcone
     property real valeur: 0          // de 0 à 1
     property bool disponible: true   // faux quand le matériel ne le permet pas (le curseur est alors masqué)
+    property bool coupe: false       // son coupé : icône barrée, piste grise, « Coupé »
     signal deplace(real valeur)
+    signal basculeIcone()
     spacing: 12
 
     Kirigami.Icon {
         Layout.preferredWidth: 16
         Layout.preferredHeight: 16
         isMask: true
-        color: Kirigami.Theme.disabledTextColor
-        source: Qt.resolvedUrl("../icons/" + curseur.nomIcone + ".svg")
+        color: curseur.coupe ? "#B5532F" : Kirigami.Theme.disabledTextColor
+        source: Qt.resolvedUrl("../icons/" + curseur.nomIcone + (curseur.coupe ? "-coupe" : "") + ".svg")
+        MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: curseur.basculeIcone() }
     }
     MouseArea {
         id: zone
@@ -38,7 +41,7 @@ RowLayout {
         Rectangle {
             x: 0; y: 7; height: 6; radius: 3
             width: 10 + (parent.width - 20) * curseur.valeur
-            color: "#B5532F"
+            color: curseur.coupe ? Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.3) : "#B5532F"
         }
         Rectangle {
             x: (parent.width - 20) * curseur.valeur
@@ -51,9 +54,9 @@ RowLayout {
         }
     }
     Text {
-        Layout.preferredWidth: 34
+        Layout.preferredWidth: 40
         horizontalAlignment: Text.AlignRight
-        text: Math.round(curseur.valeur * 100) + " %"
+        text: curseur.coupe ? "Coupé" : Math.round(curseur.valeur * 100) + " %"
         font.pixelSize: 12
         color: Kirigami.Theme.disabledTextColor
     }
