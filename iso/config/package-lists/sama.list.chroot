@@ -30,6 +30,8 @@ flatpak
 
 # Mises à jour la nuit (samaos-mises-a-jour-nuit.timer)
 unattended-upgrades
+# Data consommée jour par jour, gardée d'un allumage à l'autre (carte Data, Réglages › Data)
+vnstat
 
 # Installation sur disque (sera rebrandée aux couleurs de Sama)
 calamares

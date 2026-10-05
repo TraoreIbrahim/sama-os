@@ -3,11 +3,21 @@
 #   mises-a-jour-nuit.sh etat                  « actif » ou « inactif »
 #   mises-a-jour-nuit.sh activer|desactiver    administrateur (pkexec : action org.samaos.mises-a-jour)
 #   mises-a-jour-nuit.sh lancer                lancé par samaos-mises-a-jour-nuit.timer, entre 1 h et 4 h
+#   mises-a-jour-nuit.sh statut                « verifie=<date, secondes> disponibles=<nombre> » (sans droits)
+#   mises-a-jour-nuit.sh verifier              recherche des mises à jour maintenant (administrateur : pkexec)
 # Les mises à jour ne s'installent que si l'ordinateur est branché et sur une connexion illimitée, et jamais
 # dans la session d'essai (clé USB). Les minuteurs « apt-daily » de Debian ne font plus rien
 # (voir /etc/apt/apt.conf.d/52sama-mises-a-jour) : rien ne se télécharge pendant la journée.
 set -u
 DRAPEAU=/etc/samaos/mises-a-jour-nuit
+VERIFIE=/var/lib/samaos/mises-a-jour-verifiees
+
+# Liste des mises à jour disponibles à jour (apt-get update), et date de la vérification
+verifier() {
+	export DEBIAN_FRONTEND=noninteractive
+	apt-get -q -o DPkg::Lock::Timeout=600 update || return 1
+	mkdir -p "$(dirname "$VERIFIE")" && touch "$VERIFIE"
+}
 
 # Branché sur secteur, ou ordinateur de bureau (pas de batterie)
 sur_secteur() {
@@ -39,17 +49,25 @@ activer)
 desactiver)
 	rm -f "$DRAPEAU"
 	;;
+statut)
+	# Dernière vérification : la nôtre, sinon celle de Debian ou de Sugu (listes des dépôts)
+	date=$(stat -c %Y "$VERIFIE" 2>/dev/null || ls -t /var/lib/apt/lists/*Release 2>/dev/null | head -n 1 | xargs -r stat -c %Y)
+	nombre=$(apt-get -s -o Debug::NoLocking=1 dist-upgrade 2>/dev/null | grep -c '^Inst ')
+	echo "verifie=${date:-0} disponibles=${nombre:-0}"
+	;;
+verifier)
+	verifier
+	;;
 lancer)
 	if grep -qw 'boot=live' /proc/cmdline; then echo "Session d'essai : pas de mise à jour."; exit 0; fi
 	if [ ! -e "$DRAPEAU" ]; then echo "Mises à jour la nuit désactivées."; exit 0; fi
 	if ! sur_secteur; then echo "Sur batterie : mises à jour remises à la nuit prochaine."; exit 0; fi
 	if connexion_mesuree; then echo "Connexion mesurée : mises à jour remises à une connexion illimitée."; exit 0; fi
-	export DEBIAN_FRONTEND=noninteractive
-	if ! apt-get -q -o DPkg::Lock::Timeout=600 update; then echo "Pas de connexion aux dépôts : nuit prochaine."; exit 0; fi
+	if ! verifier; then echo "Pas de connexion aux dépôts : nuit prochaine."; exit 0; fi
 	unattended-upgrade
 	;;
 *)
-	echo "Usage : $0 etat|activer|desactiver|lancer" >&2
+	echo "Usage : $0 etat|activer|desactiver|lancer|statut|verifier" >&2
 	exit 1
 	;;
 esac

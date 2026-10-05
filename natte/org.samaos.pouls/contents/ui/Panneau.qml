@@ -262,13 +262,14 @@ Item {
 
                 readonly property real mo: data.item ? data.item.megaOctets : 0
                 readonly property real forfait: data.item ? data.item.forfait : 1024
+                readonly property bool duMois: data.item ? data.item.duMois : false
 
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
                     Text {
                         Layout.fillWidth: true
-                        text: "Data depuis l'allumage"
+                        text: blocData.duMois ? "Data ce mois-ci" : "Data depuis l'allumage"
                         font.pixelSize: 12
                         color: panneau.texte2
                     }

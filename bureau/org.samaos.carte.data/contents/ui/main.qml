@@ -1,8 +1,8 @@
 // Carte « Data consommée » du bureau de Sama OS.
-// Mesure réelle : octets reçus + envoyés par les cartes réseau depuis l'allumage
-// (hors boucle locale), comparés au forfait réglé dans la configuration (1 Go par défaut).
-// Un clic ouvre les Réglages de Sama, section Data (forfait, connexion mesurée…).
-// Alerte (bulle de notification) à 80 % puis à 100 % du forfait, une fois par allumage.
+// Mesure réelle (/usr/libexec/samaos/data.py) : data utilisée depuis le renouvellement du forfait, d'après
+// l'historique de vnstat ; à défaut, depuis l'allumage. Comparée au forfait réglé dans les Réglages.
+// Un clic ouvre les Réglages de Sama, section Data (forfait, renouvellement, connexion mesurée…).
+// Alerte (bulle de notification) à 80 % puis à 100 % du forfait, une seule fois par période de forfait.
 
 import QtQuick
 import QtQuick.Layouts
@@ -23,14 +23,18 @@ PlasmoidItem {
     // Forfait choisi dans les Réglages (Data et mises à jour), relu avec le compteur
     property int forfaitMo: 1024
     property real consommeMo: 0
+    property bool duMois: false          // mesure depuis le renouvellement (vnstat), sinon depuis l'allumage
+    property string periode: ""
     readonly property real part: forfaitMo > 0 ? Math.min(1, consommeMo / forfaitMo) : 0
 
-    // Alertes de forfait
+    // Alertes de forfait (seuil déjà annoncé pendant la période, gardé dans samaosrc)
     property int dernierSeuil: 0
-    onPartChanged: {
+    function verifierSeuil() {
         var seuil = part >= 1 ? 100 : (part >= 0.8 ? 80 : 0)
         if (seuil > dernierSeuil) {
             dernierSeuil = seuil
+            executeur.connectSource("kwriteconfig6 --file samaosrc --group Data --key alertePeriode " + periode
+                                    + " && kwriteconfig6 --file samaosrc --group Data --key alerteSeuil " + seuil)
             alerte.title = seuil === 100 ? "Forfait data atteint" : "Forfait data presque épuisé"
             alerte.text = seuil === 100
                 ? "Vous avez utilisé " + lisible(consommeMo) + " sur " + lisible(forfaitMo) + ". Les gros téléchargements peuvent vous coûter cher."
@@ -52,20 +56,24 @@ PlasmoidItem {
         return Math.round(mo) + " Mo"
     }
 
-    // Lecture des compteurs réseau toutes les 30 secondes
-    readonly property string commande: "awk '{ s += $1 } END { print s + 0 }' /sys/class/net/[!l]*/statistics/rx_bytes /sys/class/net/[!l]*/statistics/tx_bytes; kreadconfig6 --file samaosrc --group Data --key forfaitMo --default 1024"
-
+    // Lecture toutes les 30 secondes
     P5Support.DataSource {
         id: lecteur
         engine: "executable"
-        connectedSources: [racine.commande]
+        connectedSources: ["python3 /usr/libexec/samaos/data.py etat"]
         interval: 30000
         onNewData: (source, data) => {
-            var lignes = String(data["stdout"]).trim().split("\n")
-            var octets = parseFloat(lignes[0])
-            var forfait = parseInt(lignes[1])
-            if (!isNaN(forfait) && forfait > 0) racine.forfaitMo = forfait
-            if (!isNaN(octets)) racine.consommeMo = octets / 1048576
+            try {
+                var m = JSON.parse(String(data["stdout"]))
+                if (m.forfaitMo > 0) racine.forfaitMo = m.forfaitMo
+                racine.consommeMo = m.utiliseMo
+                racine.duMois = m.source === "vnstat"
+                if (racine.periode !== m.periodeDebut) {
+                    racine.periode = m.periodeDebut
+                    racine.dernierSeuil = m.alerteSeuil || 0     // nouvelle période : les alertes repartent
+                }
+                racine.verifierSeuil()
+            } catch (e) {}
         }
     }
 
@@ -147,7 +155,7 @@ PlasmoidItem {
                 Layout.fillWidth: true
                 spacing: 2
                 Text {
-                    text: "Data depuis l'allumage"
+                    text: racine.duMois ? "Data ce mois-ci" : "Data depuis l'allumage"
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize + 1
                     color: Kirigami.Theme.disabledTextColor
                 }
