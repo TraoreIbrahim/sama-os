@@ -30,7 +30,7 @@ PageReglage {
         Layout.preferredHeight: 96
         radius: 14
         color: Couleurs.carte
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: fenetre.ouvrir("MonCompte") }
+        MouseArea { anchors.fill: parent; enabled: !fenetre.moi.invite; cursorShape: Qt.PointingHandCursor; onClicked: fenetre.ouvrir("MonCompte") }
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 20
@@ -43,11 +43,16 @@ PageReglage {
                 Text { Layout.fillWidth: true; text: fenetre.moi.nom; elide: Text.ElideRight; font.pixelSize: 18; font.weight: Font.Medium; color: Couleurs.texte }
                 RowLayout {
                     spacing: 8
-                    Pastille { text: fenetre.moi.admin ? "Administrateur" : "Standard" }
-                    Text { text: "Compte local · " + (page.nomOrdinateur || fenetre.moi.identifiant); font.pixelSize: 12; color: Couleurs.texte2 }
+                    Pastille { text: fenetre.moi.invite ? "Invité" : fenetre.moi.admin ? "Administrateur" : "Standard" }
+                    Text {
+                        text: fenetre.moi.invite ? "Session temporaire, effacée à la déconnexion"
+                                                 : "Compte local · " + (page.nomOrdinateur || fenetre.moi.identifiant)
+                        font.pixelSize: 12
+                        color: Couleurs.texte2
+                    }
                 }
             }
-            BoutonSama { text: "Gérer mon compte"; onClicked: fenetre.ouvrir("MonCompte") }
+            BoutonSama { visible: !fenetre.moi.invite; text: "Gérer mon compte"; onClicked: fenetre.ouvrir("MonCompte") }
         }
     }
 
@@ -108,6 +113,7 @@ PageReglage {
     }
 
     Groupe {
+        visible: !fenetre.moi.invite
         titre: "Connexion"
         LigneSousPage {
             titre: "Mot de passe"

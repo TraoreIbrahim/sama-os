@@ -182,6 +182,10 @@ Rectangle {
                             Layout.fillWidth: true
                             libelle: "Mot de passe"
                             motDePasse: true
+                            // Règle du système non remplie (longueur…) : la raison donnée par Calamares, quand les deux
+                            // saisies concordent (sinon c'est la confirmation qui l'explique)
+                            erreur: text !== "" && confirmation.text === text && !ViewManager.nextEnabled
+                                    ? String(config.userPasswordMessage || "") : ""
                             onModifie: texte => config.setUserPassword(texte)
                         }
                         // Barre de solidité

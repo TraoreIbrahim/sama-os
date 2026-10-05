@@ -66,8 +66,10 @@ def chemin_xdg(cle, defaut):
 
 
 def dossiers_choisis(c):
+    # (réglage absent : dossiers par défaut ; « aucun » : rien de coché)
     choisis = reglage(c, "dossiers")
     noms = set(choisis.split(",")) if choisis else {nom for _, nom, defaut in DOSSIERS if defaut}
+    noms.discard("aucun")
     return [(nom, chemin_xdg(cle, nom)) for cle, nom, _ in DOSSIERS if nom in noms], noms
 
 
@@ -193,10 +195,16 @@ def sauvegarder(automatique=False):
         enregistrer(erreur="Le disque « %s » n'a pas pu être ouvert." % disque["nom"])
         return 1
     with open(VERROU, "a") as verrou:
-        try:
-            fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
+        # La page des Réglages prend le verrou un instant pour savoir si une sauvegarde tourne : quelques essais
+        for essai in range(10):
+            try:
+                fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                time.sleep(0.5)
+        else:
             return 0     # une sauvegarde est déjà en cours
+        enregistrer(derniereTentative=int(time.time()))
         base = dossier_sauvegarde(montage)
         date = time.strftime("%Y-%m-%d %Hh%M")
         erreurs = 0
@@ -221,8 +229,10 @@ def sauvegarder(automatique=False):
         subprocess.run(["sync", "-f", base], check=False)
         volume = taille(os.path.join(base, "Actuelle"))
         if erreurs:
+            deja = lire_etat().get("erreur")
             enregistrer(erreur="La sauvegarde n'a pas pu copier tous les dossiers (disque plein ?).", volume=volume)
-            notifier("Sauvegarde incomplète", "Certains dossiers n'ont pas pu être copiés sur « %s »." % disque["nom"], "dialog-warning")
+            if not deja:     # (une seule fois, pas à chaque tentative automatique)
+                notifier("Sauvegarde incomplète", "Certains dossiers n'ont pas pu être copiés sur « %s »." % disque["nom"], "dialog-warning")
             return 1
         enregistrer(derniere=int(time.time()), volume=volume, erreur="")
         if automatique:
@@ -242,7 +252,8 @@ def auto():
     if not reglage(c, "disque") or reglage(c, "auto", "true") == "false":
         return 0
     intervalle = INTERVALLES.get(reglage(c, "frequence", "jour"), 86400)
-    if time.time() - lire_etat().get("derniere", 0) < intervalle:
+    e = lire_etat()
+    if time.time() - max(e.get("derniere", 0), e.get("derniereTentative", 0)) < intervalle:
         return 0
     if not any(d["uuid"] == reglage(c, "disque") for d in disques()):
         return 0

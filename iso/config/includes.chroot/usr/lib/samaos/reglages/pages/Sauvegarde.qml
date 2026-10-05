@@ -16,6 +16,8 @@ PageReglage {
     readonly property var frequences: ["heure", "jour", "semaine"]
 
     // Lecture complète (avec la taille des dossiers) à l'ouverture et après un changement ; rapide ensuite
+    // (la page n'est mise à jour que si quelque chose a changé : sinon la liste ouverte se refermerait)
+    property string dernierEtat: ""
     function relire(rapide) {
         commande.lancer(script + "etat" + (rapide === true ? " rapide" : ""), function (s) {
             try {
@@ -23,7 +25,8 @@ PageReglage {
                 e.dossiers.forEach(function (d, i) {
                     if (d.taille === null) d.taille = page.etat.dossiers[i] ? page.etat.dossiers[i].taille : 0
                 })
-                page.etat = e
+                var texte = JSON.stringify(e)
+                if (texte !== page.dernierEtat) { page.dernierEtat = texte; page.etat = e }
             } catch (err) {}
         })
     }
@@ -47,7 +50,7 @@ PageReglage {
         return "le " + d.toLocaleDateString(Qt.locale(), "d MMMM")
     }
     function sauvegarder() {
-        var e = JSON.parse(JSON.stringify(etat)); e.enCours = true; e.erreur = ""; etat = e
+        var e = JSON.parse(JSON.stringify(etat)); e.enCours = true; e.erreur = ""; etat = e; dernierEtat = ""
         commande.lancer(script + "sauvegarder; echo fini", function () { page.relire() })
     }
 
@@ -200,7 +203,7 @@ PageReglage {
                     onBascule: a => {
                         var noms = page.etat.dossiers.filter(function (d) { return d.nom === modelData.nom ? a : d.choisi })
                                                      .map(function (d) { return d.nom })
-                        page.reglage("dossiers", noms.join(","))
+                        page.reglage("dossiers", noms.length > 0 ? noms.join(",") : "aucun")
                     }
                 }
             }

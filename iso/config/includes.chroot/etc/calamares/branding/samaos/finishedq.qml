@@ -14,6 +14,12 @@ Rectangle {
     readonly property bool echec: config.failed === true
     property bool details: false
 
+    // Calamares redémarre en quittant (bouton « Continuer l'essai », croix de la fenêtre, Alt+F4) tant que
+    // « redémarrer » est coché, ce que fait le réglage de Debian (restartNowChecked) : on le décoche dès
+    // l'arrivée sur la page. « Redémarrer maintenant » force le redémarrage (doRestart(true)).
+    Component.onCompleted: config.restartNowWanted = false
+    function onActivate() { config.restartNowWanted = false }
+
     component Pilule: AbstractButton {
         id: bouton
         property bool principal: false
@@ -143,8 +149,6 @@ Rectangle {
             spacing: 12
             Pilule {
                 text: page.echec ? "Fermer l'installateur" : "Continuer l'essai"
-                // Calamares redémarre en quittant la dernière page si « redémarrer » est coché (restartNowChecked) :
-                // on le décoche d'abord, sinon « Continuer l'essai » redémarrerait l'ordinateur.
                 onClicked: {
                     config.restartNowWanted = false
                     ViewManager.quit()

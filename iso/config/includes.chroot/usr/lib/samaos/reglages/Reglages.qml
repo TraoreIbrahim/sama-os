@@ -67,7 +67,9 @@ Window {
     property int revisionPhotos: 0     // change après un changement de photo pour recharger les images
     readonly property var moi: {
         for (var i = 0; i < comptes.length; i++) if (comptes[i].identifiant === utilisateur.loginName) return comptes[i]
-        return { uid: 1000, identifiant: utilisateur.loginName, nom: utilisateur.fullName || utilisateur.loginName, admin: true, photo: "" }
+        // (session invitée, ou liste pas encore lue : jamais administrateur par défaut)
+        return { uid: -1, identifiant: utilisateur.loginName, nom: utilisateur.fullName || utilisateur.loginName, admin: false, photo: "",
+                 invite: utilisateur.loginName === "sama-invite" }
     }
     function relireComptes() {
         commandeComptes.lancer("/usr/libexec/samaos/compte.sh liste", function (s) {
