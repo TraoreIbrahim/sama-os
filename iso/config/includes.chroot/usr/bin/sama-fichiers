@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fichiers, l'explorateur de Sama. Usage : sama-fichiers [dossier ou adresse file://…]
+# L'exécutable porte le nom de l'application : son identité (tuile dans la Natte, Alt+Tab) en découle.
+exec /usr/lib/samaos/bin/samaos-fichiers /usr/lib/samaos/fichiers/Fichiers.qml -- "$@"

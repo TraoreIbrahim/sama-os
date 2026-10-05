@@ -1,10 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Fichiers
-Comment=Explorateur de fichiers de Sama (préversion)
-Exec=dolphin %u
+Comment=Explorateur de fichiers de Sama
+Exec=sama-fichiers %u
 Icon=/usr/share/samaos/icones/fichiers.svg
-StartupWMClass=org.kde.dolphin
+StartupWMClass=samaos-fichiers
 Categories=System;FileManager;
+MimeType=inode/directory;
 Terminal=false
-X-Sama-Provisoire=true
+Keywords=fichiers;dossiers;documents;explorateur;clé usb;corbeille;

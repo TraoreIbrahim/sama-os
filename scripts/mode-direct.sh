@@ -58,16 +58,17 @@ envoyer)
 
 	# Identité visuelle, couleurs, thème Plasma, apparence (fichiers système : sudo sans mot de passe en session d'essai)
 	tar --no-xattrs -C "$racine/branding" -czf - logo-sama.svg logo-cour.svg fonds icones demarrage installateur \
-		| vm 'sudo mkdir -p /usr/share/samaos && sudo tar -xzf - -C /usr/share/samaos'
+		| vm 'sudo mkdir -p /usr/share/samaos && sudo tar -xzf - -C /usr/share/samaos --no-same-owner'
 	tar --no-xattrs -C "$inclus/usr/share" -czf - color-schemes plasma/desktoptheme plasma/look-and-feel icons/sama icons/sama-sombre konsole kwin/tabbox knotifications6 \
-		| vm 'sudo tar -xzf - -C /usr/share'
+		| vm 'sudo tar -xzf - -C /usr/share --no-same-owner'
 	# Réglages par défaut du système (barres de titre, terminal…)
-	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc kwinrc | vm 'sudo tar -xzf - -C /etc/xdg'
+	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc kwinrc mimeapps.list kde-mimeapps.list | vm 'sudo tar -xzf - -C /etc/xdg --no-same-owner'
 	# Applications Sama (Réglages…) : fichiers, lanceurs, raccourcis, exécutables propres
-	tar --no-xattrs -C "$inclus" -czf - usr/lib/samaos usr/bin/sama-reglages $(cd "$inclus" && ls usr/share/applications/samaos-*.desktop) \
-		| vm 'sudo tar -xzf - -C / && sudo mkdir -p /usr/lib/samaos/bin && sudo cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages.nouveau && sudo mv -f /usr/lib/samaos/bin/samaos-reglages.nouveau /usr/lib/samaos/bin/samaos-reglages'
+	tar --no-xattrs -C "$inclus" -czf - usr/lib/samaos usr/bin/sama-reglages usr/bin/sama-fichiers $(cd "$inclus" && ls usr/share/applications/samaos-*.desktop) \
+		| vm 'sudo tar -xzf - -C / --no-same-owner && sudo mkdir -p /usr/lib/samaos/bin && for a in samaos-reglages samaos-fichiers; do
+			sudo cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/$a.nouveau && sudo mv -f /usr/lib/samaos/bin/$a.nouveau /usr/lib/samaos/bin/$a; done'
 	# Scripts Sama (organisation du menu…) et application du tri des applications
-	tar --no-xattrs -C "$inclus/usr/libexec" -czf - samaos | vm 'sudo tar -xzf - -C /usr/libexec && sudo sh /usr/libexec/samaos/organiser-applications.sh && kbuildsycoca6 >/dev/null 2>&1'
+	tar --no-xattrs -C "$inclus/usr/libexec" -czf - samaos | vm 'sudo tar -xzf - -C /usr/libexec --no-same-owner && sudo sh /usr/libexec/samaos/organiser-applications.sh && kbuildsycoca6 >/dev/null 2>&1'
 
 	# Recharger le bureau (quelques secondes)
 	vm 'systemctl --user restart plasma-plasmashell.service 2>/dev/null || (kquitapp6 plasmashell; sleep 1; setsid plasmashell >/dev/null 2>&1 &)'
@@ -116,6 +117,7 @@ rattraper)
 	echo "3/5 Ce que font les scripts de construction de l'ISO…"
 	vm 'sudo sh /usr/libexec/samaos/installer-ecrans.sh >/dev/null 2>&1; sudo python3 /usr/libexec/samaos/vocabulaire.py >/dev/null 2>&1;
 	    sudo mkdir -p /usr/lib/samaos/bin && sudo cp -f /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages 2>/dev/null;
+	    sudo cp -f /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-fichiers 2>/dev/null;
 	    sudo sh /usr/libexec/samaos/installateur-pages.sh >/dev/null 2>&1;
 	    sudo systemctl daemon-reload; sudo systemctl enable samaos-mises-a-jour-nuit.timer >/dev/null 2>&1;
 	    sudo sh /usr/libexec/samaos/mises-a-jour-nuit.sh activer; true'
