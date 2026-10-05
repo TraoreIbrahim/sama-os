@@ -47,6 +47,26 @@ Window {
     property var appareils: []
     property string renommage: ""            // chemin en cours de renommage
     property bool dialogue: false            // une fenêtre de confirmation est ouverte (Échap lui revient)
+    property bool saisieActive: false        // on écrit dans le champ de recherche : les touches d'édition lui reviennent
+
+    // ——— Recherche dans le dossier et ses sous-dossiers (fichiers.py chercher) ———
+    property string recherche: ""
+    property var resultats: []
+    property bool rechercheEnCours: false
+    onRechercheChanged: { selection = []; if (recherche.trim()) attenteRecherche.restart(); else { resultats = []; rechercheEnCours = false } }
+    Timer {
+        id: attenteRecherche
+        interval: 250        // (on attend la fin de la frappe)
+        onTriggered: {
+            var demandee = fenetre.recherche, ou = fenetre.dossier
+            fenetre.rechercheEnCours = true
+            commande.lancer(fenetre.moteur + "chercher " + commande.q(ou) + " " + commande.q(demandee.trim()), function (s) {
+                if (demandee !== fenetre.recherche || ou !== fenetre.dossier) return     // (réponse d'une recherche dépassée)
+                try { fenetre.resultats = JSON.parse(s) } catch (e) { fenetre.resultats = [] }
+                fenetre.rechercheEnCours = false
+            })
+        }
+    }
 
     readonly property string titreDossier: {
         var f = favoris.filter(function (x) { return x.chemin === dossier })
@@ -69,6 +89,7 @@ Window {
 
     function ouvrirDossier(p, sansHistorique) {
         lieu = "dossier"
+        recherche = ""
         if (filtre === "recents") filtre = "tous"
         selection = []
         renommage = ""
@@ -177,19 +198,20 @@ Window {
     }
 
     // ——— Raccourcis clavier ———
-    Shortcut { sequences: [StandardKey.Copy]; onActivated: fenetre.copier(false) }
-    Shortcut { sequences: [StandardKey.Cut]; onActivated: fenetre.copier(true) }
-    Shortcut { sequences: [StandardKey.Paste]; onActivated: fenetre.coller() }
-    Shortcut { sequences: [StandardKey.Delete]; enabled: fenetre.renommage === ""; onActivated: fenetre.jeter(fenetre.selection) }
+    Shortcut { sequences: [StandardKey.Copy]; enabled: !fenetre.saisieActive; onActivated: fenetre.copier(false) }
+    Shortcut { sequences: [StandardKey.Cut]; enabled: !fenetre.saisieActive; onActivated: fenetre.copier(true) }
+    Shortcut { sequences: [StandardKey.Paste]; enabled: !fenetre.saisieActive; onActivated: fenetre.coller() }
+    Shortcut { sequences: [StandardKey.Delete]; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: fenetre.jeter(fenetre.selection) }
     Shortcut { sequence: "F2"; onActivated: if (fenetre.selection.length === 1) fenetre.renommage = fenetre.selection[0] }
-    Shortcut { sequences: [StandardKey.SelectAll]; enabled: fenetre.renommage === ""
+    Shortcut { sequences: [StandardKey.SelectAll]; enabled: fenetre.renommage === "" && !fenetre.saisieActive
                onActivated: { var l = []; for (var i = 0; i < contenu.count; i++) l.push(contenu.get(i, "filePath")); fenetre.selection = l } }
     Shortcut { sequences: ["Alt+Left", StandardKey.Back]; onActivated: fenetre.precedent() }
     Shortcut { sequences: ["Alt+Right", StandardKey.Forward]; onActivated: fenetre.suivant() }
-    Shortcut { sequences: ["Alt+Up", "Backspace"]; enabled: fenetre.renommage === ""; onActivated: fenetre.remonter() }
+    Shortcut { sequences: ["Alt+Up", "Backspace"]; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: fenetre.remonter() }
     Shortcut { sequence: "Ctrl+Shift+N"; onActivated: fenetre.nouveauDossier() }
     Shortcut { sequence: "Ctrl+H"; onActivated: fenetre.caches = !fenetre.caches }
-    Shortcut { sequence: "Escape"; enabled: !fenetre.dialogue; onActivated: { if (fenetre.renommage) fenetre.renommage = ""; else fenetre.selection = [] } }
+    Shortcut { sequence: "Escape"; enabled: !fenetre.dialogue
+               onActivated: { if (fenetre.renommage) fenetre.renommage = ""; else if (fenetre.recherche) fenetre.recherche = ""; else fenetre.selection = [] } }
 
     RowLayout {
         anchors.fill: parent

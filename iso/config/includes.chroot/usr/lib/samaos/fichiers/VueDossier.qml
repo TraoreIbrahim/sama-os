@@ -13,8 +13,29 @@ ColumnLayout {
     id: vue
     spacing: 0
     readonly property bool recents: fenetre.filtre === "recents"
-    readonly property var modeleCourant: recents ? fenetre.recents : fenetre.modele
-    readonly property int nombre: recents ? fenetre.recents.length : fenetre.modele.count
+    readonly property bool cherche: fenetre.recherche.trim() !== ""
+    // Résultats de recherche (dans le dossier et ses sous-dossiers, ou parmi les récents), filtrés par type
+    function simplifier(t) {
+        t = String(t).toLowerCase()
+        if (typeof t.normalize === "function") t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        return t.replace(/[_.-]/g, " ")
+    }
+    readonly property var listeRecherche: {
+        if (!cherche) return []
+        var mots = simplifier(fenetre.recherche).split(/\s+/).filter(function (m) { return m })
+        var base = recents ? fenetre.recents.filter(function (r) {
+            var n = vue.simplifier(r.nom)
+            return mots.every(function (m) { return n.indexOf(m) >= 0 })
+        }) : fenetre.resultats
+        if (fenetre.filtre === "documents" || fenetre.filtre === "images") {
+            var familles = fenetre.filtre === "images" ? ["image"] : ["texte", "tableur", "presentation", "pdf"]
+            base = base.filter(function (r) { return !r.dossier && familles.indexOf(Types.famille(r.nom, false)) >= 0 })
+        }
+        return base
+    }
+    readonly property bool tableau: recents || cherche          // modèle sous forme de liste (pas le dossier lui-même)
+    readonly property var modeleCourant: cherche ? listeRecherche : recents ? fenetre.recents : fenetre.modele
+    readonly property int nombre: tableau ? (modeleCourant.length || 0) : fenetre.modele.count
     readonly property Flickable vueActive: fenetre.vue === "grille" ? grille : liste
     property int ancre: -1                     // premier élément d'une sélection Maj+clic
     property int courant: -1                   // élément où sont les flèches du clavier
@@ -23,11 +44,21 @@ ColumnLayout {
     function element(m) {
         if (m.fileName !== undefined) return { nom: m.fileName, chemin: m.filePath, dossier: m.fileIsDir, taille: m.fileSize, modifie: m.fileModified, adresse: m.fileUrl }
         var d = m.modelData
-        return { nom: d.nom, chemin: d.chemin, dossier: false, taille: -1, modifie: d.quand * 1000, adresse: fenetre.adresse(d.chemin) }
+        return { nom: d.nom, chemin: d.chemin, dossier: !!d.dossier, taille: d.taille !== undefined ? d.taille : -1,
+                 modifie: (d.modifie || d.quand || 0) * 1000, adresse: fenetre.adresse(d.chemin), parent: d.parent !== undefined ? d.parent : null }
     }
-    function cheminA(i) { return recents ? fenetre.recents[i].chemin : fenetre.modele.get(i, "filePath") }
-    function estDossierA(i) { return recents ? false : fenetre.modele.get(i, "fileIsDir") }
+    function cheminA(i) { return tableau ? modeleCourant[i].chemin : fenetre.modele.get(i, "filePath") }
+    function estDossierA(i) { return tableau ? !!modeleCourant[i].dossier : fenetre.modele.get(i, "fileIsDir") }
+    // Fil d'Ariane abrégé : « Accueil › … › Cours › Été » au-delà de quatre niveaux
+    readonly property var arianeCourte: {
+        var a = fenetre.ariane
+        if (a.length <= 4) return a
+        return [a[0], { nom: "…", chemin: a[a.length - 3].chemin }].concat(a.slice(a.length - 2))
+    }
+    // Dossier d'un résultat, pour l'afficher : « Cours › Été », ou le dossier où l'on cherche
+    function lieuResultat(el) { return el.parent ? el.parent.split("/").join(" › ") : fenetre.titreDossier }
     function cliquer(el, souris, index) {
+        vue.forceActiveFocus()
         if (souris.modifiers & Qt.ShiftModifier && ancre >= 0) {
             var l = []
             for (var i = Math.min(ancre, index); i <= Math.max(ancre, index); i++) l.push(cheminA(i))
@@ -79,18 +110,28 @@ ColumnLayout {
         vueActive.positionViewAtIndex(i, fenetre.vue === "grille" ? GridView.Contain : ListView.Contain)
     }
     readonly property int colonnes: Math.max(1, Math.floor(grille.width / grille.cellWidth))
-    Shortcut { sequence: "Right"; enabled: fenetre.renommage === ""; onActivated: vue.deplacer(1) }
-    Shortcut { sequence: "Left"; enabled: fenetre.renommage === ""; onActivated: vue.deplacer(-1) }
-    Shortcut { sequence: "Down"; enabled: fenetre.renommage === ""; onActivated: vue.deplacer(fenetre.vue === "grille" ? vue.colonnes : 1) }
-    Shortcut { sequence: "Up"; enabled: fenetre.renommage === ""; onActivated: vue.deplacer(fenetre.vue === "grille" ? -vue.colonnes : -1) }
-    Shortcut { sequence: "Home"; enabled: fenetre.renommage === ""; onActivated: vue.deplacer(-vue.nombre) }
-    Shortcut { sequence: "End"; enabled: fenetre.renommage === ""; onActivated: vue.deplacer(vue.nombre) }
+    Shortcut { sequence: "Right"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(1) }
+    Shortcut { sequence: "Left"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(-1) }
+    Shortcut { sequence: "Down"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(fenetre.vue === "grille" ? vue.colonnes : 1) }
+    Shortcut { sequence: "Up"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(fenetre.vue === "grille" ? -vue.colonnes : -1) }
+    Shortcut { sequence: "Home"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(-vue.nombre) }
+    Shortcut { sequence: "End"; enabled: fenetre.renommage === "" && !fenetre.saisieActive; onActivated: vue.deplacer(vue.nombre) }
     Shortcut {
         sequences: ["Return", "Enter"]
-        enabled: fenetre.renommage === "" && fenetre.selection.length === 1
+        enabled: fenetre.renommage === "" && !fenetre.saisieActive && fenetre.selection.length === 1
         onActivated: { var i = vue.courant; fenetre.ouvrir(fenetre.selection[0], i >= 0 && vue.cheminA(i) === fenetre.selection[0] ? vue.estDossierA(i) : false) }
     }
     Connections { target: fenetre; function onDossierChanged() { vue.courant = -1; vue.ancre = -1 } }
+    Shortcut { sequences: [StandardKey.Find, "Ctrl+F"]; onActivated: champRecherche.saisie.forceActiveFocus() }
+    // Taper des lettres dans la vue lance la recherche
+    focus: true
+    Component.onCompleted: forceActiveFocus()
+    Keys.onPressed: touche => {
+        if (fenetre.renommage || !touche.text || touche.text.trim() === "" || (touche.modifiers & (Qt.ControlModifier | Qt.AltModifier))) return
+        fenetre.recherche += touche.text
+        champRecherche.saisie.forceActiveFocus()
+        touche.accepted = true
+    }
 
     component Picto: Canvas {
         property string trace
@@ -233,8 +274,18 @@ ColumnLayout {
                 Layout.leftMargin: 4
                 clip: true
                 spacing: 4
+                Text {
+                    visible: vue.cherche
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(implicitWidth, parent.width)
+                    elide: Text.ElideRight
+                    text: "Dans " + (vue.recents ? "Récents" : fenetre.titreDossier)
+                    font.pixelSize: 15
+                    font.weight: Font.DemiBold
+                    color: Couleurs.texte
+                }
                 Repeater {
-                    model: vue.recents ? [{ nom: "Récents", chemin: "" }] : fenetre.ariane
+                    model: vue.cherche ? [] : vue.recents ? [{ nom: "Récents", chemin: "" }] : vue.arianeCourte
                     delegate: Row {
                         spacing: 4
                         Text {
@@ -245,7 +296,7 @@ ColumnLayout {
                             color: Couleurs.texte3
                         }
                         Rectangle {
-                            readonly property bool dernier: index === (vue.recents ? 0 : fenetre.ariane.length - 1)
+                            readonly property bool dernier: index === (vue.recents ? 0 : vue.arianeCourte.length - 1)
                             anchors.verticalCenter: parent.verticalCenter
                             width: Math.min(nomAriane.implicitWidth, 240) + 10
                             height: 28
@@ -272,6 +323,72 @@ ColumnLayout {
                             Depot { id: depotAriane; anchors.fill: parent; destination: parent.dernier ? "" : modelData.chemin }
                         }
                     }
+                }
+            }
+            // Recherche
+            Rectangle {
+                id: champRecherche
+                property alias saisie: saisieRecherche
+                readonly property bool ouvert: saisieRecherche.activeFocus || fenetre.recherche !== ""
+                Layout.preferredWidth: ouvert ? 230 : 34
+                Layout.preferredHeight: 30
+                Layout.rightMargin: 6
+                Behavior on Layout.preferredWidth { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                radius: 15
+                color: Couleurs.carte
+                border.width: saisieRecherche.activeFocus ? 1.5 : 0
+                border.color: Qt.rgba(181 / 255, 83 / 255, 47 / 255, 0.5)
+                Picto { anchors.left: parent.left; anchors.leftMargin: champRecherche.ouvert ? 10 : 9; anchors.verticalCenter: parent.verticalCenter
+                        trace: "M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z M15.5 15.5l4.5 4.5"; encre: Couleurs.texte3 }
+                TextInput {
+                    id: saisieRecherche
+                    anchors.left: parent.left
+                    anchors.right: effacerRecherche.left
+                    anchors.leftMargin: 32
+                    anchors.rightMargin: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+                    text: fenetre.recherche
+                    onTextEdited: fenetre.recherche = text
+                    onActiveFocusChanged: fenetre.saisieActive = activeFocus
+                    // Entrée : on passe aux résultats, le premier choisi
+                    Keys.onReturnPressed: { vue.forceActiveFocus(); vue.courant = -1; vue.deplacer(1) }
+                    Keys.onEnterPressed: { vue.forceActiveFocus(); vue.courant = -1; vue.deplacer(1) }
+                    font.pixelSize: 13
+                    color: Couleurs.texte
+                    selectionColor: Qt.rgba(181 / 255, 83 / 255, 47 / 255, 0.3)
+                    selectedTextColor: Couleurs.texte
+                    selectByMouse: true
+                    Keys.onEscapePressed: { fenetre.recherche = ""; vue.forceActiveFocus() }
+                    Keys.onDownPressed: { vue.forceActiveFocus(); vue.deplacer(1) }
+                    Text {
+                        visible: !parent.text && champRecherche.ouvert
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        elide: Text.ElideRight
+                        text: "Rechercher" + (champRecherche.ouvert ? " dans " + (vue.recents ? "Récents" : fenetre.titreDossier) : "")
+                        font.pixelSize: 13
+                        color: Couleurs.texte3
+                    }
+                }
+                // Loupe seule : un clic ouvre le champ
+                MouseArea {
+                    visible: !champRecherche.ouvert
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: saisieRecherche.forceActiveFocus()
+                }
+                MouseArea {
+                    id: effacerRecherche
+                    visible: fenetre.recherche !== ""
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: visible ? 20 : 0
+                    height: 20
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: { fenetre.recherche = ""; vue.forceActiveFocus() }
+                    Text { anchors.centerIn: parent; text: "×"; font.pixelSize: 15; color: Couleurs.texte3 }
                 }
             }
             Repeater {
@@ -400,6 +517,18 @@ ColumnLayout {
                         lineHeight: 1.05
                         font.pixelSize: 12
                         color: Couleurs.texte
+                        // Recherche : le dossier où se trouve l'élément
+                        Text {
+                            visible: vue.cherche
+                            anchors.top: parent.bottom
+                            anchors.topMargin: 2
+                            width: parent.width
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideMiddle
+                            text: vue.lieuResultat(tuile.el)
+                            font.pixelSize: 10
+                            color: Couleurs.texte3
+                        }
                     }
                     Loader {
                         active: fenetre.renommage === tuile.el.chemin
@@ -430,7 +559,7 @@ ColumnLayout {
                     spacing: 12
                     Text { Layout.leftMargin: 46; Layout.fillWidth: true; text: "Nom"; font.pixelSize: 11; font.weight: Font.DemiBold; color: Couleurs.texte3 }
                     Text { Layout.preferredWidth: 150; text: vue.recents ? "Ouvert" : "Modifié"; font.pixelSize: 11; font.weight: Font.DemiBold; color: Couleurs.texte3 }
-                    Text { Layout.preferredWidth: 110; text: "Type"; font.pixelSize: 11; font.weight: Font.DemiBold; color: Couleurs.texte3 }
+                    Text { Layout.preferredWidth: 110; text: vue.cherche ? "Dans" : "Type"; font.pixelSize: 11; font.weight: Font.DemiBold; color: Couleurs.texte3 }
                     Text { Layout.preferredWidth: 70; Layout.rightMargin: 10; horizontalAlignment: Text.AlignRight; text: "Taille"; font.pixelSize: 11; font.weight: Font.DemiBold; color: Couleurs.texte3 }
                 }
                 delegate: MouseArea {
@@ -478,8 +607,8 @@ ColumnLayout {
                         Text { Layout.preferredWidth: 150; text: Types.date(ligne.el.modifie); font.pixelSize: 12; color: Couleurs.texte2 }
                         Text {
                             Layout.preferredWidth: 110
-                            text: Types.familles[Types.famille(ligne.el.nom, ligne.el.dossier)].type
-                            elide: Text.ElideRight
+                            text: vue.cherche ? vue.lieuResultat(ligne.el) : Types.familles[Types.famille(ligne.el.nom, ligne.el.dossier)].type
+                            elide: vue.cherche ? Text.ElideLeft : Text.ElideRight
                             font.pixelSize: 12
                             color: Couleurs.texte2
                         }
@@ -502,15 +631,17 @@ ColumnLayout {
                 spacing: 6
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: vue.recents ? "Aucun fichier ouvert récemment" : fenetre.filtre === "tous" ? "Ce dossier est vide" : "Aucun fichier de ce type ici"
+                    text: vue.cherche ? (fenetre.rechercheEnCours && !vue.recents ? "Recherche…" : "Aucun résultat pour « " + fenetre.recherche.trim() + " »")
+                        : vue.recents ? "Aucun fichier ouvert récemment" : fenetre.filtre === "tous" ? "Ce dossier est vide" : "Aucun fichier de ce type ici"
                     font.pixelSize: 15
                     font.weight: Font.Medium
                     color: Couleurs.texte2
                 }
                 Text {
-                    visible: !vue.recents && fenetre.filtre === "tous"
+                    visible: vue.cherche ? !fenetre.rechercheEnCours && !vue.recents : !vue.recents && fenetre.filtre === "tous"
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Glissez-y des fichiers, ou collez-les avec Ctrl+V"
+                    text: vue.cherche ? "La recherche porte sur « " + fenetre.titreDossier + " » et tous ses sous-dossiers"
+                                      : "Glissez-y des fichiers, ou collez-les avec Ctrl+V"
                     font.pixelSize: 12
                     color: Couleurs.texte3
                 }
@@ -540,7 +671,7 @@ ColumnLayout {
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
             anchors.leftMargin: 16
-            text: vue.nombre + (vue.nombre > 1 ? " éléments" : " élément")
+            text: vue.nombre + (vue.cherche ? (vue.nombre > 1 ? " résultats" : " résultat") : (vue.nombre > 1 ? " éléments" : " élément"))
                   + (fenetre.selection.length ? " · " + fenetre.selection.length + (fenetre.selection.length > 1 ? " sélectionnés" : " sélectionné") : "")
                   + (fenetre.disqueCourant && fenetre.disqueCourant.libre >= 0 ? " · " + Types.taille(fenetre.disqueCourant.libre) + " libres" : "")
             font.pixelSize: 11

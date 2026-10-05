@@ -12,6 +12,8 @@
   fichiers.py renommer CHEMIN NOM         renomme (refuse d'écraser)
   fichiers.py nouveau-dossier DOSSIER     crée « Nouveau dossier » (numéroté s'il existe), affiche son chemin
   fichiers.py recents                     JSON : fichiers ouverts récemment (toutes applications)
+  fichiers.py chercher DOSSIER TEXTE      JSON : éléments du dossier et de ses sous-dossiers dont le nom contient tous
+                                          les mots du texte (sans tenir compte des accents ni des majuscules)
   fichiers.py analyser PÉRIPHÉRIQUE       JSON : clé montée au besoin, espace utilisé, nombre de photos, documents…
   fichiers.py importer TACHE PÉRIPHÉRIQUE copie les photos de la clé dans Images/« Photos de <clé> <date> »
                                           (avancement comme une copie, voir plus bas)
@@ -29,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 import urllib.parse
 import xml.etree.ElementTree as ET
 
@@ -353,6 +356,47 @@ def recents():
 
 # ——— Copie et déplacement, avec avancement et conflits ———
 
+# ——— Recherche par nom ———
+
+def simplifier(texte):
+    """« Été_Rapport » → « ete rapport » : sans accents, en minuscules, séparateurs en espaces."""
+    t = unicodedata.normalize("NFD", texte.lower())
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return t.replace("_", " ").replace("-", " ").replace(".", " ")
+
+
+def chercher(racine, texte, limite=300, duree=3.0):
+    mots = simplifier(texte).split()
+    if not mots:
+        return sortie([])
+    debut = time.time()
+    trouves = []
+    for dossier, dossiers, fichiers in os.walk(racine):
+        dossiers[:] = sorted(d for d in dossiers if not d.startswith("."))
+        for nom, est_dossier in [(d, True) for d in dossiers] + [(f, False) for f in fichiers if not f.startswith(".")]:
+            simple = simplifier(nom)
+            if all(m in simple for m in mots):
+                chemin = os.path.join(dossier, nom)
+                try:
+                    st = os.stat(chemin)
+                except OSError:
+                    continue
+                trouves.append({"chemin": chemin, "nom": nom, "dossier": est_dossier, "taille": st.st_size,
+                                "modifie": int(st.st_mtime), "parent": os.path.relpath(dossier, racine),
+                                "debut": simple.startswith(mots[0])})
+                if len(trouves) >= limite:
+                    break
+        if len(trouves) >= limite or time.time() - debut > duree:
+            break
+    # Les noms qui commencent par le texte cherché d'abord, puis les dossiers, puis par ordre alphabétique
+    trouves.sort(key=lambda r: (not r["debut"], not r["dossier"], simplifier(r["nom"])))
+    for r in trouves:
+        del r["debut"]
+        if r["parent"] == ".":
+            r["parent"] = ""
+    sortie(trouves)
+
+
 # ——— Clé USB branchée (carte « Clé USB détectée » du Pouls) ———
 
 def contenu_cle(montage, limite=50000):
@@ -607,6 +651,8 @@ if __name__ == "__main__":
         code = nouveau_dossier(a[1])
     elif action == "recents":
         recents()
+    elif action == "chercher" and len(a) > 2:
+        chercher(a[1], " ".join(a[2:]))
     elif action == "analyser" and len(a) > 1:
         analyser(a[1])
     elif action == "importer" and len(a) > 2:
