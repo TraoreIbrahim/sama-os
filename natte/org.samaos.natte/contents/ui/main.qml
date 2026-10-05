@@ -680,6 +680,8 @@ PlasmoidItem {
 
                             delegate: MouseArea {
                                 id: tuile
+                                // Fenêtres du système (autorisation…) : pas de tuile dans la Natte
+                                visible: String(model.AppId).indexOf("samaos-autorisation") < 0
                                 readonly property bool ouverte: !model.IsLauncher
                                 readonly property bool tuileSama: racine.aUneTuileSama(model.LauncherUrlWithoutIcon, model.AppId)
                                 Layout.preferredWidth: racine.tailleTuile

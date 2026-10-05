@@ -63,7 +63,7 @@ envoyer)
 	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc kwinrc | vm 'sudo tar -xzf - -C /etc/xdg'
 	# Applications Sama (Réglages…) : fichiers, lanceurs, raccourcis, exécutables propres
 	tar --no-xattrs -C "$inclus" -czf - usr/lib/samaos usr/bin/sama-reglages $(cd "$inclus" && ls usr/share/applications/samaos-*.desktop) \
-		| vm 'sudo tar -xzf - -C / && sudo mkdir -p /usr/lib/samaos/bin && sudo cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages'
+		| vm 'sudo tar -xzf - -C / && sudo mkdir -p /usr/lib/samaos/bin && sudo cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages.nouveau && sudo mv -f /usr/lib/samaos/bin/samaos-reglages.nouveau /usr/lib/samaos/bin/samaos-reglages'
 	# Scripts Sama (organisation du menu…) et application du tri des applications
 	tar --no-xattrs -C "$inclus/usr/libexec" -czf - samaos | vm 'sudo tar -xzf - -C /usr/libexec && sudo sh /usr/libexec/samaos/organiser-applications.sh && kbuildsycoca6 >/dev/null 2>&1'
 
@@ -90,7 +90,8 @@ rattraper)
 	    sh /etc/xdg/plasma-workspace/env/samaos-dossiers.sh;
 	    cp -n /etc/xdg/baloofilerc ~/.config/baloofilerc 2>/dev/null; (balooctl6 enable >/dev/null 2>&1 &);
 	    sh /usr/libexec/samaos/apparence.sh clair >/dev/null 2>&1;
-	    qdbus6 org.kde.KWin /KWin reconfigure; true'
+	    qdbus6 org.kde.KWin /KWin reconfigure;
+	    systemctl --user daemon-reload; systemctl --user restart plasma-polkit-agent; true'
 	echo "Rattrapage terminé. (Le menu des fenêtres de KWin et le menu de démarrage attendent la prochaine ISO.)"
 	;;
 
