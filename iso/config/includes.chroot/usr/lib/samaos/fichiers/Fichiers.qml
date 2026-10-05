@@ -166,7 +166,9 @@ Window {
         var a = Qt.application.arguments
         var demande = a.length > 0 ? String(a[a.length - 1]) : ""
         if (demande.indexOf("file://") === 0) demande = chemin(demande)
-        if (demande.indexOf("/") === 0 && demande.indexOf(".qml") < 0) { dossier = demande; historique = [demande] }
+        // Corbeille : « corbeille », l'adresse trash:/ de KDE, ou le dossier temporaire par lequel KDE la fait passer
+        if (demande === "corbeille" || demande.indexOf("trash:") === 0 || /\/kio-fuse-[^/]+\/trash/.test(demande)) lieu = "corbeille"
+        else if (demande.indexOf("/") === 0 && demande.indexOf(".qml") < 0) { dossier = demande; historique = [demande] }
         // Identité Wayland « samaos-fichiers » (comme le fichier .desktop) : icône dans la barre de titre et la Natte
         Qt.application.domain = ""
         Qt.application.name = "samaos-fichiers"

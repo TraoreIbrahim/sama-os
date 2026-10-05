@@ -951,7 +951,8 @@ PlasmoidItem {
             Layout.preferredWidth: racine.hauteurPilule
             Layout.preferredHeight: racine.hauteurPilule
             hoverEnabled: true
-            onClicked: Qt.openUrlExternally("trash:/")
+            // (Corbeille de Fichiers : l'adresse « trash:/ » de KDE arriverait sous forme de dossier temporaire)
+            onClicked: executeur.connectSource("sama-fichiers corbeille")
 
             Rectangle {
                 anchors.fill: parent

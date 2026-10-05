@@ -3,7 +3,8 @@
 //   tuiles : Wi-Fi, Économie de data, Mode sombre, Mises à jour la nuit, Bluetooth, Ne pas déranger ;
 //   curseurs de luminosité et de volume ; data du jour ; langue.
 // Chaque source (réseau, Bluetooth, luminosité, son…) est chargée à part : si l'une manque, le reste fonctionne.
-// Économie de data et mises à jour la nuit sont affichées comme « bientôt » tant que le service n'existe pas.
+// Économie de data : réglage de Sama et connexion en cours « mesurée » (les mises à jour et téléchargements automatiques
+// attendent une connexion illimitée) ; mises à jour la nuit : /usr/libexec/samaos/mises-a-jour-nuit.sh.
 
 import QtQuick
 import QtQuick.Layouts
@@ -27,6 +28,29 @@ Item {
         function lancer(commande) { connectSource(commande) }
     }
 
+    // Lectures avec réponse (économie de data, mises à jour la nuit), relues à chaque ouverture
+    P5Support.DataSource {
+        id: lecteur
+        engine: "executable"
+        property var rappels: ({})
+        function lire(commande, rappel) { var r = rappels; r[commande] = rappel; rappels = r; connectSource(commande) }
+        onNewData: (source, donnees) => {
+            var rappel = rappels[source]
+            disconnectSource(source)
+            if (rappel) rappel(String(donnees["stdout"] || ""))
+        }
+    }
+    property bool economie: false
+    property bool nuit: false
+    readonly property string connexionActive: "nmcli -t -f NAME,TYPE connection show --active | grep -v ':loopback$' | head -1 | cut -d: -f1"
+    function relireReglages() {
+        lecteur.lire("kreadconfig6 --file samaosrc --group Data --key economie --default false; " + connexionActive
+                     + " | xargs -r -I{} nmcli -g connection.metered connection show {}",
+                     function (s) { var l = s.trim().split("\n"); panneau.economie = l[0] === "true" || l[1] === "yes" })
+        lecteur.lire("sh /usr/libexec/samaos/mises-a-jour-nuit.sh etat", function (s) { panneau.nuit = s.trim() === "actif" })
+    }
+    Component.onCompleted: relireReglages()
+
     Loader { id: wifi; source: "Wifi.qml" }
     Loader { id: bluetooth; source: "Bluetooth.qml" }
     Loader { id: silence; source: "NePasDeranger.qml" }
@@ -35,7 +59,10 @@ Item {
     // Relire le nom du réseau à chaque ouverture
     Connections {
         target: racine
-        function onExpandedChanged() { if (racine.expanded && wifi.item) wifi.item.relire() }
+        function onExpandedChanged() {
+            if (racine.expanded && wifi.item) wifi.item.relire()
+            if (racine.expanded) panneau.relireReglages()
+        }
     }
 
     // Tuile de la maquette : 62 px, coins de 16, latérite quand elle est active
@@ -187,9 +214,16 @@ Item {
             }
             Tuile {
                 titre: "Économie de data"
-                detail: "Bientôt disponible"
+                detail: panneau.economie ? "Mises à jour au Wi-Fi" : "Désactivée"
                 nomIcone: "feuille"
-                bientot: true
+                active: panneau.economie
+                onClicked: {
+                    var a = !panneau.economie
+                    panneau.economie = a
+                    executeur.lancer("kwriteconfig6 --file samaosrc --group Data --key economie " + a + "; " + panneau.connexionActive
+                                     + " | xargs -r -I{} nmcli connection modify {} connection.metered " + (a ? "yes" : "unknown"))
+                }
+                onPressAndHold: executeur.lancer("sama-reglages data")
             }
             Tuile {
                 titre: "Mode sombre"
@@ -201,9 +235,17 @@ Item {
             }
             Tuile {
                 titre: "Mises à jour la nuit"
-                detail: "Bientôt disponible"
+                detail: panneau.nuit ? "Entre 1 h et 5 h" : "Désactivées"
                 nomIcone: "mises-a-jour"
-                bientot: true
+                active: panneau.nuit
+                // Réglage de l'ordinateur : autorisation d'un administrateur (sans mot de passe pour lui)
+                onClicked: {
+                    var a = !panneau.nuit
+                    panneau.nuit = a
+                    lecteur.lire("pkexec /usr/libexec/samaos/mises-a-jour-nuit.sh " + (a ? "activer" : "desactiver")
+                                 + "; sh /usr/libexec/samaos/mises-a-jour-nuit.sh etat", function (s) { panneau.nuit = s.trim() === "actif" })
+                }
+                onPressAndHold: executeur.lancer("sama-reglages data")
             }
             Tuile {
                 readonly property bool dispo: bluetooth.item ? bluetooth.item.disponible : false

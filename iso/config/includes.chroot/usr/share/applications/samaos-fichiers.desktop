@@ -7,5 +7,7 @@ Icon=/usr/share/samaos/icones/fichiers.svg
 StartupWMClass=samaos-fichiers
 Categories=System;FileManager;
 MimeType=inode/directory;
+# (adresses que Fichiers comprend lui-même : la corbeille arrive en « trash:/ » et non en dossier temporaire)
+X-KDE-Protocols=file,trash
 Terminal=false
 Keywords=fichiers;dossiers;documents;explorateur;clé usb;corbeille;
