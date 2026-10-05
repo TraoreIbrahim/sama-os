@@ -1,0 +1,18 @@
+// Mises à jour la nuit de Sama (samaos-mises-a-jour-nuit.timer) : les mises à jour de Debian stable,
+// de sécurité et « updates », installées par unattended-upgrade. Les minuteurs apt-daily de Debian
+// ne téléchargent plus rien pendant la journée : tout se fait la nuit, sur secteur et hors forfait.
+Unattended-Upgrade::Origins-Pattern {
+        "origin=Debian,codename=${distro_codename},label=Debian";
+        "origin=Debian,codename=${distro_codename}-updates";
+        "origin=Debian,codename=${distro_codename},label=Debian-Security";
+        "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+};
+Unattended-Upgrade::Skip-Updates-On-Metered-Connections "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::MinimalSteps "true";
+APT::Periodic::Update-Package-Lists "0";
+APT::Periodic::Download-Upgradeable-Packages "0";
+APT::Periodic::Unattended-Upgrade "0";
+APT::Periodic::AutocleanInterval "7";

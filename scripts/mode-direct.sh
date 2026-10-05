@@ -104,13 +104,16 @@ installateur)
 rattraper)
 	# Une VM live repart de son ISO à chaque démarrage : on lui redonne tout ce que la prochaine ISO contiendra.
 	inclus="$racine/iso/config/includes.chroot"
-	echo "1/5 Paquets légers ajoutés depuis l'ISO (style Kvantum, lanceur QML des Réglages)…"
-	vm 'sudo apt-get install -y -q --no-install-recommends qt6-style-kvantum qml-qt6 >/dev/null 2>&1 || echo "  (paquets non installés : pas de réseau ?)"'
+	echo "1/5 Paquets légers ajoutés depuis l'ISO (style Kvantum, lanceur QML des Réglages, mises à jour la nuit)…"
+	vm 'sudo apt-get install -y -q --no-install-recommends qt6-style-kvantum qml-qt6 unattended-upgrades >/dev/null 2>&1 || echo "  (paquets non installés : pas de réseau ?)"'
 	echo "2/5 Fichiers système de Sama (2 Mo)…"
 	tar --no-xattrs -C "$inclus" -czf - . | vm 'sudo tar -xzf - -C / --no-same-owner --no-overwrite-dir 2>/dev/null; sudo chmod +x /usr/libexec/samaos/*.sh /usr/libexec/samaos/*.py /usr/bin/sama-reglages 2>/dev/null; true'
 	echo "3/5 Ce que font les scripts de construction de l'ISO…"
 	vm 'sudo sh /usr/libexec/samaos/installer-ecrans.sh >/dev/null 2>&1; sudo python3 /usr/libexec/samaos/vocabulaire.py >/dev/null 2>&1;
-	    sudo mkdir -p /usr/lib/samaos/bin && sudo cp -f /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages 2>/dev/null; true'
+	    sudo mkdir -p /usr/lib/samaos/bin && sudo cp -f /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages 2>/dev/null;
+	    sudo sh /usr/libexec/samaos/installateur-pages.sh >/dev/null 2>&1;
+	    sudo systemctl daemon-reload; sudo systemctl enable samaos-mises-a-jour-nuit.timer >/dev/null 2>&1;
+	    sudo sh /usr/libexec/samaos/mises-a-jour-nuit.sh activer; true'
 	echo "4/5 Widgets, identité, menu des applications…"
 	"$0" envoyer >/dev/null
 	echo "5/5 Réglages de la session (style des fenêtres, dossiers, recherche de fichiers)…"

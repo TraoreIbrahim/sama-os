@@ -1,0 +1,6 @@
+#!/bin/sh
+# Mises à jour la nuit, actives par défaut (modifiables dans Réglages › Data et mises à jour et à l'accueil) :
+# elles ne s'exécutent jamais dans la session d'essai, seulement sur l'ordinateur où Sama est installé.
+set -e
+systemctl enable samaos-mises-a-jour-nuit.timer
+sh /usr/libexec/samaos/mises-a-jour-nuit.sh activer

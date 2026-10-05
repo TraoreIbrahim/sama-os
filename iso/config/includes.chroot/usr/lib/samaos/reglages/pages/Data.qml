@@ -1,5 +1,6 @@
 // Data et mises à jour : forfait (lu par la carte Data et le centre de contrôle), connexion mesurée,
-// économie de data et mises à jour la nuit (réglages enregistrés, services à venir).
+// économie de data (réglage enregistré, à venir dans les applications) et mises à jour la nuit
+// (/usr/libexec/samaos/mises-a-jour-nuit.sh, réglage de l'ordinateur : autorisation d'un administrateur).
 import QtQuick
 import QtQuick.Layouts
 import ".."
@@ -24,7 +25,7 @@ PageReglage {
     Component.onCompleted: {
         commande.lancer("kreadconfig6 --file samaosrc --group Data --key forfaitMo --default 1024", function (s) { page.forfaitMo = Number(s.trim()) || 1024 })
         commande.lancer("kreadconfig6 --file samaosrc --group Data --key economie --default false", function (s) { page.economie = s.trim() === "true" })
-        commande.lancer("kreadconfig6 --file samaosrc --group Data --key misesAJourLaNuit --default false", function (s) { page.nuit = s.trim() === "true" })
+        commande.lancer("sh /usr/libexec/samaos/mises-a-jour-nuit.sh etat", function (s) { page.nuit = s.trim() === "actif" })
         commande.lancer("awk '{ s += $1 } END { print s + 0 }' /sys/class/net/[!l]*/statistics/rx_bytes /sys/class/net/[!l]*/statistics/tx_bytes", function (s) { page.consommeMo = Number(s) / 1048576 })
         commande.lancer("nmcli -t -f NAME,DEVICE connection show --active | grep -v ':lo$' | head -1 | cut -d: -f1", function (s) {
             page.connexion = s.trim()
@@ -100,9 +101,18 @@ PageReglage {
         }
         Ligne {
             titre: "Mises à jour la nuit"
-            detail: "Installées entre 1 h et 5 h, quand l'ordinateur est branché (bientôt)"
+            detail: "Installées entre 1 h et 5 h, quand l'ordinateur est branché et sur une connexion illimitée"
             derniere: true
-            Interrupteur { actif: page.nuit; onBascule: a => { page.nuit = a; page.reglage("misesAJourLaNuit", a) } }
+            Interrupteur {
+                actif: page.nuit
+                onBascule: a => {
+                    page.nuit = a
+                    // Autorisation refusée ou annulée : l'interrupteur revient à l'état réel
+                    commande.lancer("pkexec /usr/libexec/samaos/mises-a-jour-nuit.sh " + (a ? "activer" : "desactiver")
+                                    + "; sh /usr/libexec/samaos/mises-a-jour-nuit.sh etat",
+                                    function (s) { page.nuit = s.trim() === "actif" })
+                }
+            }
         }
     }
 }

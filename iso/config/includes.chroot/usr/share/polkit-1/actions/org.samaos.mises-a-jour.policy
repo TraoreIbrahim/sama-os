@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- Mises à jour la nuit (Réglages › Data et mises à jour, accueil du premier démarrage) -->
+<policyconfig>
+  <vendor>Sama OS</vendor>
+  <action id="org.samaos.mises-a-jour">
+    <description>Change automatic updates</description>
+    <description xml:lang="fr">Changer les mises à jour automatiques</description>
+    <message>Authentication is required to change automatic updates</message>
+    <message xml:lang="fr">Une autorisation est nécessaire pour changer les mises à jour automatiques</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/samaos/mises-a-jour-nuit.sh</annotate>
+  </action>
+</policyconfig>

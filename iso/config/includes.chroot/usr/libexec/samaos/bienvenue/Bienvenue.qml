@@ -1,6 +1,9 @@
-// Accueil du premier démarrage de Sama OS : présente les Espaces et laisse l'utilisateur choisir les siens.
-// Lancé par bienvenue.sh, qui crée ensuite les Espaces choisis (activités Plasma).
-// Résultat écrit sur la sortie : une ligne « SAMA_ESPACES=<nom>|<nom>… » (vide si « Plus tard »).
+// Accueil du premier démarrage de Sama OS, en deux étapes : les Espaces (l'utilisateur choisit les siens),
+// puis quelques réglages pour bien démarrer (maquette dem-07 : économie de data, mises à jour la nuit…).
+// Lancé par bienvenue.sh, qui crée ensuite les Espaces choisis (activités Plasma) et applique les réglages.
+// Argument : JSON { prenom, mobile (forfait mobile détecté), nuit (mises à jour la nuit actives) }.
+// Résultat écrit sur la sortie : « SAMA_ESPACES=<nom>|<nom>… » (vide si « Plus tard ») et
+// « SAMA_REGLAGES=economie=0|1;nuit=0|1 ».
 
 import QtQuick
 import QtQuick.Window
@@ -29,12 +32,20 @@ Window {
     readonly property color ligne: sombre ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.08)
     readonly property color champFond: sombre ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05)
 
-    // Prénom passé par bienvenue.sh (dernier argument)
-    readonly property string prenom: {
+    // Informations passées par bienvenue.sh (dernier argument)
+    readonly property var infos: {
         var a = Qt.application.arguments
         var p = a.length > 0 ? String(a[a.length - 1]) : ""
-        return p.indexOf(".qml") >= 0 || p.indexOf("-") === 0 ? "" : p
+        if (p.indexOf(".qml") >= 0 || p.indexOf("-") === 0) return {}
+        try { return JSON.parse(p) } catch (e) { return { prenom: p } }
     }
+    readonly property string prenom: infos.prenom || ""
+
+    // Étape 1 : les Espaces ; étape 2 : les réglages
+    property int etape: 1
+    property var espacesChoisis: []
+    property bool economie: infos.mobile === true
+    property bool nuit: infos.nuit !== false
 
     // Espaces proposés : nom, couleur, fond, encre, applications (pour l'aperçu), phrase d'exemple
     ListModel {
@@ -58,13 +69,18 @@ Window {
         return n
     }
 
-    function terminer(avecChoix) {
+    function suivant(avecChoix) {
         var noms = []
         if (avecChoix) {
             for (var i = 0; i < propositions.count; i++) if (propositions.get(i).choisi) noms.push(propositions.get(i).nom)
             for (var j = 0; j < persos.count; j++) noms.push(persos.get(j).nom)
         }
-        console.log("SAMA_ESPACES=" + noms.join("|"))
+        espacesChoisis = noms
+        etape = 2
+    }
+    function terminer() {
+        console.log("SAMA_ESPACES=" + espacesChoisis.join("|"))
+        console.log("SAMA_REGLAGES=economie=" + (economie ? 1 : 0) + ";nuit=" + (nuit ? 1 : 0))
         Qt.quit()
     }
 
@@ -102,7 +118,7 @@ Window {
         ColumnLayout {
             id: entete
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: carte.top
+            anchors.bottom: fenetre.etape === 1 ? carte.top : carteReglages.top
             anchors.bottomMargin: 36
             spacing: 10
 
@@ -133,9 +149,12 @@ Window {
             }
         }
 
-        // Carte des Espaces
+        // Carte des Espaces (étape 1)
         Rectangle {
             id: carte
+            visible: opacity > 0
+            opacity: fenetre.etape === 1 ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             anchors.verticalCenterOffset: entete.implicitHeight / 2
@@ -363,13 +382,13 @@ Window {
                             color: fenetre.texte2
                         }
                         background: null
-                        onClicked: fenetre.terminer(false)
+                        onClicked: fenetre.suivant(false)
                     }
                     QQC2.AbstractButton {
                         Layout.preferredHeight: 40
                         enabled: fenetre.nombreChoisis > 0
                         contentItem: Text {
-                            text: fenetre.nombreChoisis > 1 ? "Créer mes " + fenetre.nombreChoisis + " Espaces" : "Commencer"
+                            text: fenetre.nombreChoisis > 1 ? "Créer mes " + fenetre.nombreChoisis + " Espaces" : "Continuer"
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
                             color: "#FFFFFF"
@@ -383,7 +402,184 @@ Window {
                             color: fenetre.laterite
                             opacity: parent.enabled ? (parent.pressed ? 0.85 : 1) : 0.4
                         }
-                        onClicked: fenetre.terminer(true)
+                        onClicked: fenetre.suivant(true)
+                    }
+                }
+            }
+        }
+
+        // Quelques réglages pour bien démarrer (étape 2, maquette dem-07)
+        Rectangle {
+            id: carteReglages
+            visible: opacity > 0
+            opacity: fenetre.etape === 2 ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+            transform: Translate { y: fenetre.etape === 2 ? 0 : 16; Behavior on y { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } } }
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: entete.implicitHeight / 2
+            width: Math.min(parent.width - 48, 760)
+            height: contenuReglages.implicitHeight + 50
+            radius: 24
+            color: carte.color
+            border.width: 1
+            border.color: carte.border.color
+
+            ColumnLayout {
+                id: contenuReglages
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 28
+                anchors.topMargin: 26
+                spacing: 0
+
+                Text { text: "Quelques réglages pour bien démarrer"; font.pixelSize: 17; font.weight: Font.Medium; color: fenetre.texte }
+                Text {
+                    Layout.topMargin: 4
+                    text: "Préréglés selon cet ordinateur. Tout se modifie ensuite dans Réglages."
+                    font.pixelSize: 13
+                    color: fenetre.texte2
+                }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 20
+                    columns: 2
+                    columnSpacing: 12
+                    rowSpacing: 12
+                    Repeater {
+                        model: [
+                            { cle: "economie", titre: "Économie de data", tuile: "#2F6B57", encre: "#EEF6F1",
+                              picto: "M5 19c0-8 5-13 14-14c-1 9-6 14-14 14z M5 19l7-7",
+                              detail: fenetre.infos.mobile === true ? "Forfait mobile détecté : les mises à jour et gros téléchargements attendent le Wi-Fi."
+                                                                    : "Avec un forfait mobile, les mises à jour et gros téléchargements attendent le Wi-Fi." },
+                            { cle: "nuit", titre: "Mises à jour la nuit", tuile: "#1E2740", encre: "#F2C879",
+                              picto: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z",
+                              detail: "Installées entre 1 h et 5 h, quand l'ordinateur est branché." },
+                            { cle: "", titre: "Sauvegarde Sama Grenier", tuile: "#D9E3EA", encre: "#2D4A63",
+                              picto: "M7 18a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9z",
+                              detail: "Copie chiffrée de vos documents, en ligne." },
+                            { cle: "", titre: "Partage des mises à jour en réseau local", tuile: "#3D5A99", encre: "#FFFFFF",
+                              picto: "M12 4v11 M7 10l5 5l5-5 M5 20h14",
+                              detail: "Récupère les mises à jour auprès des PC Sama voisins, sans data." }
+                        ]
+                        delegate: Rectangle {
+                            id: reglage
+                            readonly property bool disponible: modelData.cle !== ""
+                            readonly property bool actif: modelData.cle === "economie" ? fenetre.economie : modelData.cle === "nuit" ? fenetre.nuit : false
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: ligneReglage.implicitHeight + 32
+                            radius: 16
+                            color: fenetre.sombre ? Qt.rgba(1, 1, 1, disponible ? 0.06 : 0.03)
+                                                  : Qt.rgba(1, 1, 1, disponible ? 1 : 0.55)
+                            border.width: 1
+                            border.color: fenetre.ligne
+
+                            RowLayout {
+                                id: ligneReglage
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 16
+                                spacing: 14
+                                Rectangle {
+                                    Layout.preferredWidth: 38
+                                    Layout.preferredHeight: 38
+                                    Layout.alignment: Qt.AlignTop
+                                    radius: 12
+                                    color: modelData.tuile
+                                    opacity: reglage.disponible ? 1 : 0.75
+                                    Canvas {
+                                        anchors.centerIn: parent
+                                        width: 19
+                                        height: 19
+                                        onPaint: {
+                                            var c = getContext("2d"); c.reset(); c.scale(19 / 24, 19 / 24)
+                                            c.strokeStyle = modelData.encre; c.lineWidth = 1.8; c.lineCap = "round"; c.lineJoin = "round"
+                                            c.path = modelData.picto; c.stroke()
+                                        }
+                                    }
+                                }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignTop
+                                    spacing: 3
+                                    Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: modelData.titre; font.pixelSize: 14; font.weight: Font.Medium; lineHeight: 1.1; color: fenetre.texte }
+                                    Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: modelData.detail; font.pixelSize: 12; lineHeight: 1.2; color: fenetre.texte2 }
+                                }
+                                // Interrupteur, ou « Bientôt » pour ce qui n'est pas encore prêt
+                                MouseArea {
+                                    visible: reglage.disponible
+                                    Layout.preferredWidth: 44
+                                    Layout.preferredHeight: 26
+                                    Layout.alignment: Qt.AlignTop
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (modelData.cle === "economie") fenetre.economie = !fenetre.economie
+                                        else fenetre.nuit = !fenetre.nuit
+                                    }
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 13
+                                        color: reglage.actif ? fenetre.laterite : (fenetre.sombre ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.18))
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                        Rectangle {
+                                            x: reglage.actif ? parent.width - width - 3 : 3
+                                            y: 3
+                                            width: 20
+                                            height: 20
+                                            radius: 10
+                                            color: "#FFFFFF"
+                                            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                                        }
+                                    }
+                                }
+                                Rectangle {
+                                    visible: !reglage.disponible
+                                    Layout.alignment: Qt.AlignTop
+                                    Layout.preferredWidth: bientot.implicitWidth + 16
+                                    Layout.preferredHeight: 22
+                                    radius: 11
+                                    color: fenetre.champFond
+                                    Text { id: bientot; anchors.centerIn: parent; text: "Bientôt"; font.pixelSize: 11; font.weight: Font.Medium; color: fenetre.texte3 }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 22
+                    spacing: 18
+                    Item { Layout.fillWidth: true }
+                    QQC2.AbstractButton {
+                        contentItem: Text {
+                            text: "Personnaliser plus tard"
+                            font.pixelSize: 14
+                            font.weight: Font.Medium
+                            color: fenetre.texte2
+                        }
+                        background: null
+                        onClicked: fenetre.terminer()
+                    }
+                    QQC2.AbstractButton {
+                        Layout.preferredHeight: 40
+                        contentItem: Text {
+                            text: "Commencer"
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                            color: "#FFFFFF"
+                            verticalAlignment: Text.AlignVCenter
+                            horizontalAlignment: Text.AlignHCenter
+                            leftPadding: 28
+                            rightPadding: 28
+                        }
+                        background: Rectangle { radius: 20; color: fenetre.laterite; opacity: parent.pressed ? 0.85 : 1 }
+                        onClicked: fenetre.terminer()
                     }
                 }
             }

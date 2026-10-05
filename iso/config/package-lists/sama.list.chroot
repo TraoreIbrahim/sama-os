@@ -28,6 +28,9 @@ plasma-discover
 plasma-discover-backend-flatpak
 flatpak
 
+# Mises à jour la nuit (samaos-mises-a-jour-nuit.timer)
+unattended-upgrades
+
 # Installation sur disque (sera rebrandée aux couleurs de Sama)
 calamares
 calamares-settings-debian

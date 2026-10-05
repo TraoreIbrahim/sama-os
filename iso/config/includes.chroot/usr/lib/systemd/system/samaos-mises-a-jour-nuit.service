@@ -1,0 +1,17 @@
+# Mises à jour la nuit de Sama OS (Réglages › Data et mises à jour) : voir /usr/libexec/samaos/mises-a-jour-nuit.sh
+[Unit]
+Description=Mises à jour de Sama la nuit
+Documentation=file:/usr/libexec/samaos/mises-a-jour-nuit.sh
+After=network-online.target
+Wants=network-online.target
+ConditionKernelCommandLine=!boot=live
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/libexec/samaos/mises-a-jour-nuit.sh lancer
+# En arrière-plan, sans gêner une utilisation tardive de l'ordinateur
+Nice=19
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+TimeoutStartSec=3h
+KillMode=process

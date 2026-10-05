@@ -1,6 +1,7 @@
 #!/bin/sh
-# Premier démarrage de session : l'accueil de Sama présente les Espaces, l'utilisateur choisit les siens,
-# puis ce script les crée (activités Plasma). « Plus tard » : un seul Espace, « Accueil ».
+# Premier démarrage de session : l'accueil de Sama présente les Espaces (l'utilisateur choisit les siens), puis
+# quelques réglages pour bien démarrer. Ce script crée ensuite les Espaces (activités Plasma) et applique les
+# réglages. « Plus tard » : un seul Espace, « Accueil ».
 
 marqueur="${XDG_CONFIG_HOME:-$HOME/.config}/samaos/bienvenue-faite"
 [ -e "$marqueur" ] && exit 0
@@ -9,7 +10,24 @@ marqueur="${XDG_CONFIG_HOME:-$HOME/.config}/samaos/bienvenue-faite"
 sleep 4
 
 prenom=$(getent passwd "$(id -un)" | cut -d: -f5 | cut -d, -f1 | cut -d' ' -f1)
-choix=$(qml6 /usr/libexec/samaos/bienvenue/Bienvenue.qml -- "${prenom:-}" 2>&1 | sed -n 's/.*SAMA_ESPACES=//p' | tail -n 1)
+
+# Forfait mobile : clé 3G/4G, partage Bluetooth, ou connexion que NetworkManager devine mesurée
+# (point d'accès d'un téléphone)
+mobile=false
+for type in $(nmcli -t -f TYPE connection show --active 2>/dev/null); do
+	case "$type" in gsm | cdma | bluetooth) mobile=true ;; esac
+done
+mesuree=$(busctl get-property org.freedesktop.NetworkManager /org/freedesktop/NetworkManager \
+	org.freedesktop.NetworkManager Metered 2>/dev/null | awk '{ print $2 }')
+[ "$mesuree" = 1 ] || [ "$mesuree" = 3 ] && mobile=true
+
+nuit=false
+[ "$(sh /usr/libexec/samaos/mises-a-jour-nuit.sh etat)" = actif ] && nuit=true
+
+infos=$(printf '{"prenom": "%s", "mobile": %s, "nuit": %s}' "$(printf '%s' "${prenom:-}" | sed 's/\\/\\\\/g; s/"/\\"/g')" "$mobile" "$nuit")
+sortie=$(qml6 /usr/libexec/samaos/bienvenue/Bienvenue.qml -- "$infos" 2>&1)
+choix=$(printf '%s\n' "$sortie" | sed -n 's/.*SAMA_ESPACES=//p' | tail -n 1)
+reglages=$(printf '%s\n' "$sortie" | sed -n 's/.*SAMA_REGLAGES=//p' | tail -n 1)
 
 appel() {
 	methode="$1"
@@ -34,6 +52,23 @@ for nom in $choix; do
 	premier=0
 done
 IFS=$ancienIFS
+
+# Réglages (fenêtre fermée sans répondre : rien ne change)
+case "$reglages" in
+*economie=1*)
+	kwriteconfig6 --file samaosrc --group Data --key economie true
+	# La connexion en cours devient « mesurée » : mises à jour et téléchargements automatiques attendent le Wi-Fi
+	connexion=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep -v ':loopback$' | head -n 1 | cut -d: -f1)
+	[ -n "$connexion" ] && nmcli connection modify "$connexion" connection.metered yes
+	;;
+*economie=0*)
+	kwriteconfig6 --file samaosrc --group Data --key economie false
+	;;
+esac
+case "$reglages" in
+*nuit=1*) [ "$nuit" = true ] || pkexec /usr/libexec/samaos/mises-a-jour-nuit.sh activer ;;
+*nuit=0*) [ "$nuit" = false ] || pkexec /usr/libexec/samaos/mises-a-jour-nuit.sh desactiver ;;
+esac
 
 mkdir -p "$(dirname "$marqueur")"
 touch "$marqueur"

@@ -1,0 +1,12 @@
+# Chaque nuit entre 1 h et 4 h (heure tirée au hasard pour ne pas charger les dépôts tous en même temps).
+# Pas de rattrapage au démarrage : une nuit manquée (ordinateur éteint) attend la suivante.
+[Unit]
+Description=Mises à jour de Sama la nuit
+
+[Timer]
+OnCalendar=*-*-* 01:00:00
+RandomizedDelaySec=3h
+Persistent=false
+
+[Install]
+WantedBy=timers.target
