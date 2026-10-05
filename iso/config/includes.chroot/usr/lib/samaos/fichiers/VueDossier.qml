@@ -247,7 +247,7 @@ ColumnLayout {
                         Rectangle {
                             readonly property bool dernier: index === (vue.recents ? 0 : fenetre.ariane.length - 1)
                             anchors.verticalCenter: parent.verticalCenter
-                            width: nomAriane.implicitWidth + 10
+                            width: Math.min(nomAriane.implicitWidth, 240) + 10
                             height: 28
                             radius: 8
                             color: depotAriane.containsDrag ? Couleurs.selection : "transparent"
@@ -256,6 +256,8 @@ ColumnLayout {
                             Text {
                                 id: nomAriane
                                 anchors.centerIn: parent
+                                width: Math.min(implicitWidth, 240)
+                                elide: Text.ElideMiddle
                                 text: modelData.nom
                                 font.pixelSize: 15
                                 font.weight: parent.dernier ? Font.DemiBold : Font.Normal

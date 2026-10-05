@@ -39,6 +39,8 @@ PlasmoidItem {
     Loader { id: reseau; source: "Reseau.qml" }
     Loader { id: batterie; source: "Batterie.qml" }
     Loader { id: notifs; source: "Notifications.qml" }
+    // Carte « Clé USB détectée » (maquette fic-05)
+    Loader { source: "CleUsb.qml" }
     Loader { id: son; source: "Son.qml" }
     readonly property bool sonCoupe: son.item ? son.item.coupe : false
 

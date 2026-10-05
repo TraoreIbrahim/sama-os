@@ -12,6 +12,9 @@
   fichiers.py renommer CHEMIN NOM         renomme (refuse d'écraser)
   fichiers.py nouveau-dossier DOSSIER     crée « Nouveau dossier » (numéroté s'il existe), affiche son chemin
   fichiers.py recents                     JSON : fichiers ouverts récemment (toutes applications)
+  fichiers.py analyser PÉRIPHÉRIQUE       JSON : clé montée au besoin, espace utilisé, nombre de photos, documents…
+  fichiers.py importer TACHE PÉRIPHÉRIQUE copie les photos de la clé dans Images/« Photos de <clé> <date> »
+                                          (avancement comme une copie, voir plus bas)
   fichiers.py copier|deplacer|deposer TACHE DESTINATION SOURCE…
                                           copie ou déplace (« deposer », glisser-déposer : déplace sur le même disque,
                                           copie vers un autre) ; l'avancement est écrit dans TACHE.json (dossier
@@ -350,6 +353,65 @@ def recents():
 
 # ——— Copie et déplacement, avec avancement et conflits ———
 
+# ——— Clé USB branchée (carte « Clé USB détectée » du Pouls) ———
+
+def contenu_cle(montage, limite=50000):
+    """Fichiers de la clé, par famille (sans les fichiers cachés ni la sauvegarde Sama qu'elle porte peut-être)."""
+    familles = {"image": [], "texte": 0, "tableur": 0, "presentation": 0, "pdf": 0, "video": 0, "audio": 0}
+    n = 0
+    for racine, dossiers, fichiers in os.walk(montage):
+        dossiers[:] = [d for d in dossiers if not d.startswith(".") and d not in ("Sauvegarde Sama", "System Volume Information", "$RECYCLE.BIN")]
+        for f in fichiers:
+            if f.startswith("."):
+                continue
+            fam = famille(f)[1]
+            if fam == "image":
+                familles["image"].append(os.path.join(racine, f))
+            elif fam in familles:
+                familles[fam] += 1
+            n += 1
+            if n >= limite:
+                return familles
+    return familles
+
+
+def analyser(peripherique):
+    if monter_silencieux(peripherique) is None:
+        return sortie({"erreur": "La clé n'a pas pu être ouverte"})
+    montage = subprocess.run(["lsblk", "-no", "MOUNTPOINT", peripherique], capture_output=True, text=True).stdout.strip()
+    s = os.statvfs(montage)
+    c = contenu_cle(montage)
+    sortie({"montage": montage, "taille": s.f_blocks * s.f_frsize, "utilise": (s.f_blocks - s.f_bfree) * s.f_frsize,
+            "photos": len(c["image"]), "documents": c["texte"] + c["tableur"] + c["presentation"] + c["pdf"],
+            "videos": c["video"], "musiques": c["audio"], "antivirus": shutil.which("clamscan") is not None})
+
+
+def monter_silencieux(peripherique):
+    point = subprocess.run(["lsblk", "-no", "MOUNTPOINT", peripherique], capture_output=True, text=True).stdout.strip()
+    if not point:
+        subprocess.run(["udisksctl", "mount", "--no-user-interaction", "-b", peripherique], capture_output=True)
+        point = subprocess.run(["lsblk", "-no", "MOUNTPOINT", peripherique], capture_output=True, text=True).stdout.strip()
+    return point or None
+
+
+def importer(nom, peripherique):
+    montage = monter_silencieux(peripherique)
+    if not montage:
+        return 1
+    photos = contenu_cle(montage)["image"]
+    images = subprocess.run(["xdg-user-dir", "PICTURES"], capture_output=True, text=True).stdout.strip() or os.path.expanduser("~/Images")
+    etiquette = subprocess.run(["lsblk", "-no", "LABEL", peripherique], capture_output=True, text=True).stdout.strip() or "la clé"
+    mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    jour = datetime.date.today()
+    destination = nom_libre(os.path.join(images, "Photos de %s, %d %s %d" % (etiquette, jour.day, mois[jour.month - 1], jour.year)))
+    os.makedirs(destination)
+    tache = Tache(nom, "copier", destination, photos)
+    tache.choix_tous = "garder"       # deux photos du même nom (dossiers différents de la clé) : on garde les deux
+    tache.etat["photos"] = len(photos)
+    tache.lancer()
+    return 0
+
+
 def point_de_montage(chemin):
     chemin = os.path.realpath(chemin)
     while not os.path.ismount(chemin):
@@ -545,6 +607,10 @@ if __name__ == "__main__":
         code = nouveau_dossier(a[1])
     elif action == "recents":
         recents()
+    elif action == "analyser" and len(a) > 1:
+        analyser(a[1])
+    elif action == "importer" and len(a) > 2:
+        code = importer(a[1], a[2])
     elif action in ("copier", "deplacer", "deposer") and len(a) > 3:
         Tache(a[1], action, a[2], a[3:]).lancer()
     else:
