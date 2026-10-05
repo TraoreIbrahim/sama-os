@@ -28,6 +28,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Session invitée | fait |
 | Retour du courant : ce qui était ouvert est noté toutes les 30 s ; après une coupure, « Tout rouvrir » (documents de Sama Docs récupérés) | fait |
 | Application bloquée : « Sama Docs ne répond pas », dernière sauvegarde des documents, « Attendre » ou « Forcer l'arrêt » (à la place de la fenêtre de KWin) | fait |
+| Capture d'écran (Impr.) : zone, fenêtre ou écran entier, minuteur, vidéo ; copiée et rangée dans Images › Captures d'écran, « Annoter » | fait |
 | Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |
 | Suite Sama (Griot, Sugu, Sama Docs…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, Discover, LibreOffice en français, Haruna, KWrite) |
 
@@ -71,7 +72,8 @@ Session live : utilisateur `sama`, sans mot de passe à la connexion automatique
 ## Prochaines étapes
 
 1. Construire et tester l'ISO avec tout ce qui précède (paquets ajoutés : unattended-upgrades, vnstat, rsync, poppler-utils,
-   ffmpegthumbnailer, haruna, libreoffice-kf6, libreoffice-l10n-fr, hunspell-fr, hyphen-fr, pkexec).
+   ffmpegthumbnailer, haruna, libreoffice-kf6, libreoffice-l10n-fr, hunspell-fr, hyphen-fr, pkexec, kde-spectacle,
+   wl-clipboard).
 2. Applications de la suite Sama après Fichiers.
 3. Natte sur les côtés de l'écran, Sama Grenier, partage des mises à jour en réseau local.
 4. Préparer la forge, la chaîne de construction automatique et les dépôts souverains.

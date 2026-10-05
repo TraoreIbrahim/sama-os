@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Capture d'écran
+GenericName=Capture d'écran
+Comment=Capturer une zone, une fenêtre ou l'écran entier, ou enregistrer une vidéo
+Exec=sama-capture
+Icon=/usr/share/samaos/icones/capture.svg
+Categories=Utility;
+Keywords=capture;écran;copie d'écran;impr;
+StartupNotify=false
+X-KDE-Shortcuts=Print

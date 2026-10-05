@@ -40,9 +40,10 @@ renommer() {
 	fi
 }
 
-# Logiciels provisoires remplacés par Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos, Réglages
+# Logiciels provisoires remplacés par Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos, Réglages, Capture d'écran
+# (Spectacle reste l'outil de prise de vue et d'annotation de la Capture d'écran de Sama)
 masquer chromium libreoffice-writer libreoffice-calc libreoffice-impress \
-	org.kde.dolphin org.kde.discover org.kde.gwenview
+	org.kde.dolphin org.kde.discover org.kde.gwenview org.kde.spectacle
 
 # Outils techniques, doublons et utilitaires réservés aux experts
 masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.kwalletmanager \
@@ -60,6 +61,5 @@ renommer org.kde.khelpcenter "Aide" aide
 renommer org.kde.okular "Lecteur PDF" pdf
 renommer org.kde.ark "Archives" archives
 renommer org.kde.plasma-systemmonitor "Moniteur système" moniteur
-renommer org.kde.spectacle "Capture d'écran" capture
 renommer org.kde.haruna "Lecteur vidéo" lecteur
 renommer org.kde.kwrite "Éditeur de texte" editeur

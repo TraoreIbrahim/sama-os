@@ -146,7 +146,7 @@ natte)
 capture)
 	nom="${2:-capture-$(date +%H%M%S)}"
 	mkdir -p "$racine/sortie/captures"
-	vm 'rm -f /tmp/sama-capture.png; spectacle --background --nonotify --fullscreen --output /tmp/sama-capture.png >/dev/null 2>&1; cat /tmp/sama-capture.png' \
+	vm 'rm -f /tmp/sama-capture.png; spectacle --new-instance --background --nonotify --fullscreen --output /tmp/sama-capture.png >/dev/null 2>&1; cat /tmp/sama-capture.png' \
 		> "$racine/sortie/captures/$nom.png"
 	echo "$racine/sortie/captures/$nom.png"
 	;;

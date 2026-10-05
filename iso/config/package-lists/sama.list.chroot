@@ -43,6 +43,9 @@ plasma-discover
 plasma-discover-backend-flatpak
 flatpak
 
+# Capture d'écran de Sama (touche Impr.) : prises de vue et annotation par Spectacle, copie par wl-copy
+kde-spectacle
+wl-clipboard
 # Mises à jour la nuit (samaos-mises-a-jour-nuit.timer)
 unattended-upgrades
 # Data consommée jour par jour, gardée d'un allumage à l'autre (carte Data, Réglages › Data)

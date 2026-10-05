@@ -27,7 +27,7 @@ Kicker.DashboardWindow {
         "samaos-photos.desktop": "Essentiels", "samaos-sugu.desktop": "Essentiels",
         "samaos-docs.desktop": "Bureautique", "samaos-sheet.desktop": "Bureautique",
         "samaos-presentations.desktop": "Bureautique", "org.kde.okular.desktop": "Bureautique",
-        "org.kde.ark.desktop": "Outils", "org.kde.spectacle.desktop": "Outils",
+        "org.kde.ark.desktop": "Outils", "org.kde.spectacle.desktop": "Outils", "samaos-capture.desktop": "Outils",
         "org.kde.konsole.desktop": "Outils", "org.kde.plasma-systemmonitor.desktop": "Outils",
         "systemsettings.desktop": "Système", "samaos-reglages.desktop": "Système", "org.kde.khelpcenter.desktop": "Système"
     })

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Capture d'écran de Sama (touche Impr.) : voir /usr/libexec/samaos/capture.py
+exec python3 /usr/libexec/samaos/capture.py "$@"
