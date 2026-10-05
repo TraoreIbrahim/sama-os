@@ -44,6 +44,7 @@ ACTIONS = [
     ("org.freedesktop.udisks2.", "gérer les disques"),
     ("org.bluez.", "gérer le Bluetooth"),
     ("org.samaos.mises-a-jour", "changer les mises à jour automatiques"),
+    ("org.samaos.invite", "activer ou désactiver la session invitée"),
 ]
 
 

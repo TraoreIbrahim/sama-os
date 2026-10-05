@@ -18,7 +18,8 @@ conf_auto=/etc/sddm.conf.d/60-sama-connexion-auto.conf
 
 case "$1" in
 liste)
-	getent passwd | awk -F: '$3 >= 1000 && $3 < 60000 {print $3 "|" $1 "|" $5}' | while IFS='|' read -r uid id nom; do
+	# (le compte de la session invitée a sa propre ligne dans les Réglages : invite.sh)
+	getent passwd | awk -F: '$3 >= 1000 && $3 < 60000 && $1 != "sama-invite" {print $3 "|" $1 "|" $5}' | while IFS='|' read -r uid id nom; do
 		admin=0; id -nG "$id" | tr ' ' '\n' | grep -qx sudo && admin=1
 		photo=$(busctl get-property "$A" "$(chemin "$uid")" "$A.User" IconFile 2>/dev/null | sed 's/^s "//; s/"$//')
 		[ -f "$photo" ] || photo=""

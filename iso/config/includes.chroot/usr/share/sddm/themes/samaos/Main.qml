@@ -25,6 +25,10 @@ Rectangle {
     property string nomComplet: ""
     property string photoChoisie: ""
     property string message: ""
+    // Session invitée (Réglages › Comptes) : pas de mot de passe, dossier effacé à la déconnexion
+    readonly property string compteInvite: "sama-invite"
+    readonly property bool invite: nomChoisi === compteInvite
+    readonly property color teinteInvite: "#8A8277"
 
     property date maintenant: new Date()
     Timer {
@@ -52,13 +56,13 @@ Rectangle {
     }
     function seConnecter() {
         racine.message = ""
-        sddm.login(racine.nomChoisi, motDePasse.text, sessions.indexChoisi)
+        sddm.login(racine.nomChoisi, racine.invite ? "" : motDePasse.text, sessions.indexChoisi)
     }
 
     Connections {
         target: sddm
         function onLoginFailed() {
-            racine.message = "Mot de passe incorrect"
+            racine.message = racine.invite ? "La session invitée n'a pas pu s'ouvrir" : "Mot de passe incorrect"
             motDePasse.selectAll()
             motDePasse.forceActiveFocus()
             secousse.start()
@@ -128,12 +132,21 @@ Rectangle {
             Layout.preferredWidth: 96
             Layout.preferredHeight: 96
             radius: 48
-            color: racine.teintesAvatars[racine.compteChoisi % racine.teintesAvatars.length]
+            color: racine.invite ? racine.teinteInvite : racine.teintesAvatars[racine.compteChoisi % racine.teintesAvatars.length]
             border.width: 4
             border.color: Qt.rgba(252 / 255, 250 / 255, 247 / 255, 0.8)
+            Image {
+                anchors.centerIn: parent
+                visible: racine.invite
+                source: "icones/invite.svg"
+                sourceSize.width: 88
+                sourceSize.height: 88
+                width: 44
+                height: 44
+            }
             Text {
                 anchors.centerIn: parent
-                visible: photo.status !== Image.Ready
+                visible: photo.status !== Image.Ready && !racine.invite
                 text: racine.initiales(racine.nomComplet)
                 font.pixelSize: 34
                 font.weight: Font.Medium
@@ -162,12 +175,37 @@ Rectangle {
         Text {
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 4
-            text: racine.salutation(racine.nomComplet.split(" ")[0])
+            text: racine.invite ? "Session temporaire, effacée à la déconnexion" : racine.salutation(racine.nomComplet.split(" ")[0])
             font.pixelSize: 13
             color: racine.texte2
         }
 
+        // Session invitée : un bouton (ou Entrée) à la place du mot de passe
         Rectangle {
+            id: boutonInvite
+            visible: racine.invite
+            focus: racine.invite
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 26
+            Layout.preferredWidth: libelleInvite.implicitWidth + 48
+            Layout.preferredHeight: 44
+            radius: 22
+            color: racine.laterite
+            opacity: zoneInvite.pressed ? 0.85 : 1
+            Keys.onReturnPressed: racine.seConnecter()
+            Keys.onEnterPressed: racine.seConnecter()
+            Text {
+                id: libelleInvite
+                anchors.centerIn: parent
+                text: "Ouvrir une session invitée"
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+                color: "#FFFFFF"
+            }
+            MouseArea { id: zoneInvite; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: racine.seConnecter() }
+        }
+        Rectangle {
+            visible: !racine.invite
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 26
             Layout.preferredWidth: 300
@@ -244,11 +282,13 @@ Rectangle {
                 width: 72
                 height: 80
                 cursorShape: Qt.PointingHandCursor
+                readonly property bool estInvite: model.name === racine.compteInvite
                 onClicked: {
                     racine.compteChoisi = index
                     motDePasse.text = ""
                     racine.message = ""
-                    motDePasse.forceActiveFocus()
+                    if (estInvite) boutonInvite.forceActiveFocus()
+                    else motDePasse.forceActiveFocus()
                 }
                 // Compte choisi : anneau blanc puis anneau latérite (maquette ses-02)
                 Rectangle {
@@ -274,11 +314,20 @@ Rectangle {
                     width: 44
                     height: 44
                     radius: 22
-                    color: racine.teintesAvatars[index % racine.teintesAvatars.length]
+                    color: parent.estInvite ? racine.teinteInvite : racine.teintesAvatars[index % racine.teintesAvatars.length]
                     clip: true
+                    Image {
+                        anchors.centerIn: parent
+                        visible: parent.parent.estInvite
+                        source: "icones/invite.svg"
+                        sourceSize.width: 44
+                        sourceSize.height: 44
+                        width: 22
+                        height: 22
+                    }
                     Text {
                         anchors.centerIn: parent
-                        visible: photoCompte.status !== Image.Ready
+                        visible: photoCompte.status !== Image.Ready && !parent.parent.estInvite
                         text: racine.initiales(model.realName || model.name)
                         font.pixelSize: 15
                         font.weight: Font.Medium
