@@ -1,0 +1,74 @@
+#!/usr/bin/python3
+"""Application bloquée (maquette ale-05) : remplace l'aide de KWin (kwin_killer_helper, détournée par
+dpkg-divert) quand une fenêtre ne répond plus. Mêmes options : --pid --hostname --windowname --applicationname --wid
+--timestamp. Montre « Sama Docs ne répond pas », l'heure de la dernière copie de secours des documents (Sama Docs,
+Sheet, Présentations), puis « Attendre » ou « Forcer l'arrêt ». KWin arrête cette aide (SIGTERM) si l'application
+se remet à répondre.
+"""
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+
+options = {}
+args = sys.argv[1:]
+for i, a in enumerate(args):
+    if a.startswith("--") and i + 1 < len(args):
+        options[a[2:]] = args[i + 1]
+pid = options.get("pid", "")
+if not pid.isdigit():
+    sys.exit(1)
+
+sys.path.insert(0, "/usr/libexec/samaos")
+try:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("courant", "/usr/libexec/samaos/courant.py")
+    courant = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(courant)
+except Exception:
+    courant = None
+
+# L'application : son unité « app-<application>@… » dans la session donne son nom et sa tuile Sama
+nom, icone, appli = options.get("applicationname", ""), "", ""
+try:
+    for ligne in open("/proc/%s/cgroup" % pid):
+        m = re.search(r"/app-(.+?)@[^/]*\.service", ligne)
+        if m:
+            appli = re.sub(r"\\x([0-9a-f]{2})", lambda x: chr(int(x.group(1), 16)), m.group(1)) + ".desktop"
+except OSError:
+    pass
+d = courant.desktop(appli) if courant and appli else None
+if d:
+    nom, icone = d.get("Name[fr]") or d.get("Name", nom), d.get("Icon", "")
+documents = []
+if courant and (appli in courant.LIBREOFFICE or "soffice" in options.get("applicationname", "").lower()):
+    documents = courant.documents_secours()[:3]
+    if not d and documents:
+        nom, icone = documents[0]["appli"], documents[0]["icone"]
+
+donnees = json.dumps({"nom": nom or "L'application", "icone": icone, "titre": options.get("windowname", ""),
+                      "documents": documents}, ensure_ascii=False)
+# (la fenêtre donne le choix sur sa sortie d'erreur : « SAMA_CHOIX=forcer » par console.log)
+fenetre = subprocess.Popen(["qml6", "/usr/libexec/samaos/bloquee/Bloquee.qml", "--", donnees],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+
+
+def fin(*_):
+    fenetre.terminate()
+    sys.exit(0)
+
+
+signal.signal(signal.SIGTERM, fin)            # (l'application répond de nouveau : KWin nous arrête)
+signal.signal(signal.SIGINT, fin)
+choix = ""
+for ligne in fenetre.stderr:
+    if "SAMA_CHOIX=" in ligne:
+        choix = ligne.strip().split("SAMA_CHOIX=", 1)[1]
+fenetre.wait()
+if choix == "forcer":
+    try:
+        os.kill(int(pid), signal.SIGKILL)
+    except OSError:
+        sys.exit(1)

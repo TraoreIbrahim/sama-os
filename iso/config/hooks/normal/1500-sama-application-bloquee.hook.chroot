@@ -1,0 +1,9 @@
+#!/bin/sh
+# Application bloquée (maquette ale-05) : la fenêtre de Sama remplace l'aide de KWin quand une application ne
+# répond plus (même chemin, mêmes options ; l'original reste à côté, en .kde).
+set -e
+for aide in /usr/lib/*/libexec/kwin_killer_helper; do
+	[ -e "$aide" ] || continue
+	dpkg-divert --local --rename --divert "$aide.kde" --add "$aide"
+	ln -sf /usr/libexec/samaos/application-bloquee "$aide"
+done

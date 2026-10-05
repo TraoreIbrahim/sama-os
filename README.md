@@ -26,6 +26,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Sauvegarde sur clé USB ou disque externe | fait (Sama Grenier, le nuage : à venir) |
 | Session invitée | fait |
 | Retour du courant : ce qui était ouvert est noté toutes les 30 s ; après une coupure, « Tout rouvrir » (documents de Sama Docs récupérés) | fait |
+| Application bloquée : « Sama Docs ne répond pas », dernière sauvegarde des documents, « Attendre » ou « Forcer l'arrêt » (à la place de la fenêtre de KWin) | fait |
 | Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |
 | Suite Sama (Griot, Sugu, Sama Docs…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, Discover, LibreOffice en français, Haruna, KWrite) |
 

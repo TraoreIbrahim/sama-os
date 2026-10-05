@@ -7,7 +7,7 @@ Usage (en administrateur, dans la VM) :
   entrees.py bouger X Y             déplace la souris
   entrees.py glisser X1 Y1 X2 Y2    glisser-déposer de (X1, Y1) à (X2, Y2)
   entrees.py taper "texte"          tape un texte (clavier AZERTY)
-  entrees.py touche entree|echap|effacer|suppr|f2|tab|haut|bas|gauche|droite
+  entrees.py touche entree|echap|effacer|suppr|f1…f12|tab|haut|bas|gauche|droite
   entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
   entrees.py molette X Y 5           fait tourner la molette (5 crans vers le bas ; négatif : vers le haut)
   entrees.py tenir alt+tab 3        combinaison dont la touche de modification reste enfoncée 3 s (ex. Alt+Tab)
@@ -46,6 +46,7 @@ for i, c in enumerate("1234567890"):
 
 TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE, "suppr": e.KEY_DELETE, "f2": e.KEY_F2, "tab": e.KEY_TAB,
            "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT}
+TOUCHES.update({"f%d" % n: getattr(e, "KEY_F%d" % n) for n in range(1, 13)})
 
 capacites = {
     e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE] + [k for k, _ in AZERTY.values()]
