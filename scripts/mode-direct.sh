@@ -5,6 +5,8 @@
 # Usage :
 #   scripts/mode-direct.sh connecter <adresse>   Mémorise l'adresse de la machine virtuelle et teste l'accès
 #   scripts/mode-direct.sh envoyer               Envoie widgets, couleurs, thème et identité, puis recharge le bureau
+#   scripts/mode-direct.sh rattraper             Met une VM démarrée sur une ancienne ISO au niveau du projet
+#                                                (tous les fichiers système, scripts de construction, réglages de session)
 #   scripts/mode-direct.sh natte                 Recrée la Natte et le bureau d'après la disposition Sama
 #   scripts/mode-direct.sh capture [nom]         Capture l'écran de la machine virtuelle dans sortie/captures/
 #   scripts/mode-direct.sh commande "<cmd>"      Exécute une commande dans la session Sama
@@ -68,6 +70,28 @@ envoyer)
 	# Recharger le bureau (quelques secondes)
 	vm 'systemctl --user restart plasma-plasmashell.service 2>/dev/null || (kquitapp6 plasmashell; sleep 1; setsid plasmashell >/dev/null 2>&1 &)'
 	echo "Envoyé, bureau rechargé."
+	;;
+
+rattraper)
+	# Une VM live repart de son ISO à chaque démarrage : on lui redonne tout ce que la prochaine ISO contiendra.
+	inclus="$racine/iso/config/includes.chroot"
+	echo "1/5 Paquets légers ajoutés depuis l'ISO (style Kvantum, lanceur QML des Réglages)…"
+	vm 'sudo apt-get install -y -q --no-install-recommends qt6-style-kvantum qml-qt6 >/dev/null 2>&1 || echo "  (paquets non installés : pas de réseau ?)"'
+	echo "2/5 Fichiers système de Sama (2 Mo)…"
+	tar --no-xattrs -C "$inclus" -czf - . | vm 'sudo tar -xzf - -C / --no-same-owner --no-overwrite-dir 2>/dev/null; sudo chmod +x /usr/libexec/samaos/*.sh /usr/libexec/samaos/*.py /usr/bin/sama-reglages 2>/dev/null; true'
+	echo "3/5 Ce que font les scripts de construction de l'ISO…"
+	vm 'sudo sh /usr/libexec/samaos/installer-ecrans.sh >/dev/null 2>&1; sudo python3 /usr/libexec/samaos/vocabulaire.py >/dev/null 2>&1;
+	    sudo mkdir -p /usr/lib/samaos/bin && sudo cp -f /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages 2>/dev/null; true'
+	echo "4/5 Widgets, identité, menu des applications…"
+	"$0" envoyer >/dev/null
+	echo "5/5 Réglages de la session (style des fenêtres, dossiers, recherche de fichiers)…"
+	vm 'mkdir -p ~/.config/Kvantum && cp -n /etc/skel/.config/Kvantum/kvantum.kvconfig ~/.config/Kvantum/ 2>/dev/null;
+	    kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle kvantum;
+	    sh /etc/xdg/plasma-workspace/env/samaos-dossiers.sh;
+	    cp -n /etc/xdg/baloofilerc ~/.config/baloofilerc 2>/dev/null; (balooctl6 enable >/dev/null 2>&1 &);
+	    sh /usr/libexec/samaos/apparence.sh clair >/dev/null 2>&1;
+	    qdbus6 org.kde.KWin /KWin reconfigure; true'
+	echo "Rattrapage terminé. (Le menu des fenêtres de KWin et le menu de démarrage attendent la prochaine ISO.)"
 	;;
 
 natte)
