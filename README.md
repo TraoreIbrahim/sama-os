@@ -16,6 +16,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Écran de connexion, verrouillage, extinction, changement d'utilisateur | fait |
 | La Natte : la Cour (applications et recherche), les Espaces, le Pouls (centre de contrôle et notifications) | fait |
 | Bureau : cartes Heure, Data, Météo, Agenda ; vue des Espaces (Méta+Tab), transition entre Espaces | fait |
+| Fenêtres côte à côte : en déplaçant une fenêtre, dispositions moitiés, tiers, deux tiers, quarts (script KWin) | fait (poignée commune entre deux fenêtres : à venir) |
 | Réglages Sama : réseau, Bluetooth, affichage, Bureau et Natte, notifications, son, langue et clavier, comptes, confidentialité, data et mises à jour, énergie, imprimantes, sauvegarde, accessibilité, à propos | fait (Organisation : à venir) |
 | Fenêtre « Autorisation requise » de Sama (à la place de celle de KDE) | fait |
 | Installateur aux couleurs de Sama (Calamares, pages en QML d'après la maquette) | fait |

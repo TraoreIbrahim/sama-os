@@ -5,7 +5,7 @@ Usage (en administrateur, dans la VM) :
   entrees.py clic X Y [droit]       clic à la position X, Y (pixels de l'écran)
   entrees.py double X Y             double-clic
   entrees.py bouger X Y             déplace la souris
-  entrees.py glisser X1 Y1 X2 Y2    glisser-déposer de (X1, Y1) à (X2, Y2)
+  entrees.py glisser X1 Y1 X2 Y2 [pause]  glisser-déposer de (X1, Y1) à (X2, Y2), bouton tenu « pause » s à l'arrivée
   entrees.py taper "texte"          tape un texte (clavier AZERTY)
   entrees.py touche entree|echap|effacer|suppr|f1…f12|tab|haut|bas|gauche|droite
   entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
@@ -92,12 +92,14 @@ for action in actions:
         elif nom == "double":
             bouton(e.BTN_LEFT); bouton(e.BTN_LEFT)
     elif nom == "glisser":
-        x1, y1, x2, y2 = [float(v) for v in reste.split()]
+        # glisser X1 Y1 X2 Y2 [pause] : la pause (secondes) garde le bouton enfoncé à l'arrivée (pour une capture)
+        v = [float(x) for x in reste.split()]
+        x1, y1, x2, y2 = v[:4]
         bouger(x1, y1)
         ui.write(e.EV_KEY, e.BTN_LEFT, 1); ui.syn(); time.sleep(0.2)
         for i in range(1, 31):
             bouger(x1 + (x2 - x1) * i / 30, y1 + (y2 - y1) * i / 30)
-        time.sleep(0.3)
+        time.sleep(v[4] if len(v) > 4 else 0.3)
         ui.write(e.EV_KEY, e.BTN_LEFT, 0); ui.syn(); time.sleep(0.3)
     elif nom == "taper":
         for c in reste.strip().strip('"'):

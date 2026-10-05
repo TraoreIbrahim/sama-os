@@ -85,3 +85,15 @@ Essai d'une coupure de courant pendant une mise à jour : un faux paquet `sama-e
 pendant son installation (`echo b > /proc/sysrq-trigger`), servi par un dépôt local en `copy:` (une source `file:` ne
 passe pas par le cache d'APT, que l'installation au redémarrage utilise). Au démarrage suivant, le menu de démarrage
 ramène l'instantané pris juste avant, et la fenêtre « Sama a été restauré » s'ouvre.
+
+## Scripts KWin (dispositions…)
+
+Le moteur QML de KWin garde en cache un fichier déjà chargé : après une modification, recharger le script sous un
+autre nom pour l'essayer sans redémarrer la session :
+
+```bash
+scripts/mode-direct.sh commande 'cp /usr/share/kwin/scripts/samaos-dispositions/contents/ui/main.qml /tmp/d-$$.qml; I=$(qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadDeclarativeScript /tmp/d-$$.qml essai-$$); qdbus6 org.kde.KWin /Scripting/Script$I org.kde.kwin.Script.run'
+```
+
+Dans ces scripts, une fenêtre s'ouvre avec `PlasmaCore.Dialog` (une `Window` de QtQuick ne s'affiche pas), montrée
+après sa création ; `Workspace.windows` est une propriété ; les énumérations de KWin ne sont pas offertes (nombres).

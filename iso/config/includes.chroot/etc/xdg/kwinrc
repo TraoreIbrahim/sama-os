@@ -5,3 +5,5 @@ LayoutName=samaos
 [Plugins]
 # Transition entre les Espaces (effet Sama)
 samaos_espacesEnabled=true
+# Ranger une fenêtre en la déplaçant : moitiés, tiers, deux tiers, quarts (script Sama, maquette bur-05)
+samaos-dispositionsEnabled=true

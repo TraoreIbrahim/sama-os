@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Authors": [ { "Name": "Sama OS" } ],
+        "Description": "Ranger une fenêtre : en la déplaçant, choisir une disposition (moitiés, tiers, deux tiers, quarts)",
+        "EnabledByDefault": true,
+        "Id": "samaos-dispositions",
+        "License": "GPL",
+        "Name": "Dispositions de Sama",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "declarativescript"
+}
