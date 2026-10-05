@@ -1,0 +1,14 @@
+# Session invitée : dossier effacé au démarrage de l'ordinateur, au cas où la dernière session invitée n'a pas pu
+# se fermer normalement (coupure de courant, plantage). Voir /usr/libexec/samaos/invite.sh.
+[Unit]
+Description=Effacer le dossier de la session invitée
+ConditionPathExists=/var/lib/samaos/session-invitee
+After=local-fs.target
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/libexec/samaos/invite.sh nettoyer demarrage
+
+[Install]
+WantedBy=multi-user.target

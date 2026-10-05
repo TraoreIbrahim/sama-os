@@ -1,0 +1,5 @@
+#!/bin/sh
+# Session invitée : dossier effacé au démarrage si la dernière session n'a pas pu se fermer normalement
+# (le service ne fait rien tant que la session invitée n'est pas activée dans les Réglages).
+set -e
+systemctl enable samaos-invite-nettoyage.service

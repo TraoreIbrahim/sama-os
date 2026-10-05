@@ -13,7 +13,10 @@ VERSION_ID="0.1"
 VERSION="0.1 (prototype)"
 ID=samaos
 ID_LIKE=debian
+VERSION_CODENAME=trixie
 FIN
+# (VERSION_CODENAME : nom de la Debian de base, dont ont besoin les outils de Debian, par exemple les mises à jour
+# automatiques, qui choisissent les dépôts d'après lui)
 # /etc/os-release doit pointer vers notre fichier (il est parfois recopié en fichier ordinaire)
 ln -sf ../usr/lib/os-release /etc/os-release
 

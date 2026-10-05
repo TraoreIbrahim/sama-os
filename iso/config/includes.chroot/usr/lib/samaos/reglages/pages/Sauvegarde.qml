@@ -36,7 +36,7 @@ PageReglage {
     function lisible(octets) {
         if (octets >= 1073741824) return (octets / 1073741824).toLocaleString(Qt.locale(), "f", 1).replace(/[,.]0$/, "") + " Go"
         if (octets >= 1048576) return Math.round(octets / 1048576) + " Mo"
-        return Math.max(0, Math.round(octets / 1024)) + " Ko"
+        return octets > 0 ? Math.ceil(octets / 1024) + " Ko" : "Vide"
     }
     // « aujourd'hui à 13:20 », « hier à 22:00 », « le 3 octobre »
     function quand(secondes) {
@@ -177,7 +177,7 @@ PageReglage {
                 }
                 model: choix.map(function (d) { return d.texte })
                 currentIndex: choix.map(function (d) { return d.uuid }).indexOf(page.etat.disque)
-                displayText: currentIndex >= 0 ? currentText : "Choisir…"
+                displayText: page.etat.disque ? currentText : "Choisir…"
                 onActivated: index => commande.lancer(page.script + "choisir " + commande.q(choix[index].uuid), function () { page.relire(true) })
             }
         }

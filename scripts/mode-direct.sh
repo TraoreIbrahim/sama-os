@@ -81,10 +81,13 @@ installateur)
 		| vm 'sudo tar -xzf - -C / && sudo sh /usr/libexec/samaos/installateur-pages.sh'
 	options=""
 	if [ "${2:-}" = essai ]; then
-		# Configuration d'essai : mêmes pages, mais l'installation se limite à deux pauses (rien n'est écrit sur le disque)
+		# Configuration d'essai : mêmes pages, mais l'installation se limite à deux pauses (rien n'est écrit sur le disque).
+		# La page « welcome » qui tient la place de la page Disque ne vérifie pas l'espace disque : deux vérifications
+		# en même temps (avec welcomeq) font planter libparted, qui ne le supporte pas.
 		vm 'sudo rm -rf /tmp/sama-essai && sudo mkdir -p /tmp/sama-essai/modules && sudo cp /etc/calamares/modules/*.conf /tmp/sama-essai/modules/ \
 			&& sudo ln -s /etc/calamares/branding /tmp/sama-essai/branding && sudo ln -s /usr/share/calamares/qml /tmp/sama-essai/qml \
 			&& sudo ln -s /usr/share/calamares/helpers /tmp/sama-essai/helpers \
+			&& sudo sed -i "/^ *- storage$/d" /tmp/sama-essai/modules/welcome.conf \
 			&& printf "%s\n" "---" "dontChroot: true" "timeout: 120" "script:" "  - command: \"sleep 20\"" "  - command: \"sleep 20\"" | sudo tee /tmp/sama-essai/modules/shellprocess-essai.conf >/dev/null \
 			&& printf "%s\n" "---" "modules-search: [ local, /usr/lib/calamares/modules ]" "instances:" "- id: essai" "  module: shellprocess" "  config: shellprocess-essai.conf" \
 				"sequence:" "- show:" "  - welcomeq" "  - localeq" "  - keyboardq" "  - welcome" "  - usersq" "  - summaryq" "- exec:" "  - shellprocess@essai" "- show:" "  - finishedq" \
@@ -94,8 +97,10 @@ installateur)
 	fi
 	# Comme le vrai lanceur (calamares-install-debian : pkexec) : sous XWayland. En Wayland natif, les pages QML de
 	# Calamares (Qt 6) ne reçoivent pas le clavier. Lancé dans un sous-shell détaché pour survivre à la fin de ssh.
-	vm "sudo pkill -x calamares; sleep 1; export DISPLAY=:1 XAUTHORITY=\$(ls /run/user/\$(id -u)/xauth_* | head -1); xhost +si:localuser:root >/dev/null; \
-		(sudo env DISPLAY=:1 XAUTHORITY=\$XAUTHORITY QT_QPA_PLATFORM=xcb setsid calamares -d $options >/tmp/calamares.log 2>&1 &)"
+	# (affichage et autorisation de XWayland lus dans les paramètres de KWin : le numéro change d'un démarrage à l'autre)
+	vm "sudo pkill -x calamares; sleep 1; K=\$(ps -eo args | grep '[k]win_wayland --'); export DISPLAY=\$(echo \$K | sed 's/.*--xwayland-display \\([^ ]*\\).*/\\1/') \
+		XAUTHORITY=\$(echo \$K | sed 's/.*--xwayland-xauthority \\([^ ]*\\).*/\\1/'); xhost +si:localuser:root >/dev/null; \
+		(sudo env DISPLAY=\$DISPLAY XAUTHORITY=\$XAUTHORITY QT_QPA_PLATFORM=xcb setsid calamares -d $options >/tmp/calamares.log 2>&1 </dev/null &)"
 	sleep 8
 	vm 'grep -m1 "Using Calamares settings" /tmp/calamares.log; grep -q "connection broke" /tmp/calamares.log && echo "Plantage au démarrage (pilote graphique de la VM) : relancez." \
 		|| { pgrep -x calamares >/dev/null && echo "Installateur lancé." || tail -5 /tmp/calamares.log; }'

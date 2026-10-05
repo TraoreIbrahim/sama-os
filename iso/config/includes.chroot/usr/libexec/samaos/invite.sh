@@ -7,16 +7,19 @@
 #   invite.sh activer|desactiver     administrateur (pkexec : action org.samaos.invite)
 #   invite.sh                        ouverture et fermeture de session (pam_exec : PAM_USER, PAM_TYPE), branché
 #                                    par le profil PAM « samaos-invite » (/usr/share/pam-configs) quand l'invité est actif
-#   invite.sh nettoyer               après la déconnexion (lancé hors de la session par systemd-run)
+#   invite.sh nettoyer [demarrage]   après la déconnexion (lancé hors de la session par systemd-run), et au démarrage
+#                                    de l'ordinateur (samaos-invite-nettoyage.service)
 set -u
 COMPTE=sama-invite
 NOM="Invité"
 DOSSIER=/home/$COMPTE
 MARQUEUR=/var/lib/samaos/session-invitee
 
-# L'invité a-t-il une session ouverte (hors sessions en train de se fermer) ?
+# L'invité a-t-il une session ouverte ? (seules comptent les sessions de classe « user » qui ne sont pas en train de
+# se fermer : systemd ouvre aussi une session « manager » pour chaque utilisateur)
 session_ouverte() {
 	for s in $(loginctl show-user "$COMPTE" -p Sessions --value 2>/dev/null); do
+		[ "$(loginctl show-session "$s" -p Class --value 2>/dev/null)" = user ] || continue
 		[ "$(loginctl show-session "$s" -p State --value 2>/dev/null)" = closing ] || return 0
 	done
 	return 1
@@ -27,8 +30,8 @@ remettre_a_zero() {
 	[ -e "$MARQUEUR" ] || return 0
 	rm -rf "$DOSSIER"
 	cp -a /etc/skel "$DOSSIER"
-	# Pas d'accueil du premier démarrage : la session invitée s'ouvre directement sur le bureau
-	mkdir -p "$DOSSIER/.config/samaos" && touch "$DOSSIER/.config/samaos/bienvenue-faite"
+	# (pas d'accueil du premier démarrage pour l'invité : voir bienvenue.sh)
+	mkdir -p "$DOSSIER/.config"
 	# Pas de verrouillage automatique : il n'y a pas de mot de passe à retaper
 	printf '[Daemon]\nAutolock=false\nLockOnResume=false\n' > "$DOSSIER/.config/kscreenlockerrc"
 	chown -R "$COMPTE:$COMPTE" "$DOSSIER"
@@ -94,7 +97,8 @@ desactiver)
 	exit 0
 	;;
 nettoyer)
-	sleep 5
+	# (au démarrage de l'ordinateur, « nettoyer demarrage » : rien à attendre)
+	[ "${2:-}" = demarrage ] || sleep 5
 	# Une nouvelle session invitée a pu s'ouvrir entre-temps : elle a déjà son dossier neuf
 	session_ouverte && exit 0
 	pkill -KILL -u "$COMPTE" 2>/dev/null

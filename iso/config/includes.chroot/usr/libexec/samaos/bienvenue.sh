@@ -6,6 +6,14 @@
 marqueur="${XDG_CONFIG_HOME:-$HOME/.config}/samaos/bienvenue-faite"
 [ -e "$marqueur" ] && exit 0
 
+# Session invitée : pas d'accueil (tout est effacé à la déconnexion), juste un Espace « Accueil »
+if [ "$(id -un)" = sama-invite ]; then
+	sleep 4
+	espace=$(qdbus6 org.kde.ActivityManager /ActivityManager/Activities CurrentActivity)
+	[ -n "$espace" ] && qdbus6 org.kde.ActivityManager /ActivityManager/Activities SetActivityName "$espace" "Accueil" >/dev/null
+	exit 0
+fi
+
 # Laisser le bureau et le gestionnaire d'activités démarrer
 sleep 4
 

@@ -243,6 +243,7 @@ PageReglage {
                 Layout.fillWidth: true
                 spacing: 2
                 Text {
+                    Layout.fillWidth: true
                     text: page.recherche ? "Recherche des mises à jour…"
                         : page.disponibles > 1 ? page.disponibles + " mises à jour disponibles"
                         : page.disponibles === 1 ? "1 mise à jour disponible" : "Sama est à jour"
@@ -251,6 +252,7 @@ PageReglage {
                     color: Couleurs.texte
                 }
                 Text {
+                    Layout.fillWidth: true
                     visible: text !== ""
                     text: page.verifie ? "Vérifié " + page.quand(page.verifie)
                                          + (page.disponibles > 0 && page.nuit ? " · installées la nuit prochaine" : "") : ""

@@ -39,7 +39,7 @@ QProgressBar::chunk { background-color: #B5532F; border-radius: 4px; }
 /* Page d'installation (maquette dem-06) : diaporama sans cadre, barre et message alignés sur les marges des pages,
    bouton du journal discret (icône Sama au lieu du texte « Toggle log ») */
 QWidget#slideshow QTabWidget::pane { border: 0; }
-QWidget#slideshow QToolBar { border: 0; background: transparent; spacing: 0; margin-right: 34px; qproperty-iconSize: 16px 16px; }
+QWidget#slideshow QToolBar { border: 0; background: transparent; spacing: 0; qproperty-iconSize: 16px 16px; }
 QWidget#slideshow QToolButton {
     qproperty-icon: url(/usr/share/samaos/installateur/journal.svg);
     qproperty-toolTip: "Journal de l'installation";
@@ -47,6 +47,7 @@ QWidget#slideshow QToolButton {
     border: 0;
     border-radius: 14px;
     padding: 6px;
+    margin: 0 30px 0 6px;
 }
 QWidget#slideshow QToolButton:hover { background-color: rgba(31, 28, 24, 23); }
 QProgressBar#exec-progress { margin-left: 40px; }
