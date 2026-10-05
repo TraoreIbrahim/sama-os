@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Sama a été restauré
+Comment=Après une restauration du système, dit ce qui s'est passé et propose les instantanés
+Exec=/usr/libexec/samaos/restauration.sh
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=2

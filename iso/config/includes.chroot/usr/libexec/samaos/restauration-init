@@ -1,0 +1,45 @@
+#!/bin/sh
+# Restauration de Sama, avant que le système ne démarre. Le menu de démarrage lance ce script à la place de systemd
+# (init=), depuis l'instantané choisi (lecture seule), quand :
+#   - une mise à jour a été coupée net (coupure de courant) : samaos.raison=maj-interrompue
+#   - le retour à un instantané a été demandé dans Réglages : samaos.raison=demande
+#   - on l'a choisi dans le menu de démarrage (Échap au démarrage) : samaos.raison=menu
+# Il remplace le système par cet instantané (instantanes.py restaurer), puis redémarre sur le système restauré.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH LANG=fr_FR.UTF-8
+
+mountpoint -q /proc || mount -t proc proc /proc
+mountpoint -q /sys || mount -t sysfs sysfs /sys
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev
+mountpoint -q /run || mount -t tmpfs -o mode=0755 tmpfs /run
+
+parametre() { tr ' ' '\n' </proc/cmdline | sed -n "s/^samaos\.$1=//p" | tail -n 1; }
+message() {
+	plymouth display-message --text="$1" 2>/dev/null
+	echo "$1" >/dev/console 2>/dev/null || echo "$1"
+}
+
+instantane=$(parametre instantane)
+raison=$(parametre raison)
+[ -n "$raison" ] || raison=menu
+
+if [ "$raison" = maj-interrompue ]; then
+	message "La dernière mise à jour s'est interrompue : Sama revient à l'état d'avant…"
+else
+	message "Sama revient à l'instantané choisi…"
+fi
+
+if python3 /usr/libexec/samaos/instantanes.py restaurer "$instantane" "$raison" >/run/samaos-restauration.log 2>&1; then
+	message "Sama a été restauré. Redémarrage…"
+else
+	cat /run/samaos-restauration.log >/dev/console 2>/dev/null
+	message "La restauration n'a pas abouti. Redémarrage sur le système tel qu'il est…"
+	python3 /usr/libexec/samaos/instantanes.py abandonner >/dev/null 2>&1
+	sleep 8
+fi
+sync
+sleep 2
+reboot -ff 2>/dev/null
+echo b >/proc/sysrq-trigger
+# (ne jamais rendre la main : le noyau s'arrêterait)
+while :; do sleep 60; done

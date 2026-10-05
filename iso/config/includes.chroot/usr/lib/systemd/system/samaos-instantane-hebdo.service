@@ -1,0 +1,10 @@
+[Unit]
+Description=Instantané hebdomadaire de Sama
+Documentation=file:/usr/libexec/samaos/instantanes.py
+ConditionKernelCommandLine=!boot=live
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/libexec/samaos/instantanes.py creer hebdo
+Nice=19
+IOSchedulingClass=idle

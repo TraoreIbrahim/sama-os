@@ -5,6 +5,9 @@
 #   mises-a-jour-nuit.sh lancer                lancé par samaos-mises-a-jour-nuit.timer, entre 1 h et 4 h
 #   mises-a-jour-nuit.sh statut                « verifie=<date, secondes> disponibles=<nombre> » (sans droits)
 #   mises-a-jour-nuit.sh verifier              recherche des mises à jour maintenant (administrateur : pkexec)
+#   mises-a-jour-nuit.sh maintenant            installe les mises à jour tout de suite (administrateur : pkexec)
+# Avant d'installer, Sama prend un instantané du système : si la mise à jour est coupée net (coupure de courant),
+# le démarrage suivant revient à cet instantané (voir /usr/libexec/samaos/instantanes.py).
 # Les mises à jour ne s'installent que si l'ordinateur est branché et sur une connexion illimitée, et jamais
 # dans la session d'essai (clé USB). Les minuteurs « apt-daily » de Debian ne font plus rien
 # (voir /etc/apt/apt.conf.d/52sama-mises-a-jour) : rien ne se télécharge pendant la journée.
@@ -39,6 +42,17 @@ connexion_mesuree() {
 	[ "$m" = 1 ] || [ "$m" = 3 ]
 }
 
+# Installation, protégée par un instantané (sans effet hors Btrfs)
+installer() {
+	nombre=$(apt-get -s -o Debug::NoLocking=1 dist-upgrade 2>/dev/null | grep -c '^Inst ')
+	if [ "${nombre:-0}" = 0 ]; then echo "Sama est à jour."; return 0; fi
+	python3 /usr/libexec/samaos/instantanes.py avant-maj "$nombre" || true
+	unattended-upgrade
+	code=$?
+	python3 /usr/libexec/samaos/instantanes.py apres-maj || true
+	return $code
+}
+
 case "${1:-}" in
 etat)
 	[ -e "$DRAPEAU" ] && echo actif || echo inactif
@@ -64,10 +78,15 @@ lancer)
 	if ! sur_secteur; then echo "Sur batterie : mises à jour remises à la nuit prochaine."; exit 0; fi
 	if connexion_mesuree; then echo "Connexion mesurée : mises à jour remises à une connexion illimitée."; exit 0; fi
 	if ! verifier; then echo "Pas de connexion aux dépôts : nuit prochaine."; exit 0; fi
-	unattended-upgrade
+	installer
+	;;
+maintenant)
+	if grep -qw 'boot=live' /proc/cmdline; then echo "Session d'essai : pas de mise à jour."; exit 0; fi
+	verifier || { echo "Pas de connexion aux dépôts."; exit 1; }
+	installer
 	;;
 *)
-	echo "Usage : $0 etat|activer|desactiver|lancer|statut|verifier" >&2
+	echo "Usage : $0 etat|activer|desactiver|lancer|statut|verifier|maintenant" >&2
 	exit 1
 	;;
 esac

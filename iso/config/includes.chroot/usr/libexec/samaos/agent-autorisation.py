@@ -45,6 +45,8 @@ ACTIONS = [
     ("org.bluez.", "gérer le Bluetooth"),
     ("org.samaos.mises-a-jour", "changer les mises à jour automatiques"),
     ("org.samaos.invite", "activer ou désactiver la session invitée"),
+    ("org.samaos.instantanes.restaurer", "ramener le système à un instantané"),
+    ("org.samaos.instantanes", "créer ou supprimer un instantané du système"),
 ]
 
 

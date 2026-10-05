@@ -1,0 +1,5 @@
+#!/bin/sh
+# Crochets d'APT des instantanés (/etc/apt/apt.conf.d/80samaos-instantanes) : jamais d'erreur rendue à APT,
+# une installation ne doit pas échouer à cause d'un instantané.
+python3 /usr/libexec/samaos/instantanes.py "$@" 2>/dev/null
+exit 0

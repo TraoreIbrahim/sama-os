@@ -1,0 +1,15 @@
+# Instantanés de Sama (voir /usr/libexec/samaos/instantanes.py) : au démarrage, efface l'ancien système remplacé par
+# une restauration, termine une mise à jour coupée que le menu de démarrage n'a pas pu annuler, réécrit le menu.
+[Unit]
+Description=Instantanés de Sama : rangement au démarrage
+Documentation=file:/usr/libexec/samaos/instantanes.py
+ConditionKernelCommandLine=!boot=live
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/libexec/samaos/instantanes.py demarrage
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target

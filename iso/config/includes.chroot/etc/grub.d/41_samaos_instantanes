@@ -1,0 +1,23 @@
+#!/bin/sh
+# Menu de démarrage : instantanés de Sama (voir /usr/libexec/samaos/instantanes.py).
+# Le sous-menu « Revenir à un instantané de Sama » et le retour automatique après une mise à jour coupée sont
+# écrits par Sama dans /.instantanes/grub.cfg à chaque instantané : ce fichier-ci ne fait que le lire.
+set -e
+prefix="/usr"
+exec_prefix="/usr"
+datarootdir="/usr/share"
+. "$pkgdatadir/grub-mkconfig_lib"
+
+# Seulement si le système est sur le sous-volume @ d'un disque Btrfs
+[ "$(${grub_probe} --target=fs / 2>/dev/null)" = btrfs ] || exit 0
+[ "$(make_system_path_relative_to_its_root /)" = "/@" ] || exit 0
+uuid=$(${grub_probe} --target=fs_uuid /)
+
+cat <<FIN
+# Instantanés de Sama
+search --no-floppy --fs-uuid --set=sama_disque $uuid
+export sama_disque
+if [ -f (\$sama_disque)/@instantanes/grub.cfg ]; then
+	source (\$sama_disque)/@instantanes/grub.cfg
+fi
+FIN

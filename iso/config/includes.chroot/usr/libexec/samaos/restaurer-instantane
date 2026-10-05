@@ -1,0 +1,11 @@
+#!/bin/sh
+# Revenir à un instantané (Réglages › Sauvegarde, fenêtre « Sama a été restauré ») : administrateur, toujours avec
+# son mot de passe (pkexec : org.samaos.instantanes.restaurer). Le retour se fait au redémarrage suivant, avant que
+# le système ne démarre (menu de démarrage puis restauration-init).
+#   restaurer-instantane ID        prévoir le retour à cet instantané
+#   restaurer-instantane annuler   ne plus le prévoir
+case "${1:-}" in
+annuler) exec python3 /usr/libexec/samaos/instantanes.py annuler-restauration ;;
+"") echo "Usage : $0 ID|annuler" >&2; exit 1 ;;
+*) exec python3 /usr/libexec/samaos/instantanes.py restaurer-au-demarrage "$1" ;;
+esac

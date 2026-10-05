@@ -1,0 +1,7 @@
+// Un administrateur assis devant l'ordinateur crée ou supprime un instantané sans retaper son mot de passe ;
+// revenir en arrière (org.samaos.instantanes.restaurer) le demande toujours.
+polkit.addRule(function (action, subject) {
+    if (action.id === "org.samaos.instantanes" && subject.local && subject.active && subject.isInGroup("sudo")) {
+        return polkit.Result.YES;
+    }
+});

@@ -1,0 +1,6 @@
+// Instantanés de Sama (/usr/libexec/samaos/instantanes.py) : avant toute installation, suppression ou mise à jour
+// (Sugu, Discover, apt), le système est photographié ; une coupure pendant l'opération est annulée au démarrage.
+DPkg::Pre-Invoke { "/usr/libexec/samaos/instantanes-apt avant-dpkg"; };
+DPkg::Pre-Install-Pkgs { "/usr/libexec/samaos/instantanes-apt paquets"; };
+DPkg::Tools::Options::/usr/libexec/samaos/instantanes-apt::Version "2";
+DPkg::Post-Invoke { "/usr/libexec/samaos/instantanes-apt apres-dpkg"; };

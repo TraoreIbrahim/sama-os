@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- Instantanés du système (Réglages › Sauvegarde, fenêtre « Sama a été restauré ») -->
+<policyconfig>
+  <vendor>Sama OS</vendor>
+  <action id="org.samaos.instantanes">
+    <description>Create or delete system snapshots</description>
+    <description xml:lang="fr">Créer ou supprimer un instantané du système</description>
+    <message>Authentication is required to create or delete a system snapshot</message>
+    <message xml:lang="fr">Une autorisation est nécessaire pour créer ou supprimer un instantané du système</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/samaos/instantanes.py</annotate>
+  </action>
+  <!-- Revenir en arrière : le mot de passe d'un administrateur à chaque fois (personne ne peut le faire à sa place) -->
+  <action id="org.samaos.instantanes.restaurer">
+    <description>Restore the system to a snapshot</description>
+    <description xml:lang="fr">Ramener le système à un instantané</description>
+    <message>Authentication is required to restore the system to a snapshot</message>
+    <message xml:lang="fr">Une autorisation est nécessaire pour ramener le système à un instantané</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/samaos/restaurer-instantane</annotate>
+  </action>
+</policyconfig>

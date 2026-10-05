@@ -1,0 +1,12 @@
+# Un instantané par semaine, en plus de ceux pris avant chaque mise à jour ; rattrapé au démarrage suivant si
+# l'ordinateur était éteint.
+[Unit]
+Description=Instantané hebdomadaire de Sama
+
+[Timer]
+OnCalendar=weekly
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

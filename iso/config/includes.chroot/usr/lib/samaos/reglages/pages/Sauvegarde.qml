@@ -2,8 +2,11 @@
 // automatiquement quand il est branché ; les versions précédentes des fichiers restent sur le disque.
 // Moteur : /usr/libexec/samaos/sauvegarde.py (et le minuteur samaos-sauvegarde.timer). Sama Grenier, le nuage de
 // Sama, viendra s'ajouter comme destination.
+// Plus bas, les instantanés du système (Btrfs) : pris avant chaque mise à jour et chaque semaine, on peut y revenir
+// (moteur : /usr/libexec/samaos/instantanes.py).
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import ".."
 
 PageReglage {
@@ -237,6 +240,200 @@ PageReglage {
                 enabled: page.etat.branche
                 onClicked: commande.lancer(page.script + "ouvrir", function (s) { if (s.trim()) Qt.openUrlExternally("file://" + s.trim()) })
             }
+        }
+    }
+
+    // ——— Instantanés du système ———
+    property var instantanes: ({ disponible: false, actif: true, liste: [], libre: -1, restaurationPrevue: "" })
+    property bool tousLesInstantanes: false
+    property var aRestaurer: null
+    readonly property string moteurInstantanes: "python3 /usr/libexec/samaos/instantanes.py "
+    function relireInstantanes() {
+        commande.lancer(moteurInstantanes + "etat", function (s) { try { page.instantanes = JSON.parse(s) } catch (e) {} })
+    }
+    Component.onDestruction: confirmationRestaurer.ouverte = creation.ouverte = false
+    Timer { interval: 10000; running: true; repeat: true; triggeredOnStart: true; onTriggered: page.relireInstantanes() }
+    // « Aujourd'hui, 13:00 », « Hier, 13:00 », « 29 sept., 13:00 », « 29 sept. 2025, 13:00 »
+    function moment(secondes) {
+        var d = new Date(secondes * 1000)
+        var jour = new Date(d.getTime()); jour.setHours(0, 0, 0, 0)
+        var minuit = new Date(); minuit.setHours(0, 0, 0, 0)
+        var ecart = Math.round((minuit.getTime() - jour.getTime()) / 86400000)
+        var heure = d.toLocaleTimeString(Qt.locale(), "HH:mm")
+        if (ecart === 0) return "Aujourd'hui, " + heure
+        if (ecart === 1) return "Hier, " + heure
+        return d.toLocaleDateString(Qt.locale(), d.getFullYear() === new Date().getFullYear() ? "d MMM" : "d MMM yyyy") + ", " + heure
+    }
+    // « l'état d'aujourd'hui à 13:00 », « l'état d'hier à 13:00 », « l'état du 29 sept. à 13:00 »
+    function etatDu(secondes) {
+        var m = moment(secondes).split(", ")
+        return m[0] === "Aujourd'hui" ? "l'état d'aujourd'hui à " + m[1] : m[0] === "Hier" ? "l'état d'hier à " + m[1]
+                                      : "l'état du " + m[0] + " à " + m[1]
+    }
+    function description(i) {
+        if (i.type === "hebdo") return "Automatique · chaque semaine"
+        if (i.type === "manuel") return "Manuel" + (i.detail ? " · « " + i.detail + " »" : "")
+        if (i.type === "maj") return i.detail || "Avant une mise à jour"
+        return i.detail || i.libelle
+    }
+    function prevu() {
+        var l = instantanes.liste.filter(function (i) { return i.id === instantanes.restaurationPrevue })
+        return l.length ? l[0] : null
+    }
+    function redemarrer() {
+        commande.lancer("dbus-send --session --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logoutAndReboot")
+    }
+
+    Groupe {
+        titre: "Instantanés du système"
+        // Hors Btrfs (session d'essai, ancienne installation) : rien à montrer
+        Ligne {
+            visible: !page.instantanes.disponible
+            titre: "Instantanés indisponibles"
+            detail: "Sama photographie le système avant chaque mise à jour une fois installé sur l'ordinateur (disque en Btrfs). "
+                    + "Dans la session d'essai, rien n'est photographié."
+            derniere: true
+        }
+        Ligne {
+            visible: page.instantanes.disponible
+            titre: "Btrfs · " + page.instantanes.liste.length + (page.instantanes.liste.length > 1 ? " instantanés" : " instantané")
+            detail: page.instantanes.actif ? "Pris avant chaque mise à jour ou installation, et chaque semaine. Vos documents n'y sont pas : ils ne reviennent jamais en arrière."
+                                           : "Instantanés automatiques désactivés : une coupure pendant une mise à jour ne pourra pas être annulée"
+            derniere: page.instantanes.liste.length === 0 && !page.prevu()
+            gauche: Canvas {
+                width: 18
+                height: 18
+                onPaint: {
+                    var c = getContext("2d"); c.reset(); c.scale(18 / 24, 18 / 24)
+                    c.strokeStyle = Couleurs.sombre ? "#B4C6EE" : "#3D5A99"; c.lineWidth = 2; c.lineCap = "round"; c.lineJoin = "round"
+                    c.path = "M4 12a8 8 0 1 0 2.3-5.6 M4 5v4h4"; c.stroke()
+                }
+            }
+            Interrupteur {
+                actif: page.instantanes.actif
+                onBascule: a => commande.lancer("pkexec " + page.moteurInstantanes.replace("python3 ", "") + (a ? "activer" : "desactiver"),
+                                                function () { page.relireInstantanes() })
+            }
+        }
+        // Retour déjà prévu (redémarrage pas encore fait)
+        Rectangle {
+            visible: page.instantanes.disponible && page.prevu() !== null
+            Layout.fillWidth: true
+            implicitHeight: 52
+            color: Couleurs.selection
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 18
+                anchors.rightMargin: 12
+                spacing: 10
+                Text {
+                    Layout.fillWidth: true
+                    text: page.prevu() ? "Retour à " + page.etatDu(page.prevu().quand) + " prévu au prochain démarrage" : ""
+                    elide: Text.ElideRight
+                    font.pixelSize: 13
+                    font.weight: Font.Medium
+                    color: Couleurs.lateriteEncre
+                }
+                BoutonSama { text: "Annuler"; onClicked: commande.lancer("pkexec /usr/libexec/samaos/restaurer-instantane annuler", function () { page.relireInstantanes() }) }
+                BoutonSama { principal: true; text: "Redémarrer"; onClicked: page.redemarrer() }
+            }
+        }
+        Repeater {
+            model: page.instantanes.disponible ? page.instantanes.liste.slice(0, page.tousLesInstantanes ? 50 : 6) : []
+            delegate: Item {
+                Layout.fillWidth: true
+                implicitHeight: 42
+                Rectangle { visible: index > 0 || page.prevu() !== null; width: parent.width; height: 1; color: Couleurs.ligne }
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 18
+                    anchors.rightMargin: 8
+                    spacing: 10
+                    Rectangle { Layout.preferredWidth: 6; Layout.preferredHeight: 6; radius: 3; color: index === 0 ? Couleurs.foret : Couleurs.bord }
+                    Text { text: page.moment(modelData.quand); font.pixelSize: 13; font.weight: Font.Medium; color: Couleurs.texte }
+                    Text { Layout.fillWidth: true; text: page.description(modelData); elide: Text.ElideRight; font.pixelSize: 12; color: Couleurs.texte2 }
+                    QQC2.AbstractButton {
+                        id: boutonRestaurer
+                        implicitHeight: 28
+                        implicitWidth: texteRestaurer.implicitWidth + 22
+                        hoverEnabled: true
+                        onClicked: { page.aRestaurer = modelData; confirmationRestaurer.ouverte = true }
+                        background: Rectangle { radius: 14; color: boutonRestaurer.hovered ? Couleurs.selection : "transparent" }
+                        contentItem: Text {
+                            id: texteRestaurer
+                            text: "Restaurer"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            font.pixelSize: 12
+                            font.weight: Font.Medium
+                            color: Couleurs.lateriteEncre
+                        }
+                    }
+                }
+            }
+        }
+        // Les plus anciens, et un instantané à la main (« avant examens »)
+        Item {
+            visible: page.instantanes.disponible
+            Layout.fillWidth: true
+            implicitHeight: 52
+            Rectangle { width: parent.width; height: 1; color: Couleurs.ligne; visible: page.instantanes.liste.length > 0 }
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 18
+                anchors.rightMargin: 12
+                spacing: 10
+                Text {
+                    visible: page.instantanes.liste.length > 6
+                    text: page.tousLesInstantanes ? "Afficher moins" : "Afficher les " + (page.instantanes.liste.length - 6) + " plus anciens"
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    color: Couleurs.lateriteEncre
+                    MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: page.tousLesInstantanes = !page.tousLesInstantanes }
+                }
+                Item { Layout.fillWidth: true }
+                BoutonSama { text: "Créer un instantané"; onClicked: { nomInstantane.text = ""; creation.ouverte = true; nomInstantane.forceActiveFocus() } }
+            }
+        }
+    }
+
+    Confirmation {
+        id: confirmationRestaurer
+        titre: page.aRestaurer ? "Revenir à " + page.etatDu(page.aRestaurer.quand) + " ?" : ""
+        texte: "L'ordinateur redémarre et le système revient à cet état : ses applications et ses réglages. Vos documents, vos comptes, "
+               + "vos réseaux Wi-Fi et votre forfait ne bougent pas. L'état actuel est gardé en instantané, pour pouvoir y revenir."
+        action: occupe ? "Préparation…" : "Revenir à cet état"
+        picto: "M4 12a8 8 0 1 0 2.3-5.6 M4 5v4h4"
+        onConfirme: {
+            occupe = true
+            commande.lancer("pkexec /usr/libexec/samaos/restaurer-instantane " + commande.q(page.aRestaurer.id), function (s, code) {
+                confirmationRestaurer.occupe = false
+                page.relireInstantanes()
+                if (code === 0) { confirmationRestaurer.ouverte = false; page.redemarrer() }
+            })
+        }
+    }
+    Confirmation {
+        id: creation
+        titre: "Créer un instantané"
+        texte: "Une photo du système tel qu'il est maintenant, pour pouvoir y revenir : avant un examen, un changement important…"
+        action: occupe ? "Création…" : "Créer"
+        picto: "M4 8h3l2-3h6l2 3h3v11H4z M12 17a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7"
+        teinte: Couleurs.foret
+        onConfirme: {
+            occupe = true
+            commande.lancer("pkexec /usr/libexec/samaos/instantanes.py creer manuel " + commande.q(nomInstantane.text.trim()), function () {
+                creation.occupe = false
+                creation.ouverte = false
+                page.relireInstantanes()
+            })
+        }
+        ChampSama {
+            id: nomInstantane
+            Layout.fillWidth: true
+            placeholderText: "Nom (facultatif) : avant examens"
+            maximumLength: 60
+            onAccepted: creation.confirme()
         }
     }
 }

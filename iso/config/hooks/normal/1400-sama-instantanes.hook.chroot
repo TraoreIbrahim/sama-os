@@ -1,0 +1,6 @@
+#!/bin/sh
+# Instantanés du système (Btrfs) : rangement au démarrage et instantané hebdomadaire. Sans effet dans la session
+# d'essai ou sur un disque qui n'est pas en Btrfs (l'installateur le prépare en Btrfs : voir installateur-pages.sh).
+set -e
+systemctl enable samaos-instantanes.service samaos-instantane-hebdo.timer
+mkdir -p /.instantanes
