@@ -58,6 +58,8 @@ Item {
         showDismissed: true
         showJobs: false
         showNotifications: true
+        blacklistedDesktopEntries: npd.reglages.historyBlacklistedApplications
+        blacklistedNotifyRcNames: npd.reglages.historyBlacklistedServices
         groupMode: NotificationManager.Notifications.GroupApplicationsFlat
         groupLimit: 2
         expandUnread: false
@@ -65,7 +67,8 @@ Item {
         limit: 100
     }
 
-    // Filtre des bulles : en Ne pas déranger, seulement les alertes critiques
+    // Filtre des bulles : en Ne pas déranger, seulement les alertes critiques (et les applications autorisées
+    // à passer quand même, réglage « Même en Ne pas déranger » des Réglages → Notifications)
     readonly property int urgencesBulles: npd.actif ? NotificationManager.Notifications.CriticalUrgency
         : (NotificationManager.Notifications.CriticalUrgency | NotificationManager.Notifications.NormalUrgency)
 
@@ -79,6 +82,10 @@ Item {
         showNotifications: true
         groupMode: NotificationManager.Notifications.GroupDisabled
         sortMode: NotificationManager.Notifications.SortByDate
+        blacklistedDesktopEntries: npd.reglages.popupBlacklistedApplications
+        blacklistedNotifyRcNames: npd.reglages.popupBlacklistedServices
+        whitelistedDesktopEntries: npd.actif ? npd.reglages.doNotDisturbPopupWhitelistedApplications : []
+        whitelistedNotifyRcNames: npd.actif ? npd.reglages.doNotDisturbPopupWhitelistedServices : []
         urgencies: notifications.urgencesBulles
         limit: 3
     }
@@ -91,6 +98,10 @@ Item {
         showJobs: false
         showNotifications: true
         groupMode: NotificationManager.Notifications.GroupDisabled
+        blacklistedDesktopEntries: npd.reglages.popupBlacklistedApplications
+        blacklistedNotifyRcNames: npd.reglages.popupBlacklistedServices
+        whitelistedDesktopEntries: npd.actif ? npd.reglages.doNotDisturbPopupWhitelistedApplications : []
+        whitelistedNotifyRcNames: npd.actif ? npd.reglages.doNotDisturbPopupWhitelistedServices : []
         urgencies: notifications.urgencesBulles
     }
     readonly property int enAttente: Math.max(0, toutesLesBulles.count - bulles.count)

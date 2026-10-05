@@ -8,7 +8,8 @@ QtObject {
         var jusqua = reglages.notificationsInhibitedUntil
         return !!jusqua && !isNaN(jusqua.getTime()) && jusqua.getTime() > maintenant.getTime()
     }
-    property NotificationManager.Settings reglages: NotificationManager.Settings {}
+    // live : suit les changements faits ailleurs (Réglages → Notifications)
+    property NotificationManager.Settings reglages: NotificationManager.Settings { live: true }
     function basculer() {
         maintenant = new Date()
         if (actif) {
