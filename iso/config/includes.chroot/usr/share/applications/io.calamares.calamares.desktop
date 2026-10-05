@@ -1,0 +1,7 @@
+[Desktop Entry]
+# Identité de la fenêtre de l'installateur (Calamares) : icône éléphant dans la barre de titre et la Natte
+Type=Application
+Name=Installer Sama OS
+Icon=/usr/share/samaos/logo-cour.svg
+Exec=calamares-install-debian
+NoDisplay=true

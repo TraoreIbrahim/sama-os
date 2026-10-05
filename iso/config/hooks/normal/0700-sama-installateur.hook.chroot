@@ -11,6 +11,9 @@ rsvg-convert --width 960 /usr/share/samaos/installateur/bienvenue.svg -o "$MARQU
 # Utiliser l'identité Sama au lieu de celle de Debian
 sed -i 's/^branding: .*/branding: samaos/' /etc/calamares/settings.conf
 
+# Pages de l'installateur dessinées par Sama (modules QML de Calamares)
+sh /usr/libexec/samaos/installateur-pages.sh
+
 # Page d'accueil : pas de liens vers des pages qui n'existent pas encore
 if [ -f /etc/calamares/modules/welcome.conf ]; then
 	sed -i -e 's/^showSupportUrl:.*/showSupportUrl:         false/' \

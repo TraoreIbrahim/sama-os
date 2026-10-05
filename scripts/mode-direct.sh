@@ -7,6 +7,8 @@
 #   scripts/mode-direct.sh envoyer               Envoie widgets, couleurs, thème et identité, puis recharge le bureau
 #   scripts/mode-direct.sh rattraper             Met une VM démarrée sur une ancienne ISO au niveau du projet
 #                                                (tous les fichiers système, scripts de construction, réglages de session)
+#   scripts/mode-direct.sh installateur          Envoie les pages de l'installateur (Calamares) et le relance
+#   scripts/mode-direct.sh installateur essai    Idem avec une installation factice (pauses, aucun disque touché)
 #   scripts/mode-direct.sh natte                 Recrée la Natte et le bureau d'après la disposition Sama
 #   scripts/mode-direct.sh capture [nom]         Capture l'écran de la machine virtuelle dans sortie/captures/
 #   scripts/mode-direct.sh commande "<cmd>"      Exécute une commande dans la session Sama
@@ -72,6 +74,33 @@ envoyer)
 	echo "Envoyé, bureau rechargé."
 	;;
 
+installateur)
+	inclus="$racine/iso/config/includes.chroot"
+	tar --no-xattrs -C "$racine/branding" -czf - installateur | vm 'sudo mkdir -p /usr/share/samaos && sudo tar -xzf - -C /usr/share/samaos'
+	tar --no-xattrs -C "$inclus" -czf - etc/calamares/branding/samaos usr/libexec/samaos/installateur-pages.sh usr/share/applications/io.calamares.calamares.desktop \
+		| vm 'sudo tar -xzf - -C / && sudo sh /usr/libexec/samaos/installateur-pages.sh'
+	options=""
+	if [ "${2:-}" = essai ]; then
+		# Configuration d'essai : mêmes pages, mais l'installation se limite à deux pauses (rien n'est écrit sur le disque)
+		vm 'sudo rm -rf /tmp/sama-essai && sudo mkdir -p /tmp/sama-essai/modules && sudo cp /etc/calamares/modules/*.conf /tmp/sama-essai/modules/ \
+			&& sudo ln -s /etc/calamares/branding /tmp/sama-essai/branding && sudo ln -s /usr/share/calamares/qml /tmp/sama-essai/qml \
+			&& sudo ln -s /usr/share/calamares/helpers /tmp/sama-essai/helpers \
+			&& printf "%s\n" "---" "dontChroot: true" "timeout: 120" "script:" "  - command: \"sleep 20\"" "  - command: \"sleep 20\"" | sudo tee /tmp/sama-essai/modules/shellprocess-essai.conf >/dev/null \
+			&& printf "%s\n" "---" "modules-search: [ local, /usr/lib/calamares/modules ]" "instances:" "- id: essai" "  module: shellprocess" "  config: shellprocess-essai.conf" \
+				"sequence:" "- show:" "  - welcomeq" "  - localeq" "  - keyboardq" "  - welcome" "  - usersq" "  - summaryq" "- exec:" "  - shellprocess@essai" "- show:" "  - finishedq" \
+				"branding: samaos" "prompt-install: false" "dont-chroot: true" "oem-setup: false" "disable-cancel: false" \
+				"disable-cancel-during-exec: false" "hide-back-and-next-during-exec: true" "quit-at-end: false" | sudo tee /tmp/sama-essai/settings.conf >/dev/null'
+		options="-c /tmp/sama-essai"
+	fi
+	# Comme le vrai lanceur (calamares-install-debian : pkexec) : sous XWayland. En Wayland natif, les pages QML de
+	# Calamares (Qt 6) ne reçoivent pas le clavier. Lancé dans un sous-shell détaché pour survivre à la fin de ssh.
+	vm "sudo pkill -x calamares; sleep 1; export DISPLAY=:1 XAUTHORITY=\$(ls /run/user/\$(id -u)/xauth_* | head -1); xhost +si:localuser:root >/dev/null; \
+		(sudo env DISPLAY=:1 XAUTHORITY=\$XAUTHORITY QT_QPA_PLATFORM=xcb setsid calamares -d $options >/tmp/calamares.log 2>&1 &)"
+	sleep 8
+	vm 'grep -m1 "Using Calamares settings" /tmp/calamares.log; grep -q "connection broke" /tmp/calamares.log && echo "Plantage au démarrage (pilote graphique de la VM) : relancez." \
+		|| { pgrep -x calamares >/dev/null && echo "Installateur lancé." || tail -5 /tmp/calamares.log; }'
+	;;
+
 rattraper)
 	# Une VM live repart de son ISO à chaque démarrage : on lui redonne tout ce que la prochaine ISO contiendra.
 	inclus="$racine/iso/config/includes.chroot"
@@ -106,7 +135,7 @@ natte)
 capture)
 	nom="${2:-capture-$(date +%H%M%S)}"
 	mkdir -p "$racine/sortie/captures"
-	vm 'spectacle --background --nonotify --fullscreen --output /tmp/sama-capture.png >/dev/null 2>&1; cat /tmp/sama-capture.png' \
+	vm 'rm -f /tmp/sama-capture.png; spectacle --background --nonotify --fullscreen --output /tmp/sama-capture.png >/dev/null 2>&1; cat /tmp/sama-capture.png' \
 		> "$racine/sortie/captures/$nom.png"
 	echo "$racine/sortie/captures/$nom.png"
 	;;

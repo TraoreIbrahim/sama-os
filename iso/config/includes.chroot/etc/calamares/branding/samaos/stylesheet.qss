@@ -1,0 +1,53 @@
+/* Installateur de Sama : pages restées en widgets (disque, progression) aux couleurs de la maquette */
+#mainApp, #mainApp QWidget#page, QStackedWidget { background-color: #FBF9F6; }
+QWidget { color: #1F1C18; font-family: "Noto Sans"; }
+QLabel { color: #1F1C18; }
+QPushButton {
+    background-color: rgba(31, 28, 24, 13);
+    border: 0;
+    border-radius: 16px;
+    padding: 7px 18px;
+}
+QPushButton:hover { background-color: rgba(31, 28, 24, 23); }
+QPushButton:disabled { color: #8A8277; }
+QComboBox, QLineEdit, QSpinBox {
+    background-color: #FFFFFF;
+    border: 1px solid rgba(31, 28, 24, 40);
+    border-radius: 10px;
+    padding: 6px 10px;
+    min-height: 22px;
+}
+QComboBox:focus, QLineEdit:focus { border: 1px solid #B5532F; }
+QListView, QTreeView, QTableView {
+    background-color: #FFFFFF;
+    border: 1px solid rgba(31, 28, 24, 30);
+    border-radius: 12px;
+    selection-background-color: rgba(181, 83, 47, 40);
+    selection-color: #1F1C18;
+}
+QRadioButton, QCheckBox { spacing: 10px; }
+QProgressBar {
+    background-color: rgba(31, 28, 24, 25);
+    border: 0;
+    border-radius: 4px;
+    max-height: 8px;
+    text-align: center;
+    color: transparent;
+}
+QProgressBar::chunk { background-color: #B5532F; border-radius: 4px; }
+
+/* Page d'installation (maquette dem-06) : diaporama sans cadre, barre et message alignés sur les marges des pages,
+   bouton du journal discret (icône Sama au lieu du texte « Toggle log ») */
+QWidget#slideshow QTabWidget::pane { border: 0; }
+QWidget#slideshow QToolBar { border: 0; background: transparent; spacing: 0; margin-right: 34px; qproperty-iconSize: 16px 16px; }
+QWidget#slideshow QToolButton {
+    qproperty-icon: url(/usr/share/samaos/installateur/journal.svg);
+    qproperty-toolTip: "Journal de l'installation";
+    background-color: rgba(31, 28, 24, 13);
+    border: 0;
+    border-radius: 14px;
+    padding: 6px;
+}
+QWidget#slideshow QToolButton:hover { background-color: rgba(31, 28, 24, 23); }
+QProgressBar#exec-progress { margin-left: 40px; }
+QLabel#exec-message { margin: 2px 40px 10px 40px; font-size: 13px; color: #665E54; }

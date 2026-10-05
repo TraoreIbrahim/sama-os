@@ -3,7 +3,7 @@ componentName:   samaos
 welcomeStyleCalamares: false
 welcomeExpandingLogo: true
 windowExpanding: normal
-windowSize: 900px,620px
+windowSize: 880px,640px
 windowPlacement: center
 
 strings:
@@ -20,8 +20,9 @@ strings:
     releaseNotesUrl:     https://github.com/TraoreIbrahim/sama-os
     donateUrl:           https://github.com/TraoreIbrahim/sama-os
 
-sidebar: widget
-navigation: widget
+# En-tête (étapes) en haut et boutons en bas, dessinés en QML (calamares-sidebar.qml, calamares-navigation.qml)
+sidebar: qml,top
+navigation: qml,bottom
 
 images:
     productLogo:         "logo.png"
@@ -32,7 +33,7 @@ slideshow:               "show.qml"
 slideshowAPI:            2
 
 style:
-   SidebarBackground:        "#1E2740"
-   SidebarText:              "#E6DAC2"
-   SidebarTextCurrent:       "#FFFFFF"
+   SidebarBackground:        "#FBF9F6"
+   SidebarText:              "#665E54"
+   SidebarTextCurrent:       "#1F1C18"
    SidebarBackgroundCurrent: "#B5532F"

@@ -11,6 +11,7 @@ Usage (en administrateur, dans la VM) :
   entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
   entrees.py molette X Y 5           fait tourner la molette (5 crans vers le bas ; négatif : vers le haut)
   entrees.py tenir alt+tab 3        combinaison dont la touche de modification reste enfoncée 3 s (ex. Alt+Tab)
+  entrees.py attendre 1.5           pause entre deux actions
 Plusieurs actions peuvent s'enchaîner, séparées par « -- ».
 """
 import sys
@@ -35,6 +36,11 @@ AZERTY["'"] = (e.KEY_4, False)
 AZERTY[":"] = (e.KEY_DOT, False)
 AZERTY["é"] = (e.KEY_2, False)
 AZERTY["è"] = (e.KEY_7, False)
+AZERTY["ç"] = (e.KEY_9, False)
+AZERTY["à"] = (e.KEY_0, False)
+AZERTY["ù"] = (e.KEY_APOSTROPHE, False)
+AZERTY["."] = (e.KEY_COMMA, True)
+AZERTY[","] = (e.KEY_M, False)
 for i, c in enumerate("1234567890"):
     AZERTY[c] = (getattr(e, "KEY_" + "1234567890"[i]), True)
 
@@ -120,6 +126,8 @@ for action in actions:
             ui.write(e.EV_KEY, m, 0); ui.syn(); time.sleep(0.05)
     elif nom == "touche":
         touche(TOUCHES[reste.strip()])
+    elif nom == "attendre":
+        time.sleep(float(reste))
     elif nom == "molette":
         # molette X Y crans  (crans > 0 : vers le bas)
         x, y, crans = reste.split()
