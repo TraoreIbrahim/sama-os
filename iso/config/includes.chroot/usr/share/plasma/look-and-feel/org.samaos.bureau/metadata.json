@@ -5,7 +5,7 @@
         "Name": "Sama",
         "Description": "Apparence par défaut de Sama OS : la Natte en bas de l'écran, palette latérite et ivoire",
         "Authors": [{ "Name": "Projet Sama OS" }],
-        "License": "GPL-3.0-or-later",
+        "License": "Apache-2.0 AND GPL-2.0-or-later",
         "Version": "0.1"
     }
 }

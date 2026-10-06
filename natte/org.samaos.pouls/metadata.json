@@ -8,7 +8,7 @@
         "Category": "System Information",
         "Icon": "preferences-system",
         "Authors": [{ "Name": "Projet Sama OS" }],
-        "License": "GPL-3.0-or-later",
+        "License": "Apache-2.0",
         "Version": "0.1"
     }
 }

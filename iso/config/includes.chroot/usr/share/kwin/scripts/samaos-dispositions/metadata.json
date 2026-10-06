@@ -5,7 +5,7 @@
         "Description": "Ranger une fenêtre : en la déplaçant, choisir une disposition (moitiés, tiers, deux tiers, quarts)",
         "EnabledByDefault": true,
         "Id": "samaos-dispositions",
-        "License": "GPL",
+        "License": "Apache-2.0",
         "Name": "Dispositions de Sama",
         "Version": "1.0"
     },

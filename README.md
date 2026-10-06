@@ -77,6 +77,11 @@ L'ISO et le journal de construction arrivent dans `sortie/`.
 
 Session live : utilisateur `sama`, sans mot de passe à la connexion automatique.
 
+## Licence et contributions
+
+Sama OS est sous licence [Apache 2.0](LICENSE) ; les quelques fichiers tirés de KDE gardent leur licence, la police
+Noto Sans et les fonds d'écran aussi (liste dans [NOTICE](NOTICE)). Pour participer : [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Prochaines étapes
 
 1. Construire et tester l'ISO avec tout ce qui précède (paquets ajoutés : unattended-upgrades, vnstat, rsync, poppler-utils,

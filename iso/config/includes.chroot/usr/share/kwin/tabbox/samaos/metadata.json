@@ -5,7 +5,7 @@
         "Name": "Sama",
         "Description": "Passer d'une fenêtre à l'autre (Alt+Tab) dans Sama OS : grandes tuiles d'applications et titre de la fenêtre",
         "Authors": [{ "Name": "Projet Sama OS" }],
-        "License": "GPL-3.0-or-later",
+        "License": "Apache-2.0",
         "Version": "0.1"
     },
     "X-Plasma-API-Minimum-Version": "6.0"

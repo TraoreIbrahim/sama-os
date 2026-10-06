@@ -8,7 +8,7 @@
         "Category": "System Information",
         "Icon": "network-transmit-receive",
         "Authors": [{ "Name": "Projet Sama OS" }],
-        "License": "GPL-3.0-or-later",
+        "License": "Apache-2.0",
         "Version": "0.1"
     }
 }

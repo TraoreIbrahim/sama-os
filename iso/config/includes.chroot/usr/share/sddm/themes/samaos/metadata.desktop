@@ -2,7 +2,7 @@
 Name=Sama
 Description=Écran de connexion de Sama OS
 Author=Projet Sama OS
-License=GPL-3.0-or-later
+License=Apache-2.0
 Type=sddm-theme
 Version=0.1
 MainScript=Main.qml
