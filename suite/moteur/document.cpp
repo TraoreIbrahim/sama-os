@@ -145,6 +145,7 @@ void DocumentLO::charger(const QString &url)
     m_aRetirer.unite(QSet<Cle>(m_textures.keyBegin(), m_textures.keyEnd()));
     m_vueX = m_vueY = 0;
     m_etats.clear();
+    m_scriptsEnAttente.clear();
     m_entetes.clear();
     m_objetTwips = QRectF();
     m_objetActif = false;
@@ -445,7 +446,21 @@ void DocumentLO::releaseResources()
 void DocumentLO::annonce(int type, const QByteArray &charge)
 {
     switch (type) {
+    case LOK_CALLBACK_UNO_COMMAND_RESULT: {
+        // Réponse d'une macro de Sama : on la rend à qui l'a demandée
+        const QJsonObject o = QJsonDocument::fromJson(charge).object();
+        const QByteArray nom = o.value(QStringLiteral("commandName")).toString().toUtf8();
+        auto it = m_scriptsEnAttente.find(nom);
+        if (it == m_scriptsEnAttente.end() || it->isEmpty()) break;
+        const int jeton = it->dequeue();
+        if (it->isEmpty()) m_scriptsEnAttente.erase(it);
+        emit resultatScript(jeton, o.value(QStringLiteral("success")).toBool(),
+                            o.value(QStringLiteral("result")).toObject().value(QStringLiteral("value")).toString());
+        break;
+    }
     case LOK_CALLBACK_INVALIDATE_TILES: {
+        ++m_revision;
+        emit revisionChanged();
         const QList<QByteArray> p = charge.split(',');
         int partie = -1;
         if (charge.startsWith("EMPTY")) {
@@ -628,6 +643,25 @@ void DocumentLO::commande(const QString &nom, const QVariantMap &arguments)
     });
 }
 
+int DocumentLO::script(const QString &fonction, const QVariantList &arguments)
+{
+    if (!m_doc) return -1;
+    const int jeton = ++m_dernierJeton;
+    const QByteArray url = QStringLiteral("vnd.sun.star.script:Standard.%1?language=Basic&location=application").arg(fonction).toUtf8();
+    // (les arguments passent dans l'ordre de leurs noms : p00, p01…)
+    QJsonObject args;
+    for (int i = 0; i < arguments.size(); ++i)
+        args.insert(QStringLiteral("p%1").arg(i, 2, 10, QLatin1Char('0')),
+                    QJsonObject{{QStringLiteral("type"), QStringLiteral("string")}, {QStringLiteral("value"), arguments.at(i).toString()}});
+    const QByteArray a = arguments.isEmpty() ? QByteArray() : QJsonDocument(args).toJson(QJsonDocument::Compact);
+    m_scriptsEnAttente[url].enqueue(jeton);
+    auto *doc = m_doc;
+    Moteur::instance()->executer([doc, url, a] {
+        doc->pClass->postUnoCommand(doc, url.constData(), a.isEmpty() ? nullptr : a.constData(), true);
+    });
+    return jeton;
+}
+
 void DocumentLO::insererGraphique(int type)
 {
     if (!m_doc) return;
@@ -639,6 +673,9 @@ void DocumentLO::insererGraphique(int type)
 // type demandé et le termine aussitôt
 void DocumentLO::dialogue(const QByteArray &charge)
 {
+    // (une fenêtre du moteur que Sama ne montre pas : on la note, pour la retrouver)
+    if (charge.contains("\"dialogid\"") && !charge.contains("CHART2_HID_SCH_WIZARD_ROADMAP"))
+        qWarning("Fenêtre du moteur non affichée : %s", charge.left(400).constData());
     if (m_graphiqueEnAttente < 0 || !m_doc || !charge.contains("CHART2_HID_SCH_WIZARD_ROADMAP")) return;
     // (numéro de la fenêtre : le dernier « "id": nombre » de l'annonce)
     unsigned long long fenetre = 0;
@@ -847,6 +884,15 @@ void DocumentLO::keyPressEvent(QKeyEvent *e)
         if (e->key() == Qt::Key_C) { copier(false); return; }
         if (e->key() == Qt::Key_X) { copier(true); return; }
         if (e->key() == Qt::Key_V) { coller(e->modifiers() & Qt::ShiftModifier); return; }
+    }
+    // Annuler, rétablir : en « réparation », pour que les changements faits par les macros de Sama (tableaux…)
+    // s'annulent aussi (sinon le moteur les refuse, comme venant d'une autre vue). Pendant la saisie dans une case,
+    // la touche va au moteur.
+    if (ctrl && !(e->modifiers() & Qt::AltModifier) && !m_curseurTexteVisible && (e->key() == Qt::Key_Z || e->key() == Qt::Key_Y)) {
+        const bool refaire = e->key() == Qt::Key_Y || (e->modifiers() & Qt::ShiftModifier);
+        commande(refaire ? QStringLiteral(".uno:Redo") : QStringLiteral(".uno:Undo"),
+                 {{QStringLiteral("Repair"), QVariantMap{{QStringLiteral("type"), QStringLiteral("boolean")}, {QStringLiteral("value"), true}}}});
+        return;
     }
     const QString texte = e->text();
     const int code = codeTouche(e->key());

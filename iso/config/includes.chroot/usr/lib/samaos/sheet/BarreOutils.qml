@@ -82,8 +82,8 @@ Rectangle {
             spacing: 8
 
             Groupe {
-                Outil { picto: "M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3"; aide: "Annuler (Ctrl+Z)"; enabled: doc.etats[".uno:Undo"] !== "disabled"; onClicked: actions.lancer("annuler") }
-                Outil { picto: "M15 14l5-5-5-5 M20 9H10a6 6 0 0 0 0 12h3"; aide: "Rétablir (Ctrl+Y)"; enabled: doc.etats[".uno:Redo"] !== "disabled"; onClicked: actions.lancer("retablir") }
+                Outil { picto: "M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3"; aide: "Annuler (Ctrl+Z)"; enabled: actions.peutAnnuler || doc.etats[".uno:Undo"] === "enabled"; onClicked: actions.lancer("annuler") }
+                Outil { picto: "M15 14l5-5-5-5 M20 9H10a6 6 0 0 0 0 12h3"; aide: "Rétablir (Ctrl+Y)"; enabled: actions.peutRetablir || doc.etats[".uno:Redo"] === "enabled"; onClicked: actions.lancer("retablir") }
                 Outil { picto: "M5 4h11v5H5z M16 6h3v5h-7v3 M12 14v6"; aide: "Reproduire la mise en forme : cliquez ensuite sur les cases à mettre pareil"; actif: fenetre.actif(".uno:FormatPaintbrush"); onClicked: actions.lancer("pinceau") }
                 Trait {}
                 Liste {
@@ -277,6 +277,15 @@ Rectangle {
                 }
             }
             Item { Layout.fillWidth: true }
+            // Mettre en tableau (hors d'un tableau ; dedans, sa barre apparaît sous la formule)
+            Outil {
+                visible: fenetre.tableaux.courant === null
+                text: "Mettre en tableau"
+                picto: "M4 5h16v14H4z M4 10h16 M10 5v14"
+                aide: "Titres, filtres et ligne des totaux ; enregistré comme un tableau Excel (Ctrl+T)"
+                background: Rectangle { radius: 8; color: Couleurs.champ; border.width: 0.5; border.color: parent.hovered ? fenetre.vert : Couleurs.bord }
+                onClicked: actions.lancer("tableau")
+            }
         }
     }
     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: Couleurs.bord }

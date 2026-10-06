@@ -28,8 +28,54 @@ const char *const REGLAGES[][3] = {
      "3107671 14259770 4091550 11883311 9286778 8085132 14926443 5151386 10251086 13208219 7244968 9077367"},
 };
 
+// Macros de Sama (tableaux…) : les modules Basic de SAMA_MOTEUR_BASIC (par défaut /usr/lib/samaos/moteur/basic) sont
+// copiés dans la bibliothèque Standard du profil, et inscrits dans sa liste. Les fichiers de la bibliothèque sont écrits
+// s'ils manquent (profil neuf : le moteur ne les recopie pas si le dossier existe déjà).
+void ecrireSiAbsent(const QString &chemin, const QByteArray &contenu)
+{
+    QFile f(chemin);
+    if (f.exists()) return;
+    if (f.open(QIODevice::WriteOnly)) f.write(contenu);
+}
+
+void installerMacros(const QString &dossier)
+{
+    const QByteArray source = qgetenv("SAMA_MOTEUR_BASIC");
+    const QDir modules(source.isEmpty() ? QStringLiteral("/usr/lib/samaos/moteur/basic") : QString::fromLocal8Bit(source));
+    const QStringList fichiers = modules.entryList({QStringLiteral("*.xba")}, QDir::Files, QDir::Name);
+    if (fichiers.isEmpty()) return;
+    const QString basic = dossier + QStringLiteral("/user/basic"), standard = basic + QStringLiteral("/Standard");
+    QDir().mkpath(standard);
+    const QByteArray entete = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+    const QByteArray conteneur = entete
+        + "<!DOCTYPE library:libraries PUBLIC \"-//OpenOffice.org//DTD OfficeDocument 1.0//EN\" \"libraries.dtd\">\n"
+          "<library:libraries xmlns:library=\"http://openoffice.org/2000/library\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n"
+          " <library:library library:name=\"Standard\" library:link=\"false\"/>\n</library:libraries>\n";
+    ecrireSiAbsent(basic + QStringLiteral("/script.xlc"), conteneur);
+    ecrireSiAbsent(basic + QStringLiteral("/dialog.xlc"), conteneur);
+    const QByteArray bibliotheque = entete
+        + "<!DOCTYPE library:library PUBLIC \"-//OpenOffice.org//DTD OfficeDocument 1.0//EN\" \"library.dtd\">\n"
+          "<library:library xmlns:library=\"http://openoffice.org/2000/library\" library:name=\"Standard\" "
+          "library:readonly=\"false\" library:passwordprotected=\"false\"";
+    ecrireSiAbsent(standard + QStringLiteral("/dialog.xlb"), bibliotheque + "/>\n");
+    ecrireSiAbsent(standard + QStringLiteral("/script.xlb"), bibliotheque + ">\n</library:library>\n");
+    QFile liste(standard + QStringLiteral("/script.xlb"));
+    if (!liste.open(QIODevice::ReadOnly)) return;
+    QString texte = QString::fromUtf8(liste.readAll());
+    liste.close();
+    for (const QString &fichier : fichiers) {
+        const QString nom = fichier.chopped(4);
+        QFile::remove(standard + QLatin1Char('/') + fichier);
+        QFile::copy(modules.filePath(fichier), standard + QLatin1Char('/') + fichier);
+        const QString element = QStringLiteral("<library:element library:name=\"%1\"/>").arg(nom);
+        if (!texte.contains(element)) texte.replace(QStringLiteral("</library:library>"), QStringLiteral(" ") + element + QStringLiteral("\n</library:library>"));
+    }
+    if (liste.open(QIODevice::WriteOnly | QIODevice::Truncate)) liste.write(texte.toUtf8());
+}
+
 void preparerProfil(const QString &dossier)
 {
+    installerMacros(dossier);
     QDir().mkpath(dossier + QStringLiteral("/user"));
     QFile f(dossier + QStringLiteral("/user/registrymodifications.xcu"));
     QString texte;

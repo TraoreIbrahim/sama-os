@@ -9,6 +9,23 @@ QtObject {
     required property var fenetre
 
     function uno(c, args) { doc.commande(c, args || {}) }
+
+    // Historique : annuler et rétablir « en réparation » (les changements des macros de Sama s'annulent aussi ; le
+    // moteur les grise sinon). Ce qu'on peut annuler vient de la liste des actions du moteur.
+    property bool peutAnnuler: false
+    property bool peutRetablir: false
+    readonly property var reparer: ({ Repair: { type: "boolean", value: true } })
+    property Timer relireHistorique: Timer { interval: 300; onTriggered: { actions.doc.demanderValeurs(".uno:Undo"); actions.doc.demanderValeurs(".uno:Redo") } }
+    property Connections suivre: Connections {
+        target: actions.doc
+        function onRevisionChanged() { actions.relireHistorique.restart() }
+        function onModifieChanged() { actions.relireHistorique.restart() }
+        function onValeurs(commande, reponse) {
+            var n = reponse && reponse.actions && reponse.actions.length ? reponse.actions.length : 0
+            if (commande === ".uno:Undo") actions.peutAnnuler = n > 0
+            else if (commande === ".uno:Redo") actions.peutRetablir = n > 0
+        }
+    }
     function chaine(nom, valeur) { var a = {}; a[nom] = { type: "string", value: String(valeur) }; return a }
 
     // ——— Couleurs et bordures des cellules ———
@@ -60,8 +77,8 @@ QtObject {
         c("pdf", "Exporter en PDF…", "Fichier", "imprimer pdf envoyer", "", function () { fenetre.ouvrirDialogue("pdf") }),
         c("fermer", "Fermer", "Fichier", "quitter", "Ctrl+W", function () { fenetre.close() }),
 
-        c("annuler", "Annuler", "Édition", "défaire retour", "Ctrl+Z", function () { uno(".uno:Undo") }, function () { return doc.etats[".uno:Undo"] !== "disabled" }),
-        c("retablir", "Rétablir", "Édition", "refaire", "Ctrl+Y", function () { uno(".uno:Redo") }, function () { return doc.etats[".uno:Redo"] !== "disabled" }),
+        c("annuler", "Annuler", "Édition", "défaire retour", "Ctrl+Z", function () { uno(".uno:Undo", reparer) }, function () { return peutAnnuler || doc.etats[".uno:Undo"] === "enabled" }),
+        c("retablir", "Rétablir", "Édition", "refaire", "Ctrl+Y", function () { uno(".uno:Redo", reparer) }, function () { return peutRetablir || doc.etats[".uno:Redo"] === "enabled" }),
         c("couper", "Couper", "Édition", "déplacer", "Ctrl+X", function () { doc.copier(true) }),
         c("copier", "Copier", "Édition", "dupliquer", "Ctrl+C", function () { doc.copier(false) }),
         c("coller", "Coller", "Édition", "", "Ctrl+V", function () { doc.coller(false) }),
@@ -119,6 +136,9 @@ QtObject {
         c("pinceau", "Reproduire la mise en forme", "Format", "pinceau copier format", "", function () { uno(".uno:FormatPaintbrush") }),
         c("effacerFormat", "Effacer la mise en forme", "Format", "enlever style normal", "Ctrl+M", function () { uno(".uno:ResetAttributes") }),
 
+        c("tableau", "Mettre en tableau", "Données", "tableau liste registre colonnes nommées filtre totaux excel", "Ctrl+T", function () { fenetre.tableaux.creer() }, function () { return fenetre.tableaux.courant === null }),
+        c("totauxTableau", "Ligne des totaux du tableau", "Données", "total somme tableau", "", function () { fenetre.tableaux.totaux(fenetre.tableaux.courant, !fenetre.tableaux.courant.totaux) }, function () { return fenetre.tableaux.courant !== null }),
+        c("ligneTableau", "Ajouter une ligne au tableau", "Données", "nouvelle ligne tableau", "", function () { fenetre.tableaux.ajouterLigne(fenetre.tableaux.courant) }, function () { return fenetre.tableaux.courant !== null }),
         c("trierAZ", "Trier de A à Z, du plus petit au plus grand", "Données", "ordre croissant ranger", "", function () { uno(".uno:SortAscending") }),
         c("trierZA", "Trier de Z à A, du plus grand au plus petit", "Données", "ordre décroissant ranger", "", function () { uno(".uno:SortDescending") }),
 
@@ -136,7 +156,7 @@ QtObject {
 
     // « Que voulez-vous faire ? » : commandes et fonctions dont le nom ou les mots contiennent tous les mots tapés
     // (sans tenir compte des accents)
-    readonly property var suggestions: ["somme", "fcfa", "trierAZ", "graphique", "figerLigne", "bordures"]
+    readonly property var suggestions: ["somme", "tableau", "fcfa", "trierAZ", "graphique", "figerLigne"]
     function chercher(texte) {
         var mots = Fonctions.normaliser(texte).split(/\s+/).filter(function (m) { return m.length > 0 })
         if (!mots.length) return suggestions.map(function (k) { return trouver(k) })

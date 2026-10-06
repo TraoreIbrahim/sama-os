@@ -3,6 +3,7 @@
 // défilement. Un clic sur un en-tête choisit la colonne ou la ligne entière.
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import Sama.Moteur
 import "../reglages"
 
@@ -47,6 +48,28 @@ Item {
     }
     readonly property var colonnes: bandes(document.entetes.columns)
     readonly property var lignes: bandes(document.entetes.rows)
+
+    // Boutons ▾ des titres des tableaux visibles : un carré au bord droit de chaque titre (pixels du document)
+    readonly property var boutonsFiltre: {
+        var res = []
+        var tableaux = fenetre.tableaux.visibles
+        for (var i = 0; i < tableaux.length; i++) {
+            var t = tableaux[i]
+            var ligne = null
+            for (var k = 0; k < lignes.length; k++) if (lignes[k].texte === String(t.l1 + 1)) ligne = lignes[k]
+            if (!ligne) continue
+            var h = ligne.fin - ligne.debut
+            for (var c = t.c1; c <= t.c2; c++) {
+                var lettres = fenetre.tableaux.lettres(c)
+                for (var j = 0; j < colonnes.length; j++) {
+                    if (colonnes[j].texte !== lettres) continue
+                    res.push({ x: colonnes[j].fin - h, y: ligne.debut, cote: h, tableau: t, colonne: c - t.c1,
+                               filtree: t.filtres.indexOf(c - t.c1) >= 0 })
+                }
+            }
+        }
+        return res
+    }
 
     // Coin
     Rectangle {
@@ -167,6 +190,42 @@ Item {
                 border.color: "#FFFFFF"
             }
         }
+        // Boutons ▾ des titres des tableaux (par-dessus ceux du moteur, dont la fenêtre ne s'afficherait pas)
+        Repeater {
+            model: grille.boutonsFiltre
+            delegate: QQC2.AbstractButton {
+                id: boutonFiltre
+                x: modelData.x - document.vueX
+                y: modelData.y - document.vueY
+                width: modelData.cote
+                height: modelData.cote
+                hoverEnabled: true
+                focusPolicy: Qt.NoFocus
+                Accessible.name: "Trier et filtrer " + modelData.tableau.colonnes[modelData.colonne]
+                onClicked: {
+                    var p = boutonFiltre.mapToItem(grille, 0, boutonFiltre.height + 2)
+                    filtreColonne.ouvrirPour(modelData.tableau, modelData.colonne, Math.max(0, p.x + boutonFiltre.width - 300), p.y)
+                }
+                background: Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: 4
+                    color: modelData.filtree ? fenetre.vert : boutonFiltre.hovered ? "#CFE3D8" : "#F4F9F6"
+                    border.width: 0.5
+                    border.color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.5)
+                }
+                contentItem: Item {
+                    Picto {
+                        anchors.centerIn: parent
+                        width: Math.min(12, boutonFiltre.width - 6); height: width
+                        trace: modelData.filtree ? "M4 5h16l-6 8v6l-4-2v-4z" : "M6 9l6 6 6-6"
+                        encre: modelData.filtree ? "#FFFFFF" : fenetre.vertEncre
+                        trait: 2.2
+                    }
+                }
+            }
+        }
+
         // Curseur de saisie (pendant qu'on écrit dans une cellule)
         Rectangle {
             id: caret
@@ -288,6 +347,8 @@ Item {
         total: Math.max(document.largeurDocument, document.vueX + feuille.width) + feuille.width
         onDeplacee: v => document.vueX = v
     }
+
+    FiltreColonne { id: filtreColonne }
 
     // Le curseur reste visible quand on se déplace au clavier
     Connections {

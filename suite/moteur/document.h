@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QImage>
 #include <QPointer>
+#include <QQueue>
 #include <QQuickItem>
 #include <QRectF>
 #include <QSet>
@@ -54,6 +55,8 @@ class DocumentLO : public QQuickItem
     Q_PROPERTY(QRectF objet READ objet NOTIFY objetChanged)
     Q_PROPERTY(bool objetActif READ objetActif NOTIFY objetChanged)
     Q_PROPERTY(bool objetTenu READ objetTenu NOTIFY objetTenuChanged)
+    // Augmente à chaque changement du contenu dessiné (pour relire ce qui en dépend : tableaux…)
+    Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
 
 public:
     enum Etat { Vide, Chargement, Pret, Erreur };
@@ -91,6 +94,7 @@ public:
     QRectF objet() const { return enPixels(m_objetTwips); }
     bool objetActif() const { return m_objetActif; }
     bool objetTenu() const { return m_poignee >= 0; }
+    int revision() const { return m_revision; }
 
     // Ouvrir un fichier, ou un document vide (« calc », « writer »)
     Q_INVOKABLE void ouvrir(const QString &chemin);
@@ -114,6 +118,9 @@ public:
     // Graphique de la sélection, du type demandé (rang dans la liste de l'assistant du moteur : 0 colonnes, 1 barres,
     // 2 secteurs, 4 aires, 5 lignes) ; l'assistant n'est pas montré, Sama le remplit
     Q_INVOKABLE void insererGraphique(int type);
+    // Macro de Sama installée dans le moteur (« SamaTableaux.Creer ») avec des arguments texte ; la réponse arrive par
+    // resultatScript(jeton, reussi, valeur). Rend le jeton.
+    Q_INVOKABLE int script(const QString &fonction, const QVariantList &arguments = QVariantList());
     // Coordonnées : pixels de l'élément → pixels du document
     Q_INVOKABLE QPointF versDocument(qreal x, qreal y) const { return QPointF(x + m_vueX, y + m_vueY); }
 
@@ -134,6 +141,8 @@ signals:
     void entetesChanged();
     void objetChanged();
     void objetTenuChanged();
+    void revisionChanged();
+    void resultatScript(int jeton, bool reussi, const QString &valeur);
     void enregistre(bool reussi, const QString &chemin);
     void valeurs(const QString &commande, const QVariant &reponse);
 
@@ -204,6 +213,8 @@ private:
     int m_poignee = -1;
     QPointF m_decalage;
     int m_graphiqueEnAttente = -1;
+    int m_revision = 0, m_dernierJeton = 0;
+    QHash<QByteArray, QQueue<int>> m_scriptsEnAttente;   // par adresse de macro, dans l'ordre des appels
     bool m_survolEnvoye = false;
     QPointF m_survolSuivant;
     bool m_survolAttend = false;

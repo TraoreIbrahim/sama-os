@@ -138,6 +138,10 @@ Rectangle {
             }
             MenuSama {
                 title: "Données"
+                ElementMenu { cle: "tableau" }
+                ElementMenu { cle: "totauxTableau" }
+                ElementMenu { cle: "ligneTableau" }
+                QQC2.MenuSeparator {}
                 ElementMenu { cle: "trierAZ" }
                 ElementMenu { cle: "trierZA" }
             }

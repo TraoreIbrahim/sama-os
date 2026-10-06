@@ -11,6 +11,7 @@ import QtQuick.Dialogs
 import QtCore
 import Sama.Moteur
 import "../reglages"
+import "Fonctions.js" as Fonctions
 
 Window {
     id: fenetre
@@ -33,6 +34,8 @@ Window {
     property bool fermetureDemandee: false
     readonly property alias actions: lesActions
     Actions { id: lesActions; doc: fenetre.doc; fenetre: fenetre }
+    readonly property alias tableaux: lesTableaux
+    Tableaux { id: lesTableaux; doc: fenetre.doc; onMessage: t => message.montrer(t) }
 
     function etat(c) { return doc.etats[c] }
     function actif(c) { return doc.etats[c] === "true" }
@@ -163,6 +166,7 @@ Window {
     Shortcut { sequences: ["Ctrl+K", "Alt+/", "Alt+Shift+/"]; onActivated: barreMenus.recherche.ouvrir() }
     Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide() }
     Shortcut { sequence: "Ctrl+W"; onActivated: fenetre.close() }
+    Shortcut { sequence: "Ctrl+T"; onActivated: fenetre.actions.lancer("tableau") }
 
     ColumnLayout {
         anchors.fill: parent
@@ -214,8 +218,43 @@ Window {
                 }
                 Rectangle { width: 0.5; height: 18; color: Couleurs.bord }
                 Text { text: "fx"; font.pixelSize: 13; font.italic: true; color: Couleurs.texte3 }
+                // Dans un tableau, la formule se lit avec les noms des colonnes (un clic pour l'écrire telle quelle)
+                Item {
+                    id: phrase
+                    readonly property var morceaux: champFormule.activeFocus ? null : Fonctions.morceaux(fenetre.doc.formule)
+                    visible: morceaux !== null
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    RowLayout {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 4
+                        Repeater {
+                            model: phrase.morceaux || []
+                            delegate: Rectangle {
+                                implicitWidth: morceau.implicitWidth + (modelData.puce ? 16 : 0)
+                                implicitHeight: 24
+                                radius: 6
+                                color: modelData.puce ? fenetre.vertFond : "transparent"
+                                Text {
+                                    id: morceau
+                                    anchors.centerIn: parent
+                                    text: modelData.puce ? modelData.texte + (modelData.detail ? " · " + modelData.detail : "") : modelData.texte
+                                    font.pixelSize: 13
+                                    font.weight: modelData.puce ? Font.DemiBold : Font.Normal
+                                    color: modelData.puce ? fenetre.vertEncre : Couleurs.texte
+                                }
+                            }
+                        }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.IBeamCursor
+                        onClicked: { champFormule.forceActiveFocus(); champFormule.cursorPosition = champFormule.text.length }
+                    }
+                }
                 TextInput {
                     id: champFormule
+                    visible: !phrase.visible
                     Layout.fillWidth: true
                     verticalAlignment: TextInput.AlignVCenter
                     // (suit la case courante, sauf pendant qu'on y écrit ; pas de liaison, que la saisie romprait)
@@ -241,6 +280,10 @@ Window {
                 }
             }
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: Couleurs.bord }
+        }
+
+        BarreTableau {
+            Layout.fillWidth: true
         }
 
         Grille {

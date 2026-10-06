@@ -1,0 +1,111 @@
+// Les tableaux du classeur (plages nommées à titres, filtres et ligne des totaux, enregistrées comme des tableaux
+// Excel). Sama les lit et les change par les macros SamaTableaux du moteur (usr/lib/samaos/moteur/basic).
+import QtQuick
+import Sama.Moteur
+
+Item {
+    id: tableaux
+    visible: false
+    required property var doc
+    signal message(string texte)
+
+    // [{ nom, feuille, c1, l1, c2, l2 (à partir de 0), totaux, colonnes: [titres], filtres: [colonnes filtrées] }]
+    property var liste: []
+    // Le tableau de la case courante, ou null
+    readonly property var courant: {
+        for (var i = 0; i < liste.length; i++) {
+            var t = liste[i]
+            if (t.feuille === doc.partie && doc.colonne >= t.c1 && doc.colonne <= t.c2 && doc.ligne >= t.l1 && doc.ligne <= t.l2) return t
+        }
+        return null
+    }
+    // Ceux de la feuille affichée
+    readonly property var visibles: liste.filter(function (t) { return t.feuille === doc.partie })
+
+    function lettres(c) {
+        var s = ""
+        c = c + 1
+        while (c > 0) { var r = (c - 1) % 26; s = String.fromCharCode(65 + r) + s; c = Math.floor((c - 1) / 26) }
+        return s
+    }
+    function adresse(t) { return lettres(t.c1) + (t.l1 + 1) + ":" + lettres(t.c2) + (t.l2 + 1) }
+    function lignesDonnees(t) { return t.l2 - t.l1 - (t.totaux ? 1 : 0) }
+
+    // ——— Appels au moteur ———
+    property var attentes: ({})
+    function appeler(fonction, args, suite) {
+        var j = doc.script("SamaTableaux." + fonction, args || [])
+        if (j >= 0) attentes[j] = suite
+    }
+    // (« !… » : un message pour la personne)
+    function verifier(ok, v) {
+        if (!ok || (v && v.charAt(0) === "!")) console.warn("Tableaux :", ok, v)
+        if (!ok) { message("Le moteur n'a pas pu faire cette opération"); return false }
+        if (v && v.charAt(0) === "!") { message(v.slice(1)); return false }
+        return true
+    }
+    Connections {
+        target: tableaux.doc
+        function onResultatScript(jeton, reussi, valeur) {
+            var suite = tableaux.attentes[jeton]
+            delete tableaux.attentes[jeton]
+            if (suite) suite(reussi, valeur)
+        }
+        function onRevisionChanged() { relire.restart() }
+        function onPartiesChanged() { relire.restart() }
+        function onEtatChanged() { if (tableaux.doc.etat === DocumentLO.Pret) relire.restart(); else tableaux.liste = [] }
+    }
+    // (on relit après les changements du contenu, mais pas pendant qu'on écrit dans une case)
+    Timer {
+        id: relire
+        interval: 600
+        onTriggered: tableaux.rafraichir()
+    }
+    function rafraichir() {
+        if (doc.etat !== DocumentLO.Pret) return
+        if (doc.curseurTexteVisible) { relire.restart(); return }
+        appeler("Decrire", [], function (ok, v) {
+            if (ok && v && v.charAt(0) === "[") {
+                try { liste = JSON.parse(v) } catch (e) { }
+            }
+        })
+    }
+
+    // ——— Opérations ———
+    function creer() {
+        appeler("Creer", [], function (ok, v) {
+            if (!verifier(ok, v)) return
+            message("Tableau « " + v + " » : titres, filtres, et la ligne des totaux si besoin")
+            rafraichir()
+        })
+    }
+    function totaux(t, oui) {
+        appeler("Totaux", [t.nom, oui ? "1" : "0"], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+    }
+    function ajouterLigne(t) {
+        appeler("AjouterLigne", [t.nom], function (ok, v) {
+            if (!verifier(ok, v)) return
+            // « $Feuille.$B$15 » → B15
+            doc.allerA(v.split(".").pop().replace(/\$/g, ""))
+            rafraichir()
+        })
+    }
+    function renommer(t, nom) {
+        appeler("Renommer", [t.nom, nom], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+    }
+    function trier(t, colonne, croissant) {
+        appeler("Trier", [t.nom, String(colonne), croissant ? "1" : "0"], function (ok, v) { verifier(ok, v) })
+    }
+    // suite({ valeurs: [...], gardees: [...] ou null })
+    function valeurs(t, colonne, suite) {
+        appeler("Valeurs", [t.nom, String(colonne)], function (ok, v) {
+            if (!verifier(ok, v)) return
+            try { suite(JSON.parse(v)) } catch (e) { }
+        })
+    }
+    // gardees : valeurs à garder ; null : plus de filtre sur cette colonne
+    function filtrer(t, colonne, gardees) {
+        appeler("Filtrer", [t.nom, String(colonne), gardees ? gardees.join("\n") : "", gardees ? "0" : "1"],
+                function (ok, v) { if (verifier(ok, v)) rafraichir() })
+    }
+}
