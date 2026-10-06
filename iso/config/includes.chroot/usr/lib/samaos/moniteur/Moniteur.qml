@@ -41,7 +41,7 @@ Window {
     // ——— Mise en forme ———
     function virgule(x, n) { return Number(x).toFixed(n).replace(".", ",") }
     function taille(o) {
-        if (o >= 1073741824) return virgule(o / 1073741824, 1) + " Go"
+        if (o >= 1000 * 1048576) return virgule(o / 1073741824, 1) + " Go"
         if (o >= 1048576) return Math.round(o / 1048576) + " Mo"
         return Math.max(0, Math.round(o / 1024)) + " Ko"
     }
