@@ -64,7 +64,8 @@ envoyer)
 	tar --no-xattrs -C "$inclus/usr/share" -czf - color-schemes plasma/desktoptheme plasma/look-and-feel icons/sama icons/sama-sombre konsole kwin/tabbox knotifications6 \
 		| vm 'sudo tar -xzf - -C /usr/share --no-same-owner'
 	# Réglages par défaut du système (barres de titre, terminal…)
-	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc kwinrc mimeapps.list kde-mimeapps.list | vm 'sudo tar -xzf - -C /etc/xdg --no-same-owner'
+	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc kwinrc mimeapps.list kde-mimeapps.list \
+		powerdevil.notifyrc $(cd "$inclus/etc/xdg" && ls autostart/samaos-*.desktop) | vm 'sudo tar -xzf - -C /etc/xdg --no-same-owner'
 	# Applications Sama (Réglages…) : fichiers, lanceurs, raccourcis, exécutables propres
 	tar --no-xattrs -C "$inclus" -czf - usr/lib/samaos $(cd "$inclus" && ls usr/bin/sama-* usr/share/applications/samaos-*.desktop) \
 		| vm 'sudo tar -xzf - -C / --no-same-owner && sudo mkdir -p /usr/lib/samaos/bin && for a in samaos-reglages samaos-fichiers samaos-moniteur samaos-aide; do
