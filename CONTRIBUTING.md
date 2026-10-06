@@ -103,5 +103,5 @@ sont des marques, que la licence ne couvre pas.
 
 ## Une faille de sécurité ?
 
-Ne la décrivez pas dans une issue publique : ouvrez une issue qui demande seulement un moyen de contact privé,
-sans aucun détail, et laissez le temps de corriger avant d'en parler.
+Ne la décrivez pas dans une issue publique : signalez-la en privé depuis l'onglet **Security** du dépôt,
+bouton **Report a vulnerability**. Seuls les mainteneurs la voient ; laissez-leur le temps de corriger avant d'en parler.
