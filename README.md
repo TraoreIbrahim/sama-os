@@ -17,7 +17,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | La Natte : la Cour (applications et recherche), les Espaces, le Pouls (centre de contrôle et notifications) | fait |
 | Bureau : cartes Heure, Data, Météo, Agenda ; vue des Espaces (Méta+Tab), transition entre Espaces | fait |
 | Fenêtres côte à côte : en déplaçant une fenêtre, dispositions moitiés, tiers, deux tiers, quarts (script KWin) | fait (poignée commune entre deux fenêtres : à venir) |
-| Réglages Sama : réseau, Bluetooth, affichage, Bureau et Natte, notifications, son, langue et clavier, comptes, confidentialité, data et mises à jour, énergie, imprimantes, sauvegarde, accessibilité, à propos | fait (Organisation : à venir) |
+| Réglages Sama : réseau, Bluetooth, affichage, Bureau et Natte, notifications, son, langue et clavier, comptes, confidentialité, data et mises à jour, énergie, imprimantes, sauvegarde, accessibilité, à propos | fait (Organisation : la page dit ce qu'une école ou une entreprise pourrait faire ; l'inscription, avec Sama Parc, à venir) |
 | Fenêtre « Autorisation requise » de Sama (à la place de celle de KDE) | fait |
 | Installateur aux couleurs de Sama (Calamares, pages en QML d'après la maquette) | fait |
 | Accueil du premier démarrage : Espaces, puis réglages pour bien démarrer | fait |
@@ -27,6 +27,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Sauvegarde sur clé USB ou disque externe | fait (Sama Grenier, le nuage : à venir) |
 | Session invitée | fait |
 | Retour du courant : ce qui était ouvert est noté toutes les 30 s ; après une coupure, « Tout rouvrir » (documents de Sama Docs récupérés) | fait |
+| Batterie faible : « Batterie à 10 % », autonomie estimée, « Activer l'économie maximale » (mode Économie, écran à 30 %, indexation en pause) ; tout revient après 2 minutes de courant | fait (essayé dans la VM, qui n'a pas de batterie, avec une batterie simulée) |
 | Application bloquée : « Sama Docs ne répond pas », dernière sauvegarde des documents, « Attendre » ou « Forcer l'arrêt » (à la place de la fenêtre de KWin) | fait |
 | Capture d'écran (Impr.) : zone, fenêtre ou écran entier, minuteur, vidéo ; copiée et rangée dans Images › Captures d'écran, « Annoter » | fait |
 | Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |

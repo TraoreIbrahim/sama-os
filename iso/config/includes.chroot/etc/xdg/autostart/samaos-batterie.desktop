@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Batterie faible
+Comment=Sous le seuil de batterie faible, propose l'économie maximale jusqu'au retour du courant
+Exec=/usr/libexec/samaos/batterie.py veiller
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=2

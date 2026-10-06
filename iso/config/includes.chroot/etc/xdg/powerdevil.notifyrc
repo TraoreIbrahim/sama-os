@@ -1,0 +1,4 @@
+# Batterie faible : la carte de Sama (/usr/libexec/samaos/batterie.py) remplace la bulle de Plasma, qui ne garde que son bruit.
+# (Batterie critique : bulle et action de Plasma inchangées.)
+[Event/lowbattery]
+Action=Sound
