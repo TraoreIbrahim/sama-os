@@ -1,6 +1,6 @@
-// Grille de Sama Sheet : le moteur dessine les cellules ; Sama dessine les en-têtes (A, B, C… et 1, 2, 3…), le curseur
-// de cellule, la sélection, le curseur de saisie et les barres de défilement. Un clic sur un en-tête choisit la colonne
-// ou la ligne entière.
+// Grille de Sama Sheet : le moteur dessine les cellules (et les graphiques) ; Sama dessine les en-têtes (A, B, C… et
+// 1, 2, 3…), le curseur de cellule, la sélection, le curseur de saisie, le cadre du graphique choisi et les barres de
+// défilement. Un clic sur un en-tête choisit la colonne ou la ligne entière.
 import QtQuick
 import QtQuick.Layouts
 import Sama.Moteur
@@ -148,9 +148,9 @@ Item {
                 border.color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.55)
             }
         }
-        // Curseur de cellule
+        // Curseur de cellule (caché quand un graphique est choisi)
         Rectangle {
-            visible: document.curseur.width > 0
+            visible: document.curseur.width > 0 && document.objet.width <= 0
             x: document.curseur.x - document.vueX - 1
             y: document.curseur.y - document.vueY - 1
             width: document.curseur.width + 2
@@ -178,6 +178,57 @@ Item {
             height: document.curseurTexte.height
             color: "#1F1C18"
             Timer { running: document.curseurTexteVisible; interval: 530; repeat: true; onTriggered: caret.clignote = !caret.clignote }
+        }
+
+        // Graphique choisi : cadre et poignées (on le déplace en le tirant, on l'agrandit par une poignée ; le moteur le
+        // redessine en suivant la souris)
+        Item {
+            id: cadreObjet
+            visible: document.objet.width > 0 && !document.objetActif
+            x: document.objet.x - document.vueX
+            y: document.objet.y - document.vueY
+            width: document.objet.width
+            height: document.objet.height
+            Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1.5; border.color: fenetre.vert }
+            Repeater {
+                model: 8
+                delegate: Rectangle {
+                    width: 9; height: 9; radius: 4.5
+                    x: [0, 0.5, 1, 1, 1, 0.5, 0, 0][index] * cadreObjet.width - 4.5
+                    y: [0, 0, 0, 0.5, 1, 1, 1, 0.5][index] * cadreObjet.height - 4.5
+                    color: "#FFFFFF"
+                    border.width: 1.5
+                    border.color: fenetre.vert
+                }
+            }
+        }
+        // Actions du graphique choisi, au-dessus (ou en dessous s'il touche le haut)
+        Rectangle {
+            id: actionsObjet
+            visible: cadreObjet.visible && !document.objetTenu
+            readonly property bool dessous: cadreObjet.y < height + 10
+            x: Math.max(6, Math.min(cadreObjet.x + cadreObjet.width - width, feuille.width - width - 6))
+            y: dessous ? cadreObjet.y + cadreObjet.height + 8 : cadreObjet.y - height - 8
+            width: rangeeActions.implicitWidth + 8
+            height: 34
+            radius: 10
+            color: Couleurs.champ
+            border.width: 0.5
+            border.color: Couleurs.bord
+            RowLayout {
+                id: rangeeActions
+                anchors.centerIn: parent
+                spacing: 2
+                Text { text: "Graphique"; font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.vertEncre; Layout.leftMargin: 8; Layout.rightMargin: 4 }
+                Outil {
+                    Layout.preferredHeight: 26
+                    text: "Supprimer"
+                    picto: "M5 7h14 M10 7V5h4v2 M7 7l1 12h8l1-12"
+                    encre: "#A3322A"
+                    aide: "Supprimer le graphique (Suppr)"
+                    onClicked: { document.touche(1286); document.forceActiveFocus() }
+                }
+            }
         }
     }
 

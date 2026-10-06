@@ -5,8 +5,10 @@
 #include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLineF>
 #include <QMimeData>
 #include <QQuickWindow>
+#include <QRegularExpression>
 #include <QSGSimpleTextureNode>
 #include <QSGTexture>
 #include <QThread>
@@ -71,6 +73,13 @@ QRectF rectangle(const QByteArray &s)
     return QRectF(p[0].trimmed().toDouble(), p[1].trimmed().toDouble(), p[2].trimmed().toDouble(), p[3].trimmed().toDouble());
 }
 
+// Poignées d'un objet : coins et milieux des côtés, depuis le coin haut gauche, dans le sens des aiguilles d'une montre
+QList<QPointF> poignees(const QRectF &r)
+{
+    return {r.topLeft(), QPointF(r.center().x(), r.top()), r.topRight(), QPointF(r.right(), r.center().y()),
+            r.bottomRight(), QPointF(r.center().x(), r.bottom()), r.bottomLeft(), QPointF(r.left(), r.center().y())};
+}
+
 QByteArray versJson(const QVariantMap &m)
 {
     return m.isEmpty() ? QByteArray() : QJsonDocument::fromVariant(m).toJson(QJsonDocument::Compact);
@@ -92,6 +101,7 @@ DocumentLO::DocumentLO(QQuickItem *parent)
     setFlag(ItemIsFocusScope, false);
     setClip(true);
     setAcceptedMouseButtons(Qt::AllButtons);
+    setAcceptHoverEvents(true);
     setActiveFocusOnTab(true);
     m_relais = new Relais();
     connect(m_relais, &Relais::annonce, this, &DocumentLO::annonce, Qt::QueuedConnection);
@@ -136,6 +146,11 @@ void DocumentLO::charger(const QString &url)
     m_vueX = m_vueY = 0;
     m_etats.clear();
     m_entetes.clear();
+    m_objetTwips = QRectF();
+    m_objetActif = false;
+    m_poignee = m_graphiqueEnAttente = -1;
+    emit objetChanged();
+    emit objetTenuChanged();
     emit etatChanged();
     emit vueChanged();
     auto *ancien = m_doc;
@@ -223,6 +238,7 @@ void DocumentLO::setZoom(qreal z)
     emit curseurChanged();
     emit selectionChanged();
     emit curseurTexteChanged();
+    emit objetChanged();
     m_vueEnvoyee = false;
     signalerVue();
     planifier();
@@ -508,6 +524,24 @@ void DocumentLO::annonce(int type, const QByteArray &charge)
         emit etatsChanged();
         break;
     }
+    case LOK_CALLBACK_GRAPHIC_SELECTION:
+        // « x, y, l, h, angle, {…} » ; « EMPTY » : plus d'objet choisi ; « INPLACE » : graphique ouvert dans le moteur
+        if (charge.startsWith("INPLACE EXIT")) {
+            m_objetActif = false;
+        } else if (charge.startsWith("INPLACE")) {
+            m_objetActif = true;
+        } else {
+            m_objetTwips = rectangle(charge);
+            if (m_objetTwips.isNull()) m_objetActif = false;
+        }
+        emit objetChanged();
+        break;
+    case LOK_CALLBACK_MOUSE_POINTER:
+        pointeur(charge.trimmed());
+        break;
+    case LOK_CALLBACK_JSDIALOG:
+        dialogue(charge);
+        break;
     case LOK_CALLBACK_DOCUMENT_SIZE_CHANGED:
     case LOK_CALLBACK_SET_PART:
         relirePartiesEtTaille();
@@ -592,6 +626,54 @@ void DocumentLO::commande(const QString &nom, const QVariantMap &arguments)
     Moteur::instance()->executer([doc, n, a] {
         doc->pClass->postUnoCommand(doc, n.constData(), a.isEmpty() ? nullptr : a.constData(), true);
     });
+}
+
+void DocumentLO::insererGraphique(int type)
+{
+    if (!m_doc) return;
+    m_graphiqueEnAttente = qMax(0, type);
+    commande(QStringLiteral(".uno:InsertObjectChart"));
+}
+
+// Fenêtres du moteur (décrites en JSON, jamais montrées telles quelles). L'assistant de graphique : Sama choisit le
+// type demandé et le termine aussitôt
+void DocumentLO::dialogue(const QByteArray &charge)
+{
+    if (m_graphiqueEnAttente < 0 || !m_doc || !charge.contains("CHART2_HID_SCH_WIZARD_ROADMAP")) return;
+    // (numéro de la fenêtre : le dernier « "id": nombre » de l'annonce)
+    unsigned long long fenetre = 0;
+    static const QRegularExpression numero(QStringLiteral("\"id\"\\s*:\\s*(\\d+)"));
+    for (auto it = numero.globalMatch(QString::fromUtf8(charge)); it.hasNext();) fenetre = it.next().captured(1).toULongLong();
+    if (!fenetre) return;
+    const QByteArray choix = QStringLiteral(R"x({"id":"charttype","cmd":"select","data":"%1","type":"treeview"})x")
+                                 .arg(m_graphiqueEnAttente).toUtf8();
+    // (lignes : la variante « lignes seules », la 3e des 4 — sinon le moteur ne met que des points)
+    const bool lignes = m_graphiqueEnAttente == 5;
+    m_graphiqueEnAttente = -1;
+    auto *doc = m_doc;
+    Moteur::instance()->executer([doc, fenetre, choix, lignes] {
+        doc->pClass->sendDialogEvent(doc, fenetre, choix.constData());
+        if (lignes)
+            doc->pClass->sendDialogEvent(doc, fenetre, R"x({"id":"subtype","cmd":"click","data":"0.625;0.5","type":"drawingarea"})x");
+        doc->pClass->sendDialogEvent(doc, fenetre, R"x({"id":"finish","cmd":"click","data":"","type":"pushbutton"})x");
+    });
+}
+
+// Forme du pointeur demandée par le moteur (au-dessus d'un objet, d'une poignée, d'un texte…)
+void DocumentLO::pointeur(const QByteArray &nom)
+{
+    Qt::CursorShape forme = Qt::ArrowCursor;
+    if (nom == "text") forme = Qt::IBeamCursor;
+    else if (nom == "pointer") forme = Qt::PointingHandCursor;
+    else if (nom == "move") forme = Qt::SizeAllCursor;
+    else if (nom == "col-resize") forme = Qt::SplitHCursor;
+    else if (nom == "row-resize") forme = Qt::SplitVCursor;
+    else if (nom == "n-resize" || nom == "s-resize" || nom == "ns-resize") forme = Qt::SizeVerCursor;
+    else if (nom == "e-resize" || nom == "w-resize" || nom == "ew-resize") forme = Qt::SizeHorCursor;
+    else if (nom == "nw-resize" || nom == "se-resize" || nom == "nwse-resize") forme = Qt::SizeFDiagCursor;
+    else if (nom == "ne-resize" || nom == "sw-resize" || nom == "nesw-resize") forme = Qt::SizeBDiagCursor;
+    else if (nom == "crosshair" || nom == "cell") forme = Qt::CrossCursor;
+    setCursor(forme);
 }
 
 void DocumentLO::allerPartie(int partie)
@@ -812,26 +894,47 @@ QVariant DocumentLO::inputMethodQuery(Qt::InputMethodQuery requete) const
     return QQuickItem::inputMethodQuery(requete);
 }
 
-void DocumentLO::souris(int type, QMouseEvent *e, int nombre)
+void DocumentLO::envoyerSouris(int type, QPointF p, int nombre, int boutons, int mod)
 {
     if (!m_doc) return;
     const qreal f = TWIPS_PAR_PIXEL / m_zoom;
-    const int x = qRound((e->position().x() + m_vueX) * f), y = qRound((e->position().y() + m_vueY) * f);
-    int boutons = 0;
-    const Qt::MouseButtons b = type == LOK_MOUSEEVENT_MOUSEBUTTONUP ? Qt::MouseButtons(e->button()) : e->buttons();
-    if (b & Qt::LeftButton) boutons |= 1;
-    if (b & Qt::MiddleButton) boutons |= 2;
-    if (b & Qt::RightButton) boutons |= 4;
-    const int mod = modificateurs(e->modifiers());
+    const int x = qRound(p.x() * f), y = qRound(p.y() * f);
     auto *doc = m_doc;
     Moteur::instance()->executer([doc, type, x, y, nombre, boutons, mod] {
         doc->pClass->postMouseEvent(doc, type, x, y, nombre, boutons, mod);
     });
 }
 
+void DocumentLO::souris(int type, QMouseEvent *e, int nombre)
+{
+    int boutons = 0;
+    const Qt::MouseButtons b = type == LOK_MOUSEEVENT_MOUSEBUTTONUP ? Qt::MouseButtons(e->button()) : e->buttons();
+    if (b & Qt::LeftButton) boutons |= 1;
+    if (b & Qt::MiddleButton) boutons |= 2;
+    if (b & Qt::RightButton) boutons |= 4;
+    // (m_decalage : une poignée d'objet prise un peu à côté est donnée au moteur à sa place exacte)
+    envoyerSouris(type, e->position() + QPointF(m_vueX, m_vueY) + m_decalage, nombre, boutons, modificateurs(e->modifiers()));
+}
+
 void DocumentLO::mousePressEvent(QMouseEvent *e)
 {
     forceActiveFocus(Qt::MouseFocusReason);
+    // Objet choisi : une poignée (pour l'agrandir) ou l'objet lui-même (pour le déplacer) ? Le moteur fait le reste
+    m_poignee = -1;
+    m_decalage = QPointF();
+    const QRectF o = objet();
+    if (e->button() == Qt::LeftButton && !o.isNull() && !m_objetActif) {
+        const QPointF p = e->position() + QPointF(m_vueX, m_vueY);
+        const QList<QPointF> points = poignees(o);
+        for (int i = 0; i < points.size() && m_poignee < 0; ++i) {
+            if (QLineF(p, points[i]).length() <= 7) {
+                m_poignee = i;
+                m_decalage = points[i] - p;
+            }
+        }
+        if (m_poignee < 0 && o.contains(p)) m_poignee = 8;
+        if (m_poignee >= 0) emit objetTenuChanged();
+    }
     souris(LOK_MOUSEEVENT_MOUSEBUTTONDOWN, e, 1);
     e->accept();
 }
@@ -844,12 +947,44 @@ void DocumentLO::mouseMoveEvent(QMouseEvent *e)
 void DocumentLO::mouseReleaseEvent(QMouseEvent *e)
 {
     souris(LOK_MOUSEEVENT_MOUSEBUTTONUP, e, 1);
+    m_decalage = QPointF();
+    if (m_poignee >= 0) {
+        m_poignee = -1;
+        emit objetTenuChanged();
+    }
 }
 
 void DocumentLO::mouseDoubleClickEvent(QMouseEvent *e)
 {
+    // (pas de modification d'un graphique dans le moteur : ses fenêtres ne seraient pas montrées)
+    if (!m_objetTwips.isNull() && objet().contains(e->position() + QPointF(m_vueX, m_vueY))) return;
     souris(LOK_MOUSEEVENT_MOUSEBUTTONDOWN, e, 2);
     souris(LOK_MOUSEEVENT_MOUSEBUTTONUP, e, 2);
+}
+
+// Survol : le moteur choisit la forme du pointeur (déplacer un graphique, agrandir…). Un seul survol en route à la fois
+void DocumentLO::hoverMoveEvent(QHoverEvent *e)
+{
+    m_survolSuivant = e->position() + QPointF(m_vueX, m_vueY);
+    if (m_survolEnvoye) m_survolAttend = true;
+    else survoler();
+}
+
+void DocumentLO::survoler()
+{
+    if (!m_doc) return;
+    m_survolEnvoye = true;
+    m_survolAttend = false;
+    const qreal f = TWIPS_PAR_PIXEL / m_zoom;
+    const int x = qRound(m_survolSuivant.x() * f), y = qRound(m_survolSuivant.y() * f);
+    auto *doc = m_doc;
+    Moteur::instance()->executer([this, doc, x, y] {
+        doc->pClass->postMouseEvent(doc, LOK_MOUSEEVENT_MOUSEMOVE, x, y, 1, 0, 0);
+        QMetaObject::invokeMethod(this, [this] {
+            m_survolEnvoye = false;
+            if (m_survolAttend) survoler();
+        }, Qt::QueuedConnection);
+    });
 }
 
 void DocumentLO::wheelEvent(QWheelEvent *e)

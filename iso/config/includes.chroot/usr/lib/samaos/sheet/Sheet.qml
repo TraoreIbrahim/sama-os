@@ -163,6 +163,8 @@ Window {
                         font.weight: Font.DemiBold
                         color: Couleurs.texte
                         selectByMouse: true
+                        // (on y entre pour taper une autre adresse : l'ancienne est choisie, pas complétée)
+                        onActiveFocusChanged: if (activeFocus) Qt.callLater(selectAll)
                         onAccepted: { fenetre.doc.allerA(text.toUpperCase()); fenetre.doc.forceActiveFocus() }
                         Keys.onEscapePressed: { text = fenetre.doc.adresse; fenetre.doc.forceActiveFocus() }
                     }

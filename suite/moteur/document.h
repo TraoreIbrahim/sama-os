@@ -49,6 +49,11 @@ class DocumentLO : public QQuickItem
     Q_PROPERTY(QVariantMap etats READ etats NOTIFY etatsChanged)
     Q_PROPERTY(bool modifie READ modifie NOTIFY modifieChanged)
     Q_PROPERTY(QVariantMap entetes READ entetes NOTIFY entetesChanged)
+    // Objet choisi (graphique, image) : son cadre, vide s'il n'y en a pas ; objetActif : graphique ouvert pour être
+    // modifié dans le moteur ; objetTenu : on le déplace ou on l'agrandit à la souris (le moteur le suit)
+    Q_PROPERTY(QRectF objet READ objet NOTIFY objetChanged)
+    Q_PROPERTY(bool objetActif READ objetActif NOTIFY objetChanged)
+    Q_PROPERTY(bool objetTenu READ objetTenu NOTIFY objetTenuChanged)
 
 public:
     enum Etat { Vide, Chargement, Pret, Erreur };
@@ -83,6 +88,9 @@ public:
     QVariantMap etats() const { return m_etats; }
     bool modifie() const { return m_modifie; }
     QVariantMap entetes() const { return m_entetes; }
+    QRectF objet() const { return enPixels(m_objetTwips); }
+    bool objetActif() const { return m_objetActif; }
+    bool objetTenu() const { return m_poignee >= 0; }
 
     // Ouvrir un fichier, ou un document vide (« calc », « writer »)
     Q_INVOKABLE void ouvrir(const QString &chemin);
@@ -103,6 +111,9 @@ public:
     // Presse-papiers : contenu du moteur vers celui du système, et l'inverse avant de coller
     Q_INVOKABLE void copier(bool couper = false);
     Q_INVOKABLE void coller();
+    // Graphique de la sélection, du type demandé (rang dans la liste de l'assistant du moteur : 0 colonnes, 1 barres,
+    // 2 secteurs, 4 aires, 5 lignes) ; l'assistant n'est pas montré, Sama le remplit
+    Q_INVOKABLE void insererGraphique(int type);
     // Coordonnées : pixels de l'élément → pixels du document
     Q_INVOKABLE QPointF versDocument(qreal x, qreal y) const { return QPointF(x + m_vueX, y + m_vueY); }
 
@@ -121,6 +132,8 @@ signals:
     void etatsChanged();
     void modifieChanged();
     void entetesChanged();
+    void objetChanged();
+    void objetTenuChanged();
     void enregistre(bool reussi, const QString &chemin);
     void valeurs(const QString &commande, const QVariant &reponse);
 
@@ -135,6 +148,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *e) override;
     void mouseReleaseEvent(QMouseEvent *e) override;
     void mouseDoubleClickEvent(QMouseEvent *e) override;
+    void hoverMoveEvent(QHoverEvent *e) override;
     void wheelEvent(QWheelEvent *e) override;
     void releaseResources() override;
 
@@ -159,6 +173,10 @@ private:
     void signalerVue();
     void relireEntetes();
     void souris(int type, QMouseEvent *e, int nombre);
+    void envoyerSouris(int type, QPointF position, int nombre, int boutons, int mod);
+    void survoler();
+    void dialogue(const QByteArray &charge);
+    void pointeur(const QByteArray &nom);
     QRectF enPixels(const QRectF &twips) const;
     qreal twipsParTuile() const;
     int pixelsParTuile() const;
@@ -179,4 +197,14 @@ private:
     QSet<Cle> m_aRetirer;
     bool m_vueEnvoyee = false, m_entetesDemandes = false, m_entetesARelire = false;
     QRectF m_derniereVue;
+    // Objet choisi, et la poignée tenue à la souris (0 à 7 depuis le coin haut gauche, dans le sens des aiguilles d'une
+    // montre ; 8 : l'objet entier), avec le décalage vers la poignée exacte (pixels du document)
+    QRectF m_objetTwips;
+    bool m_objetActif = false;
+    int m_poignee = -1;
+    QPointF m_decalage;
+    int m_graphiqueEnAttente = -1;
+    bool m_survolEnvoye = false;
+    QPointF m_survolSuivant;
+    bool m_survolAttend = false;
 };

@@ -11,12 +11,13 @@ QQC2.AbstractButton {
     property string aide: ""
     property font police
     property color encre: Couleurs.texte
+    property bool ouvert: false          // (son volet est ouvert : pas d'info-bulle par-dessus)
     implicitHeight: 30
     implicitWidth: Math.max(32, rangee.implicitWidth + (text ? 24 : 12))
     hoverEnabled: true
     focusPolicy: Qt.NoFocus          // (le clavier reste à la grille)
     opacity: enabled ? 1 : 0.4
-    QQC2.ToolTip.visible: hovered && aide !== ""
+    QQC2.ToolTip.visible: hovered && aide !== "" && !ouvert
     QQC2.ToolTip.text: aide
     QQC2.ToolTip.delay: 600
     background: Rectangle {
