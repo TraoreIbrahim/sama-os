@@ -39,116 +39,88 @@ Rectangle {
             }
 
             MenuSama {
+                id: menuFichier
                 title: "Fichier"
                 ElementMenu { cle: "nouveau" }
                 ElementMenu { cle: "modeles" }
                 ElementMenu { cle: "ouvrir" }
-                QQC2.MenuSeparator {}
+                TitreMenu { text: "Enregistrer" }
                 ElementMenu { cle: "enregistrer" }
                 ElementMenu { cle: "enregistrerSous" }
                 ElementMenu { cle: "pdf" }
-                QQC2.MenuSeparator {}
+                TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "fermer" }
             }
             MenuSama {
+                id: menuEdition
                 title: "Édition"
-                ElementMenu { cle: "annuler" }
-                ElementMenu { cle: "retablir" }
-                QQC2.MenuSeparator {}
-                ElementMenu { cle: "couper" }
-                ElementMenu { cle: "copier" }
-                ElementMenu { cle: "coller" }
+                TuilesMenu { menu: menuEdition; cles: ["annuler", "retablir", "couper", "copier", "coller"] }
                 ElementMenu { cle: "collerValeurs" }
-                QQC2.MenuSeparator {}
+                TitreMenu { text: "Supprimer" }
                 ElementMenu { cle: "effacer" }
                 ElementMenu { cle: "supprimerLigne" }
                 ElementMenu { cle: "supprimerColonne" }
-                QQC2.MenuSeparator {}
+                TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "toutSelectionner" }
             }
             MenuSama {
+                id: menuAffichage
                 title: "Affichage"
                 ElementMenu { cle: "formules" }
-                QQC2.MenuSeparator {}
+                TitreMenu { text: "Garder visible en défilant" }
                 ElementMenu { cle: "figerLigne" }
                 ElementMenu { cle: "figerColonne" }
                 ElementMenu { cle: "figer" }
-                QQC2.MenuSeparator {}
+                TitreMenu { text: "Zoom" }
                 ElementMenu { cle: "zoomPlus" }
                 ElementMenu { cle: "zoomMoins" }
                 ElementMenu { cle: "zoom100" }
             }
             MenuSama {
+                id: menuInsertion
                 title: "Insertion"
-                ElementMenu { cle: "ligneAvant" }
-                ElementMenu { cle: "ligneApres" }
-                ElementMenu { cle: "colonneAvant" }
-                ElementMenu { cle: "colonneApres" }
+                TitreMenu { text: "Une ligne, une colonne"; trait: false }
+                TuilesMenu { menu: menuInsertion; cles: ["ligneAvant", "ligneApres", "colonneAvant", "colonneApres"] }
                 ElementMenu { cle: "feuille" }
-                QQC2.MenuSeparator {}
-                ElementMenu { cle: "graphique" }
+                TitreMenu { text: "Un graphique, à partir des cases choisies" }
+                TuilesMenu { menu: menuInsertion; cles: ["grColonnes", "grBarres", "grLignes", "grSecteurs", "grAires"] }
+                TitreMenu { text: "Un calcul sur les cases au-dessus" }
+                TuilesMenu { menu: menuInsertion; cles: ["somme", "moyenne", "minimum", "maximum", "nombre"] }
+                TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "date" }
-                MenuSama {
-                    title: "Calcul automatique"
-                    ElementMenu { cle: "somme" }
-                    ElementMenu { cle: "moyenne" }
-                    ElementMenu { cle: "minimum" }
-                    ElementMenu { cle: "maximum" }
-                    ElementMenu { cle: "nombre" }
-                }
             }
             MenuSama {
+                id: menuFormat
                 title: "Format"
-                ElementMenu { cle: "gras" }
-                ElementMenu { cle: "italique" }
-                ElementMenu { cle: "souligne" }
-                ElementMenu { cle: "barre" }
-                QQC2.MenuSeparator {}
-                MenuSama {
-                    title: "Nombre"
-                    ElementMenu { cle: "formatStandard" }
-                    ElementMenu { cle: "nombreFormat" }
-                    ElementMenu { cle: "fcfa" }
-                    ElementMenu { cle: "pourcentage" }
-                    ElementMenu { cle: "dateFormat" }
-                    ElementMenu { cle: "heureFormat" }
-                    QQC2.MenuSeparator {}
-                    ElementMenu { cle: "decimalesPlus" }
-                    ElementMenu { cle: "decimalesMoins" }
-                }
-                MenuSama {
-                    title: "Alignement"
-                    ElementMenu { cle: "gauche" }
-                    ElementMenu { cle: "centre" }
-                    ElementMenu { cle: "droite" }
-                    QQC2.MenuSeparator {}
-                    ElementMenu { cle: "haut" }
-                    ElementMenu { cle: "milieu" }
-                    ElementMenu { cle: "bas" }
-                }
+                TuilesMenu { menu: menuFormat; sansNom: true; cles: ["gras", "italique", "souligne", "barre"] }
+                TitreMenu { text: "Nombre" }
+                PastillesMenu { menu: menuFormat; cles: ["formatStandard", "nombreFormat", "fcfa", "pourcentage", "dateFormat", "heureFormat", "decimalesPlus", "decimalesMoins"] }
+                TitreMenu { text: "Alignement" }
+                TuilesMenu { menu: menuFormat; sansNom: true; cles: ["gauche", "centre", "droite", "haut", "milieu", "bas"] }
                 ElementMenu { cle: "retourLigne" }
                 ElementMenu { cle: "fusionner" }
                 ElementMenu { cle: "largeur" }
-                QQC2.MenuSeparator {}
-                ElementMenu { cle: "couleurTexte" }
-                ElementMenu { cle: "remplissage" }
-                ElementMenu { cle: "bordures" }
-                QQC2.MenuSeparator {}
+                TitreMenu { text: "Couleurs et traits" }
+                TuilesMenu { menu: menuFormat; cles: ["couleurTexte", "remplissage", "bordures"] }
+                TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "pinceau" }
                 ElementMenu { cle: "effacerFormat" }
             }
             MenuSama {
+                id: menuDonnees
                 title: "Données"
                 ElementMenu { cle: "tableau" }
-                ElementMenu { cle: "totauxTableau" }
-                ElementMenu { cle: "ligneTableau" }
                 ElementMenu { cle: "fiches" }
-                QQC2.MenuSeparator {}
+                ElementMenu { cle: "ligneTableau" }
+                ElementMenu { cle: "totauxTableau" }
+                TitreMenu { text: "Trier" }
                 ElementMenu { cle: "trierAZ" }
                 ElementMenu { cle: "trierZA" }
             }
             MenuSama {
+                id: menuAide
                 title: "Aide"
+                ElementMenu { cle: "chercher" }
                 ElementMenu { cle: "aide" }
             }
         }
