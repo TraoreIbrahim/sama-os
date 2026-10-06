@@ -10,3 +10,7 @@ captures/
 systeme/cles/plateforme.p12
 systeme/cles/platform.pk8
 systeme/cles/platform.x509.pem
+# Clé privée d'éditeur de test de Proche en proche (systeme/cles-proches/fabriquer.sh), jamais versionnée.
+systeme/cles-proches/editeur-test.pem
+# Dossier du point Sama d'essai (outils/signer-paquet.py), produit localement.
+outils/point-essai/

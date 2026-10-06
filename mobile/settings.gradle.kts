@@ -22,6 +22,7 @@ rootProject.name = "sama-mobile"
 include(":banco")
 include(":bouclier")
 include(":soldes")
+include(":proches")
 include(":accueil")
 // Les Réglages de Sama, signés avec la clé de la plateforme de l'émulateur.
 include(":reglages")

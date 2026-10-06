@@ -169,6 +169,8 @@ sealed interface Fin {
     data class Valeur(val texte: String) : Fin
     data class Inter(val allume: Boolean, val actif: Boolean = true) : Fin
     data class Choix(val choisie: Boolean) : Fin
+    /** Une action au bout de la rangée (« Recevoir », « Ouvrir ») ; [plein] : l'action principale de l'écran. */
+    data class Bouton(val texte: String, val plein: Boolean = false) : Fin
 }
 
 /** Une rangée de Banco : icône, titre, détail, et ce qu'il y a au bout. */
@@ -242,6 +244,11 @@ fun Ligne(
             is Fin.Valeur -> BasicText(fin.texte, maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = b.encre2))
             is Fin.Inter -> Interrupteur(fin.allume, fin.actif)
             is Fin.Choix -> Pastille(fin.choisie)
+            is Fin.Bouton -> BasicText(
+                fin.texte,
+                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (fin.plein) b.laterite else b.sol2).padding(horizontal = 14.dp, vertical = 8.dp),
+                style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = if (fin.plein) b.surLaterite else b.encre),
+            )
         }
     }
 }

@@ -133,6 +133,12 @@ sealed class Page(val android: String? = null) {
 
     // Soldes et forfaits (innovation 1)
     data object Soldes : Page(Settings.ACTION_SETTINGS)
+
+    // Proche en proche (innovation 6)
+    data object Proches : Page(Settings.ACTION_SETTINGS)
+    data class PointSama(val nom: String, val hote: String, val port: Int) : Page(Settings.ACTION_SETTINGS)
+    data class Reception(val sha: String) : Page(Settings.ACTION_SETTINGS)
+    data class Refuse(val sha: String) : Page(Settings.ACTION_SETTINGS)
     data class DelaiInstallation(val paquet: String) : Page("android.settings.MANAGE_UNKNOWN_APP_SOURCES") {
         override val intentAndroid get() = Intent(android, Uri.fromParts("package", paquet, null))
     }
@@ -141,7 +147,7 @@ sealed class Page(val android: String? = null) {
     val faite: Boolean
         get() = this in FAITES || this is WifiDetail || this is WifiConnexion || this is SimReglages || this is AppareilBluetooth ||
             this is AppliInfos || this is AppliAutorisations || this is AccesSpecial || this is NotifsAppli || this is AutorisationGroupe || this is MinuteurAppli ||
-            this is DelaiInstallation
+            this is DelaiInstallation || this is PointSama || this is Reception || this is Refuse
 
     companion object {
         private val FAITES: Set<Page> by lazy {
@@ -157,7 +163,7 @@ sealed class Page(val android: String? = null) {
                 Systeme, Langues, Clavier, Gestes, DateHeure, MajSysteme, APropos,
                 Comptes, CompteSama, AutresComptes, MotsDePasse, Sauvegarde,
                 TempsEcran, Minuteurs, Concentration, Accessibilite, Couleurs, Loupe, Urgence, FicheMedicale, Reinitialiser, ToutEffacer,
-                Bouclier, BilanBouclier, Arnaques, StockagePlein, Surchauffe, Soldes,
+                Bouclier, BilanBouclier, Arnaques, StockagePlein, Surchauffe, Soldes, Proches,
             )
         }
 
@@ -200,6 +206,7 @@ sealed class Page(val android: String? = null) {
                 android.os.storage.StorageManager.ACTION_MANAGE_STORAGE -> StockagePlein
                 "africa.samaos.action.SURCHAUFFE" -> Surchauffe
                 "africa.samaos.action.SOLDES" -> Soldes
+                "africa.samaos.action.PROCHES" -> Proches
                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES -> intent.data?.schemeSpecificPart?.let { DelaiInstallation(it) } ?: AccesSpecial(Acces.INCONNUES)
                 else -> null
             }
@@ -318,6 +325,10 @@ fun Afficher(page: Page, nav: Nav) {
         Page.StockagePlein -> PageStockagePlein(nav)
         Page.Surchauffe -> PageSurchauffe(nav)
         Page.Soldes -> PageSoldes(nav)
+        Page.Proches -> PageProches(nav)
+        is Page.PointSama -> PagePointSama(page.nom, page.hote, page.port, nav)
+        is Page.Reception -> PageReception(page.sha, nav)
+        is Page.Refuse -> PageRefuse(page.sha, nav)
         else -> {}
     }
 }

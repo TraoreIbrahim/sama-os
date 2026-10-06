@@ -69,6 +69,7 @@ private class Resumes(
     val urgence: String = "",
     val bouclier: String = "",
     val soldes: String = "",
+    val proches: String = "",
 )
 
 private fun lireResumes(c: Context): Resumes {
@@ -124,6 +125,7 @@ private fun lireResumes(c: Context): Resumes {
         urgence = MoteurUrgence.resume(c),
         bouclier = MoteurBouclier.resume(c),
         soldes = MoteurSoldes.resume(c),
+        proches = MoteurProches.resume(c),
     )
 }
 
@@ -131,6 +133,7 @@ private fun lireResumes(c: Context): Resumes {
 fun entrees(): List<Entree> = listOf(
     Entree("Réseau et data", Icones.WIFI, "reseau data wifi internet sim mobile avion point acces vpn dns", Page.Reseau),
     Entree("Soldes et forfaits", Icones.DONNEES, "soldes solde forfait credit data internet pass recharge mobile money", Page.Soldes),
+    Entree("Proche en proche", Icones.PROXIMITE, "proche en proche partage sans data point sama applis mises a jour hors ligne wifi direct", Page.Proches),
     Entree("Appareils connectés", Icones.BLUETOOTH, "appareils bluetooth ecouteurs enceinte usb", Page.Appareils),
     Entree("Applications", Icones.APPLI, "applications applis autorisations defaut desinstaller", Page.Applis),
     Entree("Notifications", Icones.CLOCHE, "notifications ne pas deranger alertes historique", Page.Notifications),
@@ -176,6 +179,7 @@ fun PageAccueil(nav: Nav) {
         Page.Urgence -> resumes.urgence
         Page.Bouclier -> resumes.bouclier
         Page.Soldes -> resumes.soldes
+        Page.Proches -> resumes.proches
         null -> if (e.titre == "Espaces") resumes.espaces else null
         else -> null
     }?.ifBlank { null }

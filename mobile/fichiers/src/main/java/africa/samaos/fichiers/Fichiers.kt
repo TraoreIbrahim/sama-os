@@ -207,6 +207,17 @@ private fun Racine(pile: SnapshotStateList<Vue>) {
     var appli by remember { mutableStateOf<Fichier?>(null) }
     var archive by remember { mutableStateOf<Fichier?>(null) }
     var message by remember { mutableStateOf<Pair<String, (() -> Unit)?>?>(null) }
+    // Une appli reçue qui se dit mise à jour de Sama : l'écran des Réglages le dit, et « Supprimer » revient ici.
+    var faux by remember { mutableStateOf<Fichier?>(null) }
+    val fauxFichier = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
+        val f = faux
+        faux = null
+        if (r.resultCode == android.app.Activity.RESULT_OK && f != null) portee.launch {
+            withContext(Dispatchers.IO) { Stockage.jeter(c, f) }
+            version++
+            message = "« ${f.nom} » est dans la corbeille" to null
+        }
+    }
     val vue = pile.last()
     val actions = Actions(
         aller = { pile.add(it) },
@@ -214,6 +225,18 @@ private fun Racine(pile: SnapshotStateList<Vue>) {
         ouvrir = { f ->
             when {
                 f.dossier -> pile.add(Vue.Dossier(f.chemin))
+                f.genre == Genre.APPLI && seDitMiseAJour(c, f) -> {
+                    faux = f
+                    try {
+                        fauxFichier.launch(
+                            Intent().setClassName("africa.samaos.reglages", "africa.samaos.reglages.FauxFichier")
+                                .putExtra("nom", f.nom).putExtra("origine", origineDe(f)),
+                        )
+                    } catch (_: Exception) {
+                        faux = null
+                        appli = f
+                    }
+                }
                 f.genre == Genre.APPLI -> appli = f
                 f.genre == Genre.ARCHIVE && f.extension == "zip" -> archive = f
                 f.genre == Genre.ARCHIVE -> message = "Sama n'ouvre que les archives .zip pour l'instant" to null
@@ -314,6 +337,32 @@ private fun Racine(pile: SnapshotStateList<Vue>) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Une appli reçue qui se fait passer pour une mise à jour (« Sama_Mise_a_jour_1.3.apk ») ou pour une appli de Sama :
+ * les mises à jour de Sama n'arrivent jamais par un fichier (innovation 6, maquette i6-faux-fichier).
+ */
+fun seDitMiseAJour(c: Context, f: Fichier): Boolean {
+    val nom = java.text.Normalizer.normalize(f.nom.lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}"), "")
+    if (Regex("(mise.?a.?jour|update|upgrade|firmware|\\bmaj\\b|_maj|maj_)").containsMatchIn(nom)) return true
+    val paquet = try {
+        c.packageManager.getPackageArchiveInfo(f.chemin, 0)?.packageName
+    } catch (_: Exception) {
+        null
+    }
+    return paquet?.startsWith("africa.samaos.") == true
+}
+
+/** D'où vient un fichier, d'après son dossier : « reçu par Bluetooth », « téléchargé »… */
+fun origineDe(f: Fichier): String? {
+    val ch = f.chemin.lowercase()
+    return when {
+        "/bluetooth" in ch -> "reçu par Bluetooth"
+        "whatsapp" in ch || "telegram" in ch -> "reçu par message"
+        "/download" in ch -> f.source ?: "téléchargé"
+        else -> f.source
     }
 }
 

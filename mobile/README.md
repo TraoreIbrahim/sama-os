@@ -238,6 +238,30 @@ Pas encore fait : codes de solde vérifiés par opérateur (pour lire tout seul,
 forfait (i1-forfait-conseil), achat (i1-achat), carte de recharge scannée (i1-carte-recharge). Les règles de
 lecture des SMS sont écrites d'après des formulations courantes : à valider sur de vrais SMS d'Orange, MTN et Moov.
 
+## Proche en proche (innovation 6, premier pas)
+
+Recevoir sans data, depuis un **point Sama** du réseau local, les applis signées par Sama ou Sugu. La
+bibliothèque `proches` vérifie la fiche signée de l'éditeur, la version (jamais plus ancienne), le fichier entier
+(taille, empreinte) et le certificat de l'appli ; un fichier qui ne correspond pas est supprimé sans rien
+installer (« Fichier refusé »). Les Réglages installent ensuite l'appli eux-mêmes (droit du système
+INSTALL_PACKAGES). Le protocole est décrit dans [proches/PROTOCOLE.md](proches/PROTOCOLE.md).
+
+- **Réglages › Proche en proche** : les points Sama (trouvés en mDNS ou ajoutés par leur adresse), la réception
+  entre contacts (10 minutes, à la demande), le don, le bilan.
+- **Réception** : progression, vérifications, reprise après une coupure, puis installation.
+- **Fichiers** : une appli reçue qui se dit « mise à jour » ou qui porte le nom d'une appli de Sama ouvre
+  « Ce n'est pas une mise à jour » ; « Supprimer » la met à la corbeille.
+
+Essai sur l'émulateur :
+
+```bash
+mobile/outils/signer-paquet.py mobile/calculatrice/build/outputs/apk/release/calculatrice-release.apk --nom Calculatrice
+mobile/outils/point-sama.py --nom "Lycée du quartier" --debit 200
+```
+
+puis Réglages › Proche en proche › « Ajouter un point par son adresse » › `10.0.2.2:8765`.
+L'échange entre téléphones (Wi-Fi Direct, entre contacts) et le point Sama du bureau restent à faire.
+
 ## Contenu
 
 Dans `banco` : `Banco.kt` (palettes Aube, Nuit, Savane, Plein soleil ; polices), `Paysage.kt` (ciel, astre,

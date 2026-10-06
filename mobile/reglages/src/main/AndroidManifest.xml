@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.SEND_SMS" />
     <!-- Soldes et forfaits : lire les SMS des opérateurs, demander le solde par code (USSD). -->
     <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Proche en proche : parler aux points Sama du réseau local, installer les applis vérifiées. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -299,6 +302,10 @@
                 <action android:name="africa.samaos.action.SOLDES" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="africa.samaos.action.PROCHES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <intent-filter android:priority="10">
                 <action android:name="android.settings.MANAGE_UNKNOWN_APP_SOURCES" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -355,6 +362,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- Proche en proche : le résultat d'une installation, et la mise en garde contre une fausse mise à jour. -->
+        <receiver android:name=".ResultatInstallation" android:exported="false" />
+        <activity
+            android:name=".FauxFichier"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Reglages" />
         <service
             android:name=".PartagePosition"
             android:exported="false"

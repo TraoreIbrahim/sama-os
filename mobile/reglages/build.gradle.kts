@@ -66,6 +66,7 @@ dependencies {
     implementation(project(":banco"))
     implementation(project(":bouclier"))
     implementation(project(":soldes"))
+    implementation(project(":proches"))
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.activity:activity-compose:1.10.1")
     // Les codes QR (partager un Wi-Fi).
