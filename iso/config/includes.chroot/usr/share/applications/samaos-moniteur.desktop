@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Moniteur système
+Comment=Ce que consomme chaque application : processeur, mémoire, énergie
+Exec=sama-moniteur
+Icon=/usr/share/samaos/icones/moniteur.svg
+StartupWMClass=samaos-moniteur
+Categories=System;Monitor;
+Terminal=false
+Keywords=moniteur;processus;tâches;gestionnaire des tâches;mémoire;processeur;forcer à quitter;démarrage;
+# Méta+Échap (celui de KDE) et Ctrl+Maj+Échap (celui que connaissent ceux qui viennent de Windows)
+X-KDE-Shortcuts=Meta+Esc,Ctrl+Shift+Esc

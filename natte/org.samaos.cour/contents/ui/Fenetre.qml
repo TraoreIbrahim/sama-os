@@ -28,7 +28,7 @@ Kicker.DashboardWindow {
         "samaos-docs.desktop": "Bureautique", "samaos-sheet.desktop": "Bureautique",
         "samaos-presentations.desktop": "Bureautique", "org.kde.okular.desktop": "Bureautique",
         "org.kde.ark.desktop": "Outils", "org.kde.spectacle.desktop": "Outils", "samaos-capture.desktop": "Outils",
-        "org.kde.konsole.desktop": "Outils", "org.kde.plasma-systemmonitor.desktop": "Outils",
+        "org.kde.konsole.desktop": "Outils", "org.kde.plasma-systemmonitor.desktop": "Outils", "samaos-moniteur.desktop": "Outils",
         "systemsettings.desktop": "Système", "samaos-reglages.desktop": "Système", "org.kde.khelpcenter.desktop": "Système"
     })
     // Catégories de KDE (noms traduits) → sections de Sama

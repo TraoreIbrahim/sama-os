@@ -40,10 +40,10 @@ renommer() {
 	fi
 }
 
-# Logiciels provisoires remplacés par Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos, Réglages, Capture d'écran
-# (Spectacle reste l'outil de prise de vue et d'annotation de la Capture d'écran de Sama)
+# Logiciels provisoires remplacés par Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos, Réglages, Capture d'écran,
+# Moniteur système (Spectacle reste l'outil de prise de vue et d'annotation de la Capture d'écran de Sama)
 masquer chromium libreoffice-writer libreoffice-calc libreoffice-impress \
-	org.kde.dolphin org.kde.discover org.kde.gwenview org.kde.spectacle
+	org.kde.dolphin org.kde.discover org.kde.gwenview org.kde.spectacle org.kde.plasma-systemmonitor
 # Impr. va à la Capture d'écran de Sama : Spectacle garde ses autres raccourcis (Maj+Impr., Méta+Impr.…). Les
 # raccourcis se déclarent dans /usr/share/kglobalaccel : celui de Spectacle (fichier du paquet) est détourné vers sa
 # copie sans raccourci principal, et la Capture de Sama y est ajoutée.
@@ -57,6 +57,13 @@ if [ -f "$CIBLE/org.kde.spectacle.desktop" ]; then
 fi
 [ -f /usr/share/applications/samaos-capture.desktop ] && mkdir -p /usr/share/kglobalaccel &&
 	ln -sf /usr/share/applications/samaos-capture.desktop /usr/share/kglobalaccel/samaos-capture.desktop
+# Méta+Échap va au Moniteur système de Sama (avec Ctrl+Maj+Échap) : la déclaration du moniteur de KDE est détournée
+if [ -f /usr/share/kglobalaccel/org.kde.plasma-systemmonitor.desktop ] && ! dpkg-divert --list | grep -q kglobalaccel/org.kde.plasma-systemmonitor.desktop; then
+	dpkg-divert --local --rename --divert /usr/share/kglobalaccel/org.kde.plasma-systemmonitor.desktop.kde \
+		--add /usr/share/kglobalaccel/org.kde.plasma-systemmonitor.desktop >/dev/null
+fi
+[ -f /usr/share/applications/samaos-moniteur.desktop ] && mkdir -p /usr/share/kglobalaccel &&
+	ln -sf /usr/share/applications/samaos-moniteur.desktop /usr/share/kglobalaccel/samaos-moniteur.desktop
 
 # Outils techniques, doublons et utilitaires réservés aux experts
 masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.kwalletmanager \
@@ -73,6 +80,5 @@ renommer org.kde.konsole "Terminal" terminal
 renommer org.kde.khelpcenter "Aide" aide
 renommer org.kde.okular "Lecteur PDF" pdf
 renommer org.kde.ark "Archives" archives
-renommer org.kde.plasma-systemmonitor "Moniteur système" moniteur
 renommer org.kde.haruna "Lecteur vidéo" lecteur
 renommer org.kde.kwrite "Éditeur de texte" editeur

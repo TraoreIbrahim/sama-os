@@ -30,6 +30,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Batterie faible : « Batterie à 10 % », autonomie estimée, « Activer l'économie maximale » (mode Économie, écran à 30 %, indexation en pause) ; tout revient après 2 minutes de courant | fait (essayé dans la VM, qui n'a pas de batterie, avec une batterie simulée) |
 | Application bloquée : « Sama Docs ne répond pas », dernière sauvegarde des documents, « Attendre » ou « Forcer l'arrêt » (à la place de la fenêtre de KWin) | fait |
 | Capture d'écran (Impr.) : zone, fenêtre ou écran entier, minuteur, vidéo ; copiée et rangée dans Images › Captures d'écran, « Annoter » | fait |
+| Moniteur système : ce que consomme chaque application (processeur, mémoire, énergie), détails de ses processus, « Forcer à quitter » ; courbes ; applications ouvertes au démarrage ; débits et data. Méta+Échap ou Ctrl+Maj+Échap | fait (data par application : à venir, le noyau ne la compte pas par application sans outil dédié) |
 | Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |
 | Suite Sama (Griot, Sugu, Sama Docs…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, Discover, LibreOffice en français, Haruna, KWrite) |
 

@@ -10,3 +10,7 @@ _launch=Meta+Shift+S
 
 [services][samaos-capture.desktop]
 _launch=Print
+
+# Méta+Échap et Ctrl+Maj+Échap : le Moniteur système de Sama (à la place de celui de KDE)
+[services][samaos-moniteur.desktop]
+_launch=Meta+Esc\tCtrl+Shift+Esc

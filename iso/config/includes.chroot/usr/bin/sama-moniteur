@@ -1,0 +1,4 @@
+#!/bin/sh
+# Moniteur système de Sama. Usage : sama-moniteur
+# L'exécutable porte le nom de l'application : son identité (tuile dans la Natte, Alt+Tab) en découle.
+exec /usr/lib/samaos/bin/samaos-moniteur /usr/lib/samaos/moniteur/Moniteur.qml -- "$@"
