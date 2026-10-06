@@ -32,7 +32,7 @@ Item {
                     color: article ? article.theme.fond : "transparent"
                     Picto { anchors.centerIn: parent; width: 13; height: 13; trace: article ? article.theme.picto : ""; encre: article ? article.theme.encre : Couleurs.texte }
                 }
-                Text { text: article ? article.theme.titre : ""; font.pixelSize: 12; font.weight: Font.DemiBold; color: article ? article.theme.encre : Couleurs.texte2 }
+                Text { text: article ? article.theme.titre : ""; font.pixelSize: 12; font.weight: Font.DemiBold; color: article && !Couleurs.sombre ? article.theme.encre : Couleurs.texte2 }
             }
         }
         Text {

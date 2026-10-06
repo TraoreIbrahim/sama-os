@@ -33,7 +33,7 @@ MouseArea {
                 font.pixelSize: 10
                 font.weight: Font.DemiBold
                 font.letterSpacing: 0.4
-                color: carte.article ? carte.article.theme.encre : Couleurs.texte3
+                color: carte.article && !Couleurs.sombre ? carte.article.theme.encre : Couleurs.texte3
             }
             Text { Layout.fillWidth: true; text: carte.article ? carte.article.titre : ""; wrapMode: Text.WordWrap; font.pixelSize: 14; font.weight: Font.Medium; color: Couleurs.texte }
             Text { Layout.fillWidth: true; text: carte.article ? carte.article.resume : ""; wrapMode: Text.WordWrap; font.pixelSize: 12; color: Couleurs.texte2 }

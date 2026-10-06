@@ -56,7 +56,8 @@ Window {
         if (h) return h + " h " + String(m).padStart(2, "0")
         return m + " min"
     }
-    function couleurEnergie(e) { return e === "Élevée" ? rouge : e === "Moyenne" ? ambre : e === "Faible" ? Couleurs.foret : Couleurs.texte3 }
+    readonly property color vert: Couleurs.sombre ? "#A3D6C1" : Couleurs.foret
+    function couleurEnergie(e) { return e === "Élevée" ? rouge : e === "Moyenne" ? ambre : e === "Faible" ? vert : Couleurs.texte3 }
     function ajouter(liste, v) { var l = liste.slice(-59); l.push(v); return l }
 
     // Lignes du tableau : les applications et les services système, triées, filtrées par la recherche.
