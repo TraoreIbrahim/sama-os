@@ -43,6 +43,16 @@ AZERTY["."] = (e.KEY_COMMA, True)
 AZERTY[","] = (e.KEY_M, False)
 for i, c in enumerate("1234567890"):
     AZERTY[c] = (getattr(e, "KEY_" + "1234567890"[i]), True)
+# (signes des formules : = + ( ) ; / * ")
+AZERTY["="] = (e.KEY_EQUAL, False)
+AZERTY["+"] = (e.KEY_EQUAL, True)
+AZERTY["("] = (e.KEY_5, False)
+AZERTY[")"] = (e.KEY_MINUS, False)
+AZERTY[";"] = (e.KEY_COMMA, False)
+AZERTY["/"] = (e.KEY_DOT, True)
+AZERTY["*"] = (e.KEY_BACKSLASH, False)
+AZERTY['"'] = (e.KEY_3, False)
+AZERTY["%"] = (e.KEY_APOSTROPHE, True)
 
 TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE, "suppr": e.KEY_DELETE, "f2": e.KEY_F2, "tab": e.KEY_TAB,
            "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT}
