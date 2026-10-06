@@ -4,6 +4,10 @@
 next activity=none,Meta+Tab,Parcourir les activités
 previous activity=none,Meta+Shift+Tab,Parcourir les activités (en sens inverse)
 
+# Méta+Espace : méthode de saisie suivante (julakan, wolof, kiswahili… ; Méta+Alt+K reste)
+[KDE Keyboard Layout Switcher]
+Switch to Next Keyboard Layout=Meta+Space\tMeta+Alt+K,Meta+Alt+K,Passer à la disposition de clavier suivante
+
 # Impr. : la Capture d'écran de Sama (Spectacle garde Méta+Maj+S et ses autres raccourcis)
 [services][org.kde.spectacle.desktop]
 _launch=Meta+Shift+S

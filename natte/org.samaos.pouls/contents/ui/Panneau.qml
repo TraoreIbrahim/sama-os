@@ -348,7 +348,7 @@ Item {
             Layout.fillWidth: true
             spacing: 8
             Ligne {
-                titre: "Langue : " + ({ "FR": "Français", "EN": "English", "SW": "Kiswahili" }[racine.langue] || racine.langue)
+                titre: "Langue : " + ({ "FR": "Français", "EN": "English", "SW": "Kiswahili", "DYU": "Julakan", "WO": "Wolof" }[racine.langue] || racine.langue)
                 nomIcone: "globe"
                 onClicked: executeur.lancer("sama-reglages langue")
             }

@@ -8,7 +8,7 @@ Usage (en administrateur, dans la VM) :
   entrees.py glisser X1 Y1 X2 Y2 [pause]  glisser-déposer de (X1, Y1) à (X2, Y2), bouton tenu « pause » s à l'arrivée
   entrees.py taper "texte"          tape un texte (clavier AZERTY)
   entrees.py touche entree|echap|effacer|suppr|f1…f12|tab|haut|bas|gauche|droite
-  entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, maj + une touche)
+  entrees.py raccourci meta+tab     combinaison (meta, ctrl, alt, altgr, maj + une touche ; espace, echap…)
   entrees.py molette X Y 5           fait tourner la molette (5 crans vers le bas ; négatif : vers le haut)
   entrees.py tenir alt+tab 3        combinaison dont la touche de modification reste enfoncée 3 s (ex. Alt+Tab)
   entrees.py attendre 1.5           pause entre deux actions
@@ -48,10 +48,11 @@ TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE
            "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT}
 TOUCHES.update({"f%d" % n: getattr(e, "KEY_F%d" % n) for n in range(1, 13)})
 TOUCHES["impr"] = e.KEY_SYSRQ
+TOUCHES["espace"] = e.KEY_SPACE
 
 capacites = {
     e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE] + [k for k, _ in AZERTY.values()]
-              + list(TOUCHES.values()) + [e.KEY_LEFTSHIFT, e.KEY_LEFTMETA, e.KEY_LEFTCTRL, e.KEY_LEFTALT],
+              + list(TOUCHES.values()) + [e.KEY_LEFTSHIFT, e.KEY_LEFTMETA, e.KEY_LEFTCTRL, e.KEY_LEFTALT, e.KEY_RIGHTALT],
     e.EV_ABS: [(e.ABS_X, AbsInfo(0, 0, LARGEUR - 1, 0, 0, 0)), (e.ABS_Y, AbsInfo(0, 0, HAUTEUR - 1, 0, 0, 0))],
     e.EV_REL: [e.REL_WHEEL],
 }
@@ -107,7 +108,7 @@ for action in actions:
             if c in AZERTY:
                 touche(*AZERTY[c])
     elif nom == "raccourci":
-        mods = {"meta": e.KEY_LEFTMETA, "ctrl": e.KEY_LEFTCTRL, "alt": e.KEY_LEFTALT, "maj": e.KEY_LEFTSHIFT}
+        mods = {"meta": e.KEY_LEFTMETA, "ctrl": e.KEY_LEFTCTRL, "alt": e.KEY_LEFTALT, "maj": e.KEY_LEFTSHIFT, "altgr": e.KEY_RIGHTALT}
         parties = reste.strip().lower().split("+")
         tenus = [mods[p] for p in parties[:-1]]
         for m in tenus:
@@ -117,7 +118,7 @@ for action in actions:
         for m in reversed(tenus):
             ui.write(e.EV_KEY, m, 0); ui.syn(); time.sleep(0.05)
     elif nom == "tenir":
-        mods = {"meta": e.KEY_LEFTMETA, "ctrl": e.KEY_LEFTCTRL, "alt": e.KEY_LEFTALT, "maj": e.KEY_LEFTSHIFT}
+        mods = {"meta": e.KEY_LEFTMETA, "ctrl": e.KEY_LEFTCTRL, "alt": e.KEY_LEFTALT, "maj": e.KEY_LEFTSHIFT, "altgr": e.KEY_RIGHTALT}
         combinaison, duree = (reste.split() + ["2"])[:2]
         parties = combinaison.lower().split("+")
         tenus = [mods[p] for p in parties[:-1]]

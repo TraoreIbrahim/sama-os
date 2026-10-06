@@ -46,7 +46,7 @@ PlasmoidItem {
 
     readonly property int nonLues: notifs.item ? notifs.item.nonLues : 0
 
-    // Panneau ouvert : « controle » ou « notifications »
+    // Panneau ouvert : « controle », « notifications » ou « saisie » (méthode de saisie)
     property string vue: "controle"
     function basculer(choix) {
         if (expanded && vue === choix) { expanded = false; return }
@@ -110,12 +110,18 @@ PlasmoidItem {
                 anchors.centerIn: parent
                 spacing: 10
 
+                // Code de langue : un clic ouvre la méthode de saisie (Saisie.qml)
                 Text {
                     text: racine.langue
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
                     font.letterSpacing: 0.4
-                    color: racine.encreDouce
+                    color: racine.expanded && racine.vue === "saisie" ? racine.laterite : racine.encreDouce
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -8
+                        onClicked: racine.basculer("saisie")
+                    }
                 }
 
                 Kirigami.Icon {
@@ -222,7 +228,7 @@ PlasmoidItem {
     }
 
     fullRepresentation: Loader {
-        source: racine.vue === "notifications" ? "CentreNotifications.qml" : "Panneau.qml"
+        source: racine.vue === "notifications" ? "CentreNotifications.qml" : racine.vue === "saisie" ? "Saisie.qml" : "Panneau.qml"
         // 360 px avec les marges du cadre, comme la maquette. Hauteur imposée par le contenu :
         // Plasma mémorise sinon la taille d'une ouverture précédente et coupe le panneau.
         readonly property real hauteur: item ? item.implicitHeight : Kirigami.Units.gridUnit * 14

@@ -1,5 +1,7 @@
 // Clavier : dispositions installées (la première est celle par défaut), ajouter, retirer, monter en tête.
-// Passer d'une disposition à l'autre : Méta+Alt+K.
+// Passer d'une disposition à l'autre : Méta+Espace (ou Méta+Alt+K), ou d'un clic sur FR dans le Pouls.
+// Langues d'Afrique : julakan (disposition du Mali, AZERTY avec ɛ ɔ ɲ ŋ sur AltGr), wolof, kiswahili ; leur code court
+// (DYU, WO, SW) est celui affiché dans le Pouls (DisplayNames de kxkbrc).
 import QtQuick
 import QtQuick.Layouts
 import ".."
@@ -10,6 +12,9 @@ PageReglage {
 
     readonly property var catalogue: [
         { code: "fr", variante: "", nom: "Français (AZERTY)" },
+        { code: "ml", variante: "fr-oss", nom: "Julakan (dioula) · AZERTY, ɛ ɔ ɲ ŋ avec AltGr", court: "dyu" },
+        { code: "sn", variante: "", nom: "Wolof", court: "wo" },
+        { code: "ke", variante: "swa", nom: "Kiswahili (QWERTY)", court: "sw" },
         { code: "us", variante: "", nom: "Anglais · États-Unis (QWERTY)" },
         { code: "gb", variante: "", nom: "Anglais · Royaume-Uni (QWERTY)" },
         { code: "be", variante: "", nom: "Belge (AZERTY)" },
@@ -34,12 +39,18 @@ PageReglage {
             page.installees = codes.map(function (c, i) { var v = variantes[i] || ""; return { code: c, variante: v, nom: page.nomDe(c, v) } })
         })
     }
+    function courtDe(code, variante) {
+        for (var i = 0; i < catalogue.length; i++) if (catalogue[i].code === code && catalogue[i].variante === variante) return catalogue[i].court || ""
+        return ""
+    }
     function enregistrer(liste) {
         page.installees = liste
         var codes = liste.map(function (x) { return x.code }).join(",")
         var variantes = liste.map(function (x) { return x.variante }).join(",")
+        var courts = liste.map(function (x) { return page.courtDe(x.code, x.variante) }).join(",")
         var g = "kwriteconfig6 --file kxkbrc --group Layout --key "
         commande.lancer(g + "Use true && " + g + "LayoutList " + commande.q(codes) + " && " + g + "VariantList " + commande.q(variantes)
+                        + " && " + g + "DisplayNames " + commande.q(courts)
                         + " && dbus-send --session --type=signal /Layouts org.kde.keyboard.reloadConfig")
     }
     Component.onCompleted: relire()
@@ -65,7 +76,7 @@ PageReglage {
         }
         Ligne {
             titre: "Ajouter une disposition"
-            detail: "Passer de l'une à l'autre : Méta + Alt + K"
+            detail: "Passer de l'une à l'autre : Méta + Espace, ou d'un clic sur FR dans le Pouls"
             derniere: true
             ListeDeroulante {
                 implicitWidth: 260
