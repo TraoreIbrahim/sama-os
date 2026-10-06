@@ -132,6 +132,15 @@ object Identites {
         fond = Color(0xFF1B1612), surface = Color(0xFF26201A), champ = Color(0x1AFFFFFF), encre = Color(0xFFF2EAE0), encre2 = Color(0xFFB5A796),
         trait = Color(0x1FFFFFFF), accent = Color(0xFFC9A787), surAccent = Color(0xFF2A1E14), voile = Color(0x29C9A787), sombre = true,
     )
+    /** Mail : le papier à lettres et la terre cuite du timbre. */
+    val Mail = Identite(
+        fond = Color(0xFFFBF8F3), champ = Color(0x0F1F1C18), encre = Color(0xFF1F1C18), encre2 = Color(0xFF665E54),
+        trait = Color(0x1A1F1C18), accent = Color(0xFFB5532F), voile = Color(0x1AB5532F), accentTexte = Color(0xFF93401F),
+    )
+    val MailNuit = Identite(
+        fond = Color(0xFF181513), surface = Color(0xFF241F1C), champ = Color(0x1AFFFFFF), encre = Color(0xFFF4EEE8), encre2 = Color(0xFFB7ACA2),
+        trait = Color(0x1FFFFFFF), accent = Color(0xFFE07A52), surAccent = Color(0xFF2A1A12), voile = Color(0x29E07A52), accentTexte = Color(0xFFF0A27E), sombre = true,
+    )
     /** Sugu : le marché, sa poussière claire et la latérite. */
     val Sugu = Identite(
         fond = Color(0xFFFFF7EF), surface = Color(0xFFFFFFFF), champ = Color(0x0F2A1A12), encre = Color(0xFF2A1A12), encre2 = Color(0xFF6E5A4E),

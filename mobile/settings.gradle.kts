@@ -41,5 +41,6 @@ include(":lecteur")
 include(":griot")
 include(":appareil")
 include(":sugu")
+include(":mail")
 // Appli d'essai pour l'émulateur (lecture, message avec réponse) ; jamais installée ailleurs.
 include(":essais")

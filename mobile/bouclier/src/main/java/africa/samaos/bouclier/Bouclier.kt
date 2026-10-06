@@ -104,6 +104,52 @@ object Bouclier {
         )
     }
 
+    /**
+     * Un mail reçu (appli Mail) : arnaque probable, ou null. Le nom affiché de l'expéditeur s'imite à volonté :
+     * un mail qui se présente comme un service de mobile money doit venir de son domaine officiel.
+     */
+    fun mail(adresse: String, nom: String, sujet: String, corps: String, contactConnu: Boolean): Verdict? {
+        val domaine = adresse.substringAfterLast('@').lowercase()
+        val op = operateurCite("$nom $sujet")
+        if (op != null && !hoteOfficiel(domaine)) {
+            return Verdict("Faux mail", "Ce mail se présente comme ${op.nom}, mais il vient de « $domaine », qui n'est pas une adresse de ${op.nom}.", op)
+        }
+        lien(corps)?.let { return it }
+        if (contactConnu) return null
+        val t = normaliser("$sujet $corps")
+        return when {
+            Regex("(tromp|erreur).{0,60}(renvo|retourn|rembours)|(renvo|retourn|rembours).{0,60}(tromp|erreur)").containsMatchIn(t) ->
+                Verdict("Arnaque probable", "« Je me suis trompé, renvoyez-moi l'argent » : c'est l'arnaque la plus courante. Regardez votre vrai solde avant tout.")
+            Regex("(code secret|code pin|mot de passe|votre code|code de confirmation|code de validation)").containsMatchIn(t) &&
+                Regex("(envoy|donne|communiqu|transmet|confirm|saisi|tape|verifi)").containsMatchIn(t) ->
+                Verdict("Prudence", "Ce mail vous demande un code ou un mot de passe. Personne de sérieux, ni votre opérateur, ni votre banque, ni Sama, ne le demande par mail.")
+            else -> null
+        }
+    }
+
+    /**
+     * Un lien qui affiche l'adresse d'un opérateur ou d'un service de mobile money (« orange.ci ») mais mène
+     * ailleurs. Les autres liens qui passent par un site de suivi (lettres d'information) ne sont pas signalés.
+     */
+    fun lienTrompeur(affiche: String, cible: String): Verdict? {
+        fun hote(s: String) = Regex("(?i)^\\s*(?:https?://)?((?:[a-z0-9-]+\\.)+[a-z]{2,})").find(s)?.groupValues?.get(1)?.lowercase()?.removePrefix("www.")
+        val montre = hote(affiche) ?: return null
+        val vrai = hote(cible) ?: return null
+        if (montre == vrai || vrai.endsWith(".$montre")) return null
+        if (operateurDuHote(montre) == null && !hoteOfficiel(montre)) return null
+        return Verdict("Lien trompeur", "Un lien affiche « $montre » mais mène à « $vrai ». Ne l'ouvrez pas, et n'y tapez jamais de code.")
+    }
+
+    /** Une pièce jointe qui est une appli : elle ne s'installe jamais depuis un mail. */
+    fun pieceJointe(nom: String): Verdict? {
+        val n = nom.lowercase()
+        return if (n.endsWith(".apk") || n.endsWith(".apks") || n.endsWith(".xapk")) {
+            Verdict("Appli en pièce jointe", "Une appli ne s'installe jamais depuis un mail : les vraies viennent de Sugu. N'ouvrez pas ce fichier.")
+        } else {
+            null
+        }
+    }
+
     /** Le dernier solde annoncé par l'expéditeur officiel d'un opérateur (« Nouveau solde : 350 F »). */
     fun solde(corps: String): String? = Regex("solde[^0-9]{0,20}([0-9][0-9 .\\u202f\\u00a0]*)\\s*(f\\b|fcfa)", RegexOption.IGNORE_CASE)
         .find(corps)?.groupValues?.get(1)?.trim()?.let { "$it F" }
@@ -125,7 +171,11 @@ object Bouclier {
         return OPERATEURS.firstOrNull { o -> o.codes.any { c.startsWith(it) } }
     }
 
-    private fun operateurDuHote(h: String) = OPERATEURS.firstOrNull { o -> o.mots.any { h.contains(it.replace(" ", "")) } || h.contains(o.nom.lowercase().replace(" ", "")) }
+    /** Le service qu'une adresse cite, même écrit avec des tirets (« orange-money-bonus.xyz »). */
+    private fun operateurDuHote(h: String): Operateur? {
+        val x = h.replace("-", "")
+        return OPERATEURS.firstOrNull { o -> o.mots.any { x.contains(it.replace(" ", "")) } || x.contains(o.nom.lowercase().replace(" ", "")) }
+    }
 
     private fun hoteOfficiel(h: String) = OPERATEURS.any { o -> o.domaines.any { d -> h == d || h.endsWith(".$d") } }
 

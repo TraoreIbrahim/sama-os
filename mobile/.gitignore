@@ -14,3 +14,5 @@ systeme/cles/platform.x509.pem
 systeme/cles-proches/editeur-test.pem
 # Dossier du point Sama d'essai (outils/signer-paquet.py), produit localement.
 outils/point-essai/
+# Serveur de mail d'essai (outils/mail-essai.py) : GreenMail, téléchargé localement.
+outils/mail-essai/

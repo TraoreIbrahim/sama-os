@@ -21,6 +21,8 @@ Autres éléments :
   texte dans mobile/licences/OFL-NotoSans.txt.
 - Fonds d'écran Sama Aube et Sama Nuit (iso/config/includes.chroot/usr/share/wallpapers/) : CC BY-SA 4.0.
 - Gradle Wrapper (mobile/gradlew, mobile/gradlew.bat, mobile/gradle/wrapper/) : Apache 2.0, Gradle.
+- L'appli Mail embarque Jakarta Mail pour Android (com.sun.mail:android-mail et android-activation 1.6.7),
+  téléchargé par Gradle : Eclipse Public License 2.0, ou GPL 2.0 avec l'exception Classpath.
 
 Le nom « Sama OS », l'éléphant et l'identité visuelle de Sama sont des marques : la licence ne donne pas
 le droit de les utiliser pour désigner un autre produit (section 6 de la licence Apache 2.0).

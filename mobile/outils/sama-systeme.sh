@@ -34,7 +34,7 @@ redemarrer() {
 
 echo "• Construction de l'Accueil et de l'animation"
 python3 "$MOBILE/outils/droits-reglages.py" >/dev/null
-(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease :sugu:assembleRelease)
+(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease :sugu:assembleRelease :mail:assembleRelease)
 [ -f "$ANIM" ] || python3 "$MOBILE/systeme/animation/fabriquer.py"
 "$MOBILE/systeme/surcouche-android/fabriquer.sh" >/dev/null
 "$MOBILE/systeme/surcouche-systemui/fabriquer.sh" >/dev/null
@@ -116,7 +116,7 @@ $ADB shell pm grant africa.samaos.sugu android.permission.POST_NOTIFICATIONS
 echo "• Applis de Sama : Téléphone, Contacts, Messages, Horloge, Calculatrice, Notes"
 # Signées avec la clé de la plateforme, installées comme des applis ordinaires ; Android leur confie
 # ensuite les appels (rôle DIALER) et les SMS (rôle SMS).
-for appli in telephone contacts messages horloge calculatrice notes agenda fichiers photos dictaphone lecteur griot; do
+for appli in telephone contacts messages horloge calculatrice notes agenda fichiers photos dictaphone lecteur griot mail; do
     $ADB install -r "$MOBILE/$appli/build/outputs/apk/release/$appli-release.apk" >/dev/null
 done
 for droit in CALL_PHONE READ_CALL_LOG WRITE_CALL_LOG READ_CONTACTS READ_PHONE_STATE READ_PHONE_NUMBERS POST_NOTIFICATIONS; do
@@ -124,6 +124,10 @@ for droit in CALL_PHONE READ_CALL_LOG WRITE_CALL_LOG READ_CONTACTS READ_PHONE_ST
 done
 for droit in READ_CONTACTS WRITE_CONTACTS READ_PHONE_STATE CALL_PHONE; do
     $ADB shell pm grant africa.samaos.contacts android.permission.$droit
+done
+# Mail : reconnaître les expéditeurs connus, prévenir des nouveaux mails.
+for droit in READ_CONTACTS POST_NOTIFICATIONS; do
+    $ADB shell pm grant africa.samaos.mail android.permission.$droit
 done
 for droit in SEND_SMS RECEIVE_SMS READ_SMS RECEIVE_MMS READ_CONTACTS READ_PHONE_STATE POST_NOTIFICATIONS CALL_PHONE; do
     $ADB shell pm grant africa.samaos.messages android.permission.$droit
