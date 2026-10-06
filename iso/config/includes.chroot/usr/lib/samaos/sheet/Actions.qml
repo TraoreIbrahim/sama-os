@@ -142,6 +142,7 @@ QtObject {
 
         c("tableau", "Mettre en tableau", "Données", "tableau liste registre colonnes nommées filtre totaux excel", "Ctrl+T", function () { fenetre.tableaux.creer() }, function () { return fenetre.tableaux.courant === null }),
         c("totauxTableau", "Ligne des totaux du tableau", "Données", "total somme tableau", "", function () { fenetre.tableaux.totaux(fenetre.tableaux.courant, !fenetre.tableaux.courant.totaux) }, function () { return fenetre.tableaux.courant !== null }),
+        c("fiches", "Voir le tableau en fiches", "Données", "fiche formulaire saisie carte", "", function () { fenetre.voirFiches(fenetre.tableaux.courant) }, function () { return fenetre.tableaux.courant !== null }),
         c("ligneTableau", "Ajouter une ligne au tableau", "Données", "nouvelle ligne tableau", "", function () { fenetre.tableaux.ajouterLigne(fenetre.tableaux.courant) }, function () { return fenetre.tableaux.courant !== null }),
         c("trierAZ", "Trier de A à Z, du plus petit au plus grand", "Données", "ordre croissant ranger", "", function () { uno(".uno:SortAscending") }),
         c("trierZA", "Trier de Z à A, du plus grand au plus petit", "Données", "ordre décroissant ranger", "", function () { uno(".uno:SortDescending") }),

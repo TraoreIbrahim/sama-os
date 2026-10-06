@@ -19,13 +19,23 @@ QByteArray dossierLibreOffice()
 }
 
 // Réglages du moteur, écrits dans son profil avant le démarrage : monnaie par défaut, le franc CFA (XOF) — le bouton
-// « FCFA » de Sama Sheet applique la monnaie par défaut ; barre d'état de la sélection ; couleurs des graphiques
-// (forêt, ocre, bleu, latérite…)
+// « FCFA » de Sama Sheet applique la monnaie par défaut ; barre d'état de la sélection ; traits de la grille doux, pas de
+// vérification d'orthographe pendant la saisie (comme Excel) ; couleurs des graphiques (forêt, ocre, bleu, latérite…)
 const char *const REGLAGES[][3] = {
     {"/org.openoffice.Setup/L10N", "ooSetupCurrency", "XOF-fr-CI"},
     {"/org.openoffice.Office.Calc/Layout/Other", "StatusbarMultiFunction", "522"},   // somme, moyenne, nombre de valeurs
+    // jeu de couleurs de Sama (voir NOEUDS)
+    {"/org.openoffice.Office.UI/ColorScheme", "CurrentColorScheme", "Sama"},
+    {"/org.openoffice.Office.Linguistic/SpellChecking", "IsSpellAuto", "false"},     // pas de soulignés rouges dans les cases
     {"/org.openoffice.Office.Chart/DefaultColor", "Series",
      "3107671 14259770 4091550 11883311 9286778 8085132 14926443 5151386 10251086 13208219 7244968 9077367"},
+};
+
+// Éléments ajoutés à des ensembles : le jeu de couleurs « Sama » (celui du moteur, « automatique », ne se change pas),
+// avec les traits de la grille en sable clair #E4DED4 ; le reste garde les couleurs par défaut.
+const char *const NOEUDS[][3] = {
+    {"/org.openoffice.Office.UI/ColorScheme/ColorSchemes", "Sama",
+     "<node oor:name=\"CalcGrid\"><prop oor:name=\"Light\"><value>14999252</value></prop></node>"},
 };
 
 // Macros de Sama (tableaux…) : les modules Basic de SAMA_MOTEUR_BASIC (par défaut /usr/lib/samaos/moteur/basic) sont
@@ -93,6 +103,17 @@ void preparerProfil(const QString &dossier)
         const QString element = QStringLiteral("<item oor:path=\"%1\"><prop oor:name=\"%2\" oor:op=\"fuse\"><value>%3</value></prop></item>")
                                     .arg(chemin, nom, valeur);
         const QRegularExpression existant(QStringLiteral("<item oor:path=\"%1\"><prop oor:name=\"%2\"[^<]*>.*?</item>")
+                                              .arg(QRegularExpression::escape(chemin), QRegularExpression::escape(nom)));
+        if (texte.contains(existant))
+            texte.replace(existant, element);
+        else
+            texte.replace(QStringLiteral("</oor:items>"), element + QStringLiteral("\n</oor:items>"));
+    }
+    for (const auto &n : NOEUDS) {
+        const QString chemin = QString::fromLatin1(n[0]), nom = QString::fromLatin1(n[1]);
+        const QString element = QStringLiteral("<item oor:path=\"%1\"><node oor:name=\"%2\" oor:op=\"replace\">%3</node></item>")
+                                    .arg(chemin, nom, QString::fromLatin1(n[2]));
+        const QRegularExpression existant(QStringLiteral("<item oor:path=\"%1\"><node oor:name=\"%2\"[^>]*>.*?</item>")
                                               .arg(QRegularExpression::escape(chemin), QRegularExpression::escape(nom)));
         if (texte.contains(existant))
             texte.replace(existant, element);

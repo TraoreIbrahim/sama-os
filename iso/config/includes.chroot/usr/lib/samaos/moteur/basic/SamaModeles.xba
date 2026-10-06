@@ -162,6 +162,19 @@ Sub Choisir(sCase As String)
 	sDepart = sCase
 End Sub
 
+' Classeur neuf : la police de Sama (Noto Sans) dans le style par défaut, sans le compter comme une modification
+Function Preparer() As String
+	Dim oStyle As Object
+	On Error GoTo Erreur
+	oStyle = ThisComponent.StyleFamilies.getByName("CellStyles").getByName("Default")
+	oStyle.CharFontName = "Noto Sans"
+	ThisComponent.setModified(False)
+	Preparer = ""
+	Exit Function
+Erreur:
+	Preparer = "!" & Error$
+End Function
+
 Function Remplir(sModele As String) As String
 	Dim m As Long, mz As Long, d As Long
 	On Error GoTo Erreur

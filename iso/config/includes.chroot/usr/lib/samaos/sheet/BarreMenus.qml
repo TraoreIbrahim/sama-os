@@ -142,6 +142,7 @@ Rectangle {
                 ElementMenu { cle: "tableau" }
                 ElementMenu { cle: "totauxTableau" }
                 ElementMenu { cle: "ligneTableau" }
+                ElementMenu { cle: "fiches" }
                 QQC2.MenuSeparator {}
                 ElementMenu { cle: "trierAZ" }
                 ElementMenu { cle: "trierZA" }

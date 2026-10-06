@@ -57,6 +57,8 @@ class DocumentLO : public QQuickItem
     Q_PROPERTY(bool objetTenu READ objetTenu NOTIFY objetTenuChanged)
     // Augmente à chaque changement du contenu dessiné (pour relire ce qui en dépend : tableaux…)
     Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
+    // Augmente quand une tuile dessinée arrive (pour relire couleurAu)
+    Q_PROPERTY(int dessins READ dessins NOTIFY dessinsChanged)
 
 public:
     enum Etat { Vide, Chargement, Pret, Erreur };
@@ -95,6 +97,9 @@ public:
     bool objetActif() const { return m_objetActif; }
     bool objetTenu() const { return m_poignee >= 0; }
     int revision() const { return m_revision; }
+    int dessins() const { return m_dessins; }
+    // Couleur dessinée par le moteur en un point du document (pixels du document), ou transparent
+    Q_INVOKABLE QColor couleurAu(qreal x, qreal y) const;
 
     // Ouvrir un fichier, ou un document vide (« calc », « writer »)
     Q_INVOKABLE void ouvrir(const QString &chemin);
@@ -142,6 +147,7 @@ signals:
     void objetChanged();
     void objetTenuChanged();
     void revisionChanged();
+    void dessinsChanged();
     void resultatScript(int jeton, bool reussi, const QString &valeur);
     void enregistre(bool reussi, const QString &chemin);
     void valeurs(const QString &commande, const QVariant &reponse);
@@ -213,7 +219,7 @@ private:
     int m_poignee = -1;
     QPointF m_decalage;
     int m_graphiqueEnAttente = -1;
-    int m_revision = 0, m_dernierJeton = 0;
+    int m_revision = 0, m_dernierJeton = 0, m_dessins = 0;
     QHash<QByteArray, QQueue<int>> m_scriptsEnAttente;   // par adresse de macro, dans l'ordre des appels
     bool m_survolEnvoye = false;
     QPointF m_survolSuivant;

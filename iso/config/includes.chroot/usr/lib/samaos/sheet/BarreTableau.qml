@@ -8,7 +8,8 @@ import "../reglages"
 Rectangle {
     id: barre
     readonly property var tableaux: fenetre.tableaux
-    readonly property var t: tableaux.courant
+    readonly property var t: fenetre.tableauVu
+    readonly property bool enFiches: fenetre.vue === "fiches"
     implicitHeight: t ? 38 : 0
     visible: t !== null
     color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, Couleurs.sombre ? 0.16 : 0.07)
@@ -57,12 +58,43 @@ Rectangle {
             font.pixelSize: 12
             color: Couleurs.texte2
         }
+        // Grille ou fiches : le même tableau, vu autrement
+        Rectangle {
+            Layout.preferredHeight: 30
+            Layout.preferredWidth: vues.implicitWidth + 6
+            radius: 9
+            color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.25 : 0.06)
+            RowLayout {
+                id: vues
+                anchors.centerIn: parent
+                spacing: 2
+                Repeater {
+                    model: [["grille", "Grille", "M4 5h16v14H4z M4 10h16 M10 5v14"], ["fiches", "Fiches", "M4 5h7v6H4z M13 5h7v6h-7z M4 13h7v6H4z M13 13h7v6h-7z"]]
+                    delegate: QQC2.AbstractButton {
+                        id: vue
+                        readonly property bool choisie: fenetre.vue === modelData[0]
+                        implicitHeight: 24
+                        implicitWidth: contenuVue.implicitWidth + 18
+                        focusPolicy: Qt.NoFocus
+                        hoverEnabled: true
+                        onClicked: modelData[0] === "fiches" ? fenetre.voirFiches(barre.t) : fenetre.voirGrille()
+                        background: Rectangle { radius: 7; color: vue.choisie ? Couleurs.champ : "transparent"; border.width: vue.choisie ? 0.5 : 0; border.color: Couleurs.bord }
+                        contentItem: RowLayout {
+                            id: contenuVue
+                            spacing: 5
+                            Picto { width: 13; height: 13; trace: modelData[2]; encre: vue.choisie ? fenetre.vertEncre : Couleurs.texte2 }
+                            Text { text: modelData[1]; font.pixelSize: 12; font.weight: vue.choisie ? Font.DemiBold : Font.Normal; color: vue.choisie ? fenetre.vertEncre : Couleurs.texte2 }
+                        }
+                    }
+                }
+            }
+        }
         Separateur {}
         Outil {
-            text: "Ajouter une ligne"
+            text: barre.enFiches ? "Nouvelle fiche" : "Ajouter une ligne"
             picto: "M12 5v14 M5 12h14"
-            aide: "Une ligne de plus à la fin du tableau, avec ses formules"
-            onClicked: barre.tableaux.ajouterLigne(barre.t)
+            aide: barre.enFiches ? "Une fiche de plus (une ligne du tableau)" : "Une ligne de plus à la fin du tableau, avec ses formules"
+            onClicked: barre.enFiches ? fenetre.nouvelleFiche() : barre.tableaux.ajouterLigne(barre.t)
         }
         Outil {
             id: totaux
@@ -74,6 +106,7 @@ Rectangle {
         }
         Item { Layout.fillWidth: true }
         Text {
+            visible: !barre.enFiches
             text: "Trier et filtrer : ▾ dans les titres"
             font.pixelSize: 12
             color: Couleurs.texte3

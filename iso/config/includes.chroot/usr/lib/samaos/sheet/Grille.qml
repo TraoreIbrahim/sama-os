@@ -63,7 +63,10 @@ Item {
                 var lettres = fenetre.tableaux.lettres(c)
                 for (var j = 0; j < colonnes.length; j++) {
                     if (colonnes[j].texte !== lettres) continue
-                    res.push({ x: colonnes[j].fin - h, y: ligne.debut, cote: h, tableau: t, colonne: c - t.c1,
+                    // (le bouton du moteur fait jusqu'à 18 points de large, à droite de la case : on le couvre en entier)
+                    var l = Math.min((colonnes[j].fin - colonnes[j].debut) / 2, Math.max(h, 18) * 1.35)
+                    res.push({ x: colonnes[j].fin - l, y: ligne.debut, largeur: l, cote: h, gauche: colonnes[j].debut, fin: colonnes[j].fin,
+                               tableau: t, colonne: c - t.c1,
                                filtree: t.filtres.indexOf(c - t.c1) >= 0 })
                 }
             }
@@ -197,7 +200,7 @@ Item {
                 id: boutonFiltre
                 x: modelData.x - document.vueX
                 y: modelData.y - document.vueY
-                width: modelData.cote
+                width: modelData.largeur
                 height: modelData.cote
                 hoverEnabled: true
                 focusPolicy: Qt.NoFocus
@@ -206,23 +209,60 @@ Item {
                     var p = boutonFiltre.mapToItem(grille, 0, boutonFiltre.height + 2)
                     filtreColonne.ouvrirPour(modelData.tableau, modelData.colonne, Math.max(0, p.x + boutonFiltre.width - 300), p.y)
                 }
+                // Le bouton du moteur est caché sous la couleur du titre (prise dans le dessin, à gauche du titre) ; par-dessus,
+                // une petite pastille : discrète au repos, verte quand la colonne est filtrée.
                 background: Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: 4
-                    color: modelData.filtree ? fenetre.vert : boutonFiltre.hovered ? "#CFE3D8" : "#F4F9F6"
-                    border.width: 0.5
-                    border.color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.5)
+                    // (couleurs prises dans le dessin : fond du titre, trait du bas, trait de droite)
+                    function prise(x, y, sinon) {
+                        document.dessins
+                        var c = document.couleurAu(x, y)
+                        return c.a > 0 ? c : sinon
+                    }
+                    // Le fond : en haut de la case, là où le texte (en bas de la case) ne va pas ; la couleur qui revient
+                    // le plus parmi trois points
+                    color: {
+                        var y = modelData.y + 1
+                        var a = prise(modelData.gauche + 1, y, "#DDEBE3"), b = prise((modelData.gauche + modelData.x) / 2, y, "#DDEBE3"),
+                            c = prise(modelData.x - 2, y, "#DDEBE3")
+                        return Qt.colorEqual(a, b) || Qt.colorEqual(a, c) ? a : b
+                    }
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 1
+                        color: parent.prise(modelData.gauche + 1, modelData.y + modelData.cote - 0.5, "transparent")
+                    }
+                    Rectangle {
+                        anchors.right: parent.right
+                        width: 1
+                        height: parent.height - 1
+                        color: parent.prise(modelData.fin - 1, modelData.y + modelData.cote / 2, "transparent")
+                    }
+                    Rectangle {
+                        readonly property real cote: Math.min(20, boutonFiltre.height - 4)
+                        anchors.centerIn: parent
+                        width: cote
+                        height: cote
+                        radius: 6
+                        color: modelData.filtree ? fenetre.vert
+                             : boutonFiltre.down ? Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.24)
+                             : boutonFiltre.hovered ? Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.14) : "transparent"
+                        Behavior on color { ColorAnimation { duration: 90 } }
+                    }
                 }
                 contentItem: Item {
                     Picto {
                         anchors.centerIn: parent
-                        width: Math.min(12, boutonFiltre.width - 6); height: width
-                        trace: modelData.filtree ? "M4 5h16l-6 8v6l-4-2v-4z" : "M6 9l6 6 6-6"
+                        width: Math.min(modelData.filtree ? 12 : 13, boutonFiltre.height - 8); height: width
+                        trace: modelData.filtree ? "M5 6h14l-5.5 6.5V18l-3-1.5v-4z" : "M7 10l5 5 5-5"
                         encre: modelData.filtree ? "#FFFFFF" : fenetre.vertEncre
-                        trait: 2.2
+                        opacity: modelData.filtree || boutonFiltre.hovered ? 1 : 0.55
+                        trait: 2
                     }
                 }
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 600
+                QQC2.ToolTip.text: modelData.filtree ? "Filtrée : cliquez pour changer" : "Trier et filtrer"
             }
         }
 

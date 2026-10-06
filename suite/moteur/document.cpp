@@ -358,6 +358,8 @@ void DocumentLO::planifier()
                     if (it->version == version) {
                         it->image = image;
                         it->neuve = true;
+                        ++m_dessins;
+                        emit dessinsChanged();
                     }
                     if (it->perimee) planifier();
                     update();
@@ -375,6 +377,18 @@ void DocumentLO::planifier()
         }
     }
     update();
+}
+
+QColor DocumentLO::couleurAu(qreal x, qreal y) const
+{
+    const qreal f = TWIPS_PAR_PIXEL / m_zoom, tt = twipsParTuile();
+    const int i = int(std::floor(x * f / tt)), j = int(std::floor(y * f / tt));
+    if (i < 0 || j < 0) return Qt::transparent;
+    auto it = m_tuiles.constFind(cle(i, j));
+    if (it == m_tuiles.constEnd() || it->image.isNull()) return Qt::transparent;
+    const int px = qBound(0, int((x * f - i * tt) / tt * it->image.width()), it->image.width() - 1);
+    const int py = qBound(0, int((y * f - j * tt) / tt * it->image.height()), it->image.height() - 1);
+    return QColor::fromRgba(it->image.pixel(px, py));
 }
 
 void DocumentLO::invalider(const QRectF &twips, int partie)

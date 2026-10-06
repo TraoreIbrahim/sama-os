@@ -34,6 +34,23 @@ Window {
     property bool accueilOuvert: false
     property string nomPropose: ""
     property var modeleEnAttente: null
+    // Vue du tableau : « grille » ou « fiches » (le tableau vu en fiches est retrouvé par son nom)
+    property string vue: "grille"
+    property string nomFiches: ""
+    readonly property var tableauFiches: {
+        for (var i = 0; i < tableaux.liste.length; i++) if (tableaux.liste[i].nom === nomFiches) return tableaux.liste[i]
+        return null
+    }
+    readonly property var tableauVu: vue === "fiches" ? tableauFiches : tableaux.courant
+    function voirFiches(t) {
+        if (!t) return
+        nomFiches = t.nom
+        vue = "fiches"
+        vueFiches.ouvrir(t)
+    }
+    function voirGrille() { vue = "grille"; doc.forceActiveFocus() }
+    function nouvelleFiche() { vueFiches.nouvelle() }
+    onTableauFichesChanged: if (vue === "fiches") { if (tableauFiches) vueFiches.tableau = tableauFiches; else voirGrille() }
     readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
     property bool fermetureDemandee: false
     readonly property alias actions: lesActions
@@ -149,6 +166,8 @@ Window {
         function onEtatChanged() {
             if (fenetre.doc.etat === DocumentLO.Erreur) message.montrer(fenetre.doc.erreur || "Ce fichier n'a pas pu être ouvert")
             if (fenetre.doc.etat === DocumentLO.Pret && !fenetre.accueilOuvert) fenetre.doc.forceActiveFocus()
+            // (classeur neuf : la police de Sama)
+            if (fenetre.doc.etat === DocumentLO.Pret && !fenetre.doc.chemin) fenetre.tableaux.appeler("SamaModeles.Preparer", [])
             if (fenetre.doc.etat === DocumentLO.Pret && fenetre.modeleEnAttente) {
                 var m = fenetre.modeleEnAttente
                 fenetre.modeleEnAttente = null
@@ -206,6 +225,7 @@ Window {
         // ——— Barre de formule : adresse, fx, contenu de la cellule ———
         Rectangle {
             id: barreFormule
+            visible: fenetre.vue === "grille"
             Layout.fillWidth: true
             Layout.preferredHeight: 36
             color: Couleurs.sombre ? "#1B1F2E" : "#FFFFFF"
@@ -308,8 +328,17 @@ Window {
             Layout.fillWidth: true
         }
 
+        Fiches {
+            id: vueFiches
+            visible: fenetre.vue === "fiches"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Keys.onEscapePressed: fenetre.voirGrille()
+        }
+
         Grille {
             id: grille
+            visible: fenetre.vue === "grille"
             Layout.fillWidth: true
             Layout.fillHeight: true
         }

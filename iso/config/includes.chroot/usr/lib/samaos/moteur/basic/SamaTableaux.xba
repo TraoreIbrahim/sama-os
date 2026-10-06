@@ -321,6 +321,65 @@ Erreur:
 	Trier = "!" & Error$
 End Function
 
+' Les lignes d'un tableau, pour les fiches : { colonnes: [{ nom, calcul, formule, nombre }], lignes: [{ l (ligne de la
+' feuille, à partir de 0), v: [textes affichés], n: [nombres ou null], vide }] } (sans la ligne des totaux)
+Function Lignes(sNom As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, oCase As Object
+	Dim l As Long, l2 As Long, c As Long, s As String, sCols As String, sV As String, sN As String, bVide As Boolean
+	Dim bCalcul As Boolean, bNombre As Boolean, sFormule As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	sCols = ""
+	For c = a.StartColumn To a.EndColumn
+		bCalcul = False
+		sFormule = ""
+		If l2 > a.StartRow Then
+			oCase = oFeuille.getCellByPosition(c, a.StartRow + 1)
+			If oCase.Type = com.sun.star.table.CellContentType.FORMULA Then
+				bCalcul = True
+				sFormule = oCase.FormulaLocal
+			End If
+		End If
+		bNombre = ColonneNumerique(oFeuille, c, a.StartRow + 1, l2)
+		If sCols <> "" Then sCols = sCols & ","
+		sCols = sCols & "{""nom"":" & Texte(oFeuille.getCellByPosition(c, a.StartRow).String) & ",""calcul"":" & IIf(bCalcul, "true", "false") _
+		        & ",""formule"":" & Texte(sFormule) & ",""nombre"":" & IIf(bNombre, "true", "false") & "}"
+	Next c
+	s = ""
+	For l = a.StartRow + 1 To l2
+		sV = ""
+		sN = ""
+		bVide = True
+		For c = a.StartColumn To a.EndColumn
+			oCase = oFeuille.getCellByPosition(c, l)
+			If sV <> "" Then
+				sV = sV & ","
+				sN = sN & ","
+			End If
+			sV = sV & Texte(oCase.String)
+			If oCase.Type = com.sun.star.table.CellContentType.VALUE Then
+				sN = sN & Str(oCase.Value)
+			ElseIf oCase.Type = com.sun.star.table.CellContentType.FORMULA Then
+				If oCase.FormulaResultType2 = com.sun.star.sheet.FormulaResult.VALUE Then sN = sN & Str(oCase.Value) Else sN = sN & "null"
+			Else
+				sN = sN & "null"
+			End If
+			If oCase.Type <> com.sun.star.table.CellContentType.EMPTY And oCase.Type <> com.sun.star.table.CellContentType.FORMULA Then bVide = False
+		Next c
+		If s <> "" Then s = s & ","
+		s = s & "{""l"":" & l & ",""v"":[" & sV & "],""n"":[" & sN & "],""vide"":" & IIf(bVide, "true", "false") & "}"
+	Next l
+	Lignes = "{""colonnes"":[" & sCols & "],""lignes"":[" & s & "]}"
+	Exit Function
+Erreur:
+	Lignes = "!" & Error$
+End Function
+
 ' Valeurs d'une colonne (sans doublons, telles qu'affichées) et celles que le filtre garde (null : pas de filtre)
 Function Valeurs(sNom As String, sCol As String) As String
 	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, aChamps As Variant, aVals As Variant
