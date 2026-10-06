@@ -66,6 +66,10 @@ envoyer)
 	# Réglages par défaut du système (barres de titre, terminal…)
 	tar --no-xattrs -C "$inclus/etc/xdg"  -czf - breezerc konsolerc kdeglobals kglobalshortcutsrc kwinrc mimeapps.list kde-mimeapps.list \
 		powerdevil.notifyrc $(cd "$inclus/etc/xdg" && ls autostart/samaos-*.desktop) | vm 'sudo tar -xzf - -C /etc/xdg --no-same-owner'
+	# Variables de session et fenêtres « Enregistrer sous » / « Ouvrir » de Sama (portail de bureau, relu aussitôt)
+	tar --no-xattrs -C "$inclus" -czf - etc/xdg/plasma-workspace/env etc/xdg/xdg-desktop-portal usr/share/xdg-desktop-portal/portals/samaos.portal \
+		usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.samaos.service \
+		| vm 'sudo tar -xzf - -C / --no-same-owner && systemctl --user restart xdg-desktop-portal 2>/dev/null || true'
 	# Applications Sama (Réglages…) : fichiers, lanceurs, raccourcis, exécutables propres
 	tar --no-xattrs -C "$inclus" -czf - usr/lib/samaos $(cd "$inclus" && ls usr/bin/sama-* usr/share/applications/samaos-*.desktop) \
 		| vm 'sudo tar -xzf - -C / --no-same-owner && sudo mkdir -p /usr/lib/samaos/bin && for a in samaos-reglages samaos-fichiers samaos-moniteur samaos-aide samaos-selecteur; do
