@@ -148,6 +148,13 @@ open class Appareil : ComponentActivity() {
     internal var volumePourDeclencher = true
     /** Une autre appli demande une photo (IMAGE_CAPTURE) : on la lui rend, sans la garder dans la pellicule. */
     internal val pourUneAppli get() = intent?.action == MediaStore.ACTION_IMAGE_CAPTURE
+    /** Une appli de Sama demande seulement de lire un code (les Réglages, pour reconnaître un proche). */
+    internal val pourUnCode get() = intent?.action == ACTION_SCANNER_QR
+
+    internal fun rendreCode(t: String) {
+        setResult(Activity.RESULT_OK, Intent().putExtra("texte", t))
+        finish()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -203,6 +210,9 @@ open class Appareil : ComponentActivity() {
 
 /** Une photo demandée par une autre appli (IMAGE_CAPTURE) : même appareil, dans la tâche de cette appli. */
 class Capture : Appareil()
+
+/** Lire un code QR pour une appli de Sama, qui reçoit le texte lu (« texte »). */
+const val ACTION_SCANNER_QR = "africa.samaos.action.SCANNER_QR"
 
 object Pellicule {
     /** Le JPEG tourné à l'endroit et recadré au format choisi ; nettoyé (gris, contraste) pour un document. */
@@ -296,7 +306,7 @@ private fun Ecran(act: Appareil) {
     val demander = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r -> permis = r[Manifest.permission.CAMERA] == true }
     LaunchedEffect(Unit) { if (!permis) demander.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)) }
 
-    var mode by remember { mutableStateOf(Mode.PHOTO) }
+    var mode by remember { mutableStateOf(if (act.pourUnCode) Mode.SCANNER else Mode.PHOTO) }
     var idCamera by remember { mutableStateOf(arriere ?: avant) }
     var texture by remember { mutableStateOf<SurfaceTexture?>(null) }
     var prete by remember { mutableStateOf(false) }
@@ -335,7 +345,7 @@ private fun Ecran(act: Appareil) {
                     null
                 }
             }
-            if (t != null) code = t else erreur = "Pas de code QR lisible dans cette image."
+            if (t != null && act.pourUnCode) act.rendreCode(t) else if (t != null) code = t else erreur = "Pas de code QR lisible dans cette image."
         }
     }
 
@@ -348,7 +358,7 @@ private fun Ecran(act: Appareil) {
             camera.ouvrir(
                 i, st, if (mode == Mode.SCANNER) Usage.SCANNER else Usage.PHOTO,
                 pret = { portee.launch { prete = true; zoom = 1f } },
-                scan = { t -> portee.launch { if (code == null) code = t } },
+                scan = { t -> portee.launch { if (act.pourUnCode) act.rendreCode(t) else if (code == null) code = t } },
                 erreur = { e -> portee.launch { erreur = e } },
             )
         } else {
@@ -849,6 +859,16 @@ object Code {
                 )
             }
             u.startsWith("mailto:", true) -> Sens("Adresse e-mail", u.substring(7), Icones.MESSAGE, "Écrire" to Intent(Intent.ACTION_SENDTO, Uri.parse(u)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            // Le code d'un téléphone Sama, pour échanger de proche en proche : les Réglages le reconnaissent.
+            u.startsWith("samaos:proche?", true) -> {
+                val nom = u.substringAfter("n=", "").substringBefore('&').let { Uri.decode(it) }.ifBlank { "un proche" }
+                Sens(
+                    "Téléphone " + (if (nom.firstOrNull()?.lowercaseChar() in "aeiouyhéèêàâîôû".toList()) "d'$nom" else "de $nom"),
+                    "Proche en proche : échanger des applis sans data", Icones.PROXIMITE,
+                    "Reconnaître" to Intent(Intent.ACTION_VIEW, Uri.parse(u)).setPackage("africa.samaos.reglages").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    "Ne reconnaissez que le téléphone d'un proche qui est devant vous, jamais un code reçu en photo.",
+                )
+            }
             u.startsWith("geo:", true) -> Sens("Un lieu", u.substring(4), Icones.BOUSSOLE, "Voir sur la carte" to Intent(Intent.ACTION_VIEW, Uri.parse(u)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             u.startsWith("BEGIN:VCARD", true) -> {
                 val nom = Regex("\\nFN:(.*)").find(u)?.groupValues?.get(1)?.trim() ?: "Un contact"

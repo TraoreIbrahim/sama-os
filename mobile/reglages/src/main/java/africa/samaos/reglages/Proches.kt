@@ -249,6 +249,7 @@ fun PageProches(nav: Nav) {
         onDispose { d.arreter() }
     }
     var ajout by remember { mutableStateOf(false) }
+    var oublier by remember { mutableStateOf<ProcheReconnu?>(null) }
     var saisie by remember { mutableStateOf("") }
     val ouverte = remember(v) { MoteurProches.receptionOuverte(c) }
     PageReglages(titre = "Proche en proche", sousTitre = "Recevoir et donner sans data, entre proches", retour = nav.retour) {
@@ -288,6 +289,18 @@ fun PageProches(nav: Nav) {
                 v++
             }
             Explication("L'échange entre téléphones arrive bientôt : pour l'instant, on reçoit des points Sama.")
+            Ligne("Reconnaître un proche", detail = "Chacun scanne le code de l'autre, téléphones côte à côte", icone = Icones.QR) { nav.aller(Page.Reconnaitre()) }
+            val reconnus = remember(v) { MoteurReconnus.liste(c) }
+            reconnus.forEach { p ->
+                Ligne(p.nom, detail = "Proche depuis le ${MoteurReconnus.date(p.quand)}", icone = Icones.PERSONNE, fin = Fin.Valeur("Oublier")) { oublier = p }
+            }
+            oublier?.let { p ->
+                Confirmation("${p.nom} ne pourra plus vous voir ni vous envoyer d'applis. Pour recommencer, il faudra se scanner de nouveau.", "Oublier", annuler = { oublier = null }) {
+                    MoteurReconnus.oublier(c, p)
+                    oublier = null
+                    v++
+                }
+            }
             val depuis = remember(v) { MoteurProches.depuis(c) }
             Ligne("Depuis", detail = if (depuis == "points") "Seulement les points Sama" else "Vos contacts et les points Sama", icone = Icones.PERSONNE) {
                 MoteurProches.reglerDepuis(c, if (depuis == "points") "contacts" else "points")

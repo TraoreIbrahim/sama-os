@@ -47,11 +47,28 @@ Point de référence pour les essais : `outils/point-sama.py` (avec `--debit` po
 Fiches de test : `outils/signer-paquet.py`, avec la clé d'éditeur de test (`systeme/cles-proches`,
 émulateur seulement). Les vraies clés de Sama et de Sugu seront gardées dans un HSM, à deux personnes.
 
+## Se reconnaître entre proches (appairage par code QR)
+
+Deux téléphones ne se voient que s'ils se sont **reconnus l'un l'autre, en personne** : chacun scanne le code
+QR de l'autre (Réglages › Proche en proche › « Reconnaître un proche », ou l'Appareil photo).
+
+- **L'identité du téléphone** : une clé EC P-256 créée une fois dans la puce de sécurité (Android Keystore),
+  qui n'en sort jamais.
+- **Le code QR** : `samaos:proche?v=1&n=<prénom>&k=<clé publique X.509, base64url>`. Ni numéro, ni compte.
+- **Le secret partagé** : SHA-256 de l'accord ECDH entre la clé du téléphone et celle du proche. Les deux
+  téléphones calculent le même ; personne d'autre ne le peut, même en ayant photographié les deux codes.
+  C'est lui qui servira à se reconnaître au moment de l'échange, sans rien diffuser.
+- **Le code de vérification** : 8 chiffres, les mêmes sur les deux téléphones (SHA-256 des deux clés publiques,
+  dans l'ordre de leur écriture base64), qu'on compare à voix haute. S'ils diffèrent, quelqu'un a glissé un autre
+  code : on annule.
+- **Prudence** : un code reçu en photo ou par message ne se scanne jamais ; les écrans le disent.
+
 ## Pas encore fait
 
 - **Entre téléphones** (maquettes i6-envoyer-appli, i6-emetteur, i6-maj-voisin, i6-sugu-proches) : Wi-Fi Direct,
   le même protocole une fois le groupe formé. La réception s'ouvre 10 minutes à la demande de la personne ; seuls
-  les contacts enregistrés des deux côtés se voient, sans diffuser de nom. Reste à choisir comment deux téléphones
-  se reconnaissent sans qu'un inconnu qui connaît votre numéro puisse se faire passer pour un contact.
+  les proches reconnus des deux côtés se voient : le téléphone qui reçoit annonce un nombre au hasard et, pour
+  chacun de ses proches, une empreinte HMAC de ce nombre par leur secret partagé ; seul un proche reconnu y
+  retrouve la sienne. Aucun nom ni numéro ne circule.
 - **Mises à jour du système** : elles viendront avec Sama compilé (paquets OTA d'AOSP, mêmes vérifications).
 - **Le point Sama du bureau** : servir ce protocole depuis un ordinateur Sama (annonce mDNS comprise).

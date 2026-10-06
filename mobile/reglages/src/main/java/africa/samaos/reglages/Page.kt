@@ -139,6 +139,8 @@ sealed class Page(val android: String? = null) {
     data class PointSama(val nom: String, val hote: String, val port: Int) : Page(Settings.ACTION_SETTINGS)
     data class Reception(val sha: String) : Page(Settings.ACTION_SETTINGS)
     data class Refuse(val sha: String) : Page(Settings.ACTION_SETTINGS)
+    data class Reconnaitre(val vientDe: String? = null) : Page(Settings.ACTION_SETTINGS)
+    data class ConfirmerProche(val texte: String) : Page(Settings.ACTION_SETTINGS)
     data class DelaiInstallation(val paquet: String) : Page("android.settings.MANAGE_UNKNOWN_APP_SOURCES") {
         override val intentAndroid get() = Intent(android, Uri.fromParts("package", paquet, null))
     }
@@ -147,7 +149,8 @@ sealed class Page(val android: String? = null) {
     val faite: Boolean
         get() = this in FAITES || this is WifiDetail || this is WifiConnexion || this is SimReglages || this is AppareilBluetooth ||
             this is AppliInfos || this is AppliAutorisations || this is AccesSpecial || this is NotifsAppli || this is AutorisationGroupe || this is MinuteurAppli ||
-            this is DelaiInstallation || this is PointSama || this is Reception || this is Refuse
+            this is DelaiInstallation || this is PointSama || this is Reception || this is Refuse ||
+            this is Reconnaitre || this is ConfirmerProche
 
     companion object {
         private val FAITES: Set<Page> by lazy {
@@ -169,6 +172,10 @@ sealed class Page(val android: String? = null) {
 
         /** La page qu'une intention demande ; null si les Paramètres d'Android doivent s'en charger. */
         fun depuis(intent: Intent?): Page? {
+            // Le code QR d'un téléphone Sama, scanné avec l'Appareil photo : le reconnaître (Proche en proche).
+            if (intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == "samaos" && intent.dataString?.startsWith("samaos:proche", true) == true) {
+                return ConfirmerProche(intent.dataString!!)
+            }
             val page = when (intent?.action) {
                 null, Intent.ACTION_MAIN, Settings.ACTION_SETTINGS -> Accueil
                 Settings.ACTION_WIFI_SETTINGS -> Wifi
@@ -329,6 +336,8 @@ fun Afficher(page: Page, nav: Nav) {
         is Page.PointSama -> PagePointSama(page.nom, page.hote, page.port, nav)
         is Page.Reception -> PageReception(page.sha, nav)
         is Page.Refuse -> PageRefuse(page.sha, nav)
+        is Page.Reconnaitre -> PageReconnaitre(page.vientDe, nav)
+        is Page.ConfirmerProche -> PageConfirmerProche(page.texte, nav)
         else -> {}
     }
 }

@@ -260,7 +260,11 @@ mobile/outils/point-sama.py --nom "Lycée du quartier" --debit 200
 ```
 
 puis Réglages › Proche en proche › « Ajouter un point par son adresse » › `10.0.2.2:8765`.
-L'échange entre téléphones (Wi-Fi Direct, entre contacts) et le point Sama du bureau restent à faire.
+**Se reconnaître entre proches** : Réglages › Proche en proche › « Reconnaître un proche » montre le code QR du
+téléphone (clé créée dans la puce de sécurité, ni numéro ni compte) ; on scanne celui du proche, on compare à voix
+haute le code de vérification à 8 chiffres, puis il fait de même. Un code « proche » scanné avec l'Appareil photo
+propose aussi « Reconnaître ». L'échange entre téléphones (Wi-Fi Direct, entre proches reconnus) et le point
+Sama du bureau restent à faire.
 
 ## Contenu
 

@@ -27,6 +27,11 @@
                 <action android:name="android.media.action.IMAGE_CAPTURE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- Une appli de Sama demande de lire un code QR (les Réglages, pour reconnaître un proche). -->
+            <intent-filter>
+                <action android:name="africa.samaos.action.SCANNER_QR" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>
