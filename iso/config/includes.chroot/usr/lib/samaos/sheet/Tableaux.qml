@@ -104,6 +104,28 @@ Item {
             try { suite(JSON.parse(v)) } catch (e) { }
         })
     }
+    // ——— Le panneau du tableau ———
+    function styler(t, style) {
+        appeler("Styler", [t.nom, style], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+    }
+    // calcul : somme, moyenne, nombre, min, max, aucun
+    function totaliser(t, colonne, calcul, suite) {
+        appeler("Totaliser", [t.nom, colonne, calcul], function (ok, v) { if (verifier(ok, v)) { rafraichir(); if (suite) suite() } })
+    }
+    // genre : texte, montant, nombre, date, pourcent
+    function formaterColonne(t, colonne, genre, suite) {
+        appeler("FormaterColonne", [t.nom, colonne, genre], function (ok, v) { if (verifier(ok, v) && suite) suite() })
+    }
+    function regler(t, cle, valeur) {
+        appeler("Regler", [t.nom, cle, valeur], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+    }
+    function convertir(t) {
+        appeler("Convertir", [t.nom], function (ok, v) {
+            if (!verifier(ok, v)) return
+            message("« " + t.nom.replace(/_/g, " ") + " » est redevenu des cases ordinaires (Ctrl+Z pour revenir)")
+            rafraichir()
+        })
+    }
     // gardees : valeurs à garder ; null : plus de filtre sur cette colonne
     function filtrer(t, colonne, gardees) {
         appeler("Filtrer", [t.nom, String(colonne), gardees ? gardees.join("\n") : "", gardees ? "0" : "1"],

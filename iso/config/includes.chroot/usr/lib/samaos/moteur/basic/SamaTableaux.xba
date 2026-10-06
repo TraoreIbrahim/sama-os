@@ -85,7 +85,8 @@ Function Decrire() As String
 			If a.StartRow > 0 Then bLibre = EstVide(oFeuille.getCellRangeByPosition(a.StartColumn, a.StartRow - 1, a.EndColumn, a.StartRow - 1))
 			If Len(s) > 1 Then s = s & ","
 			s = s & "{""nom"":" & Texte(oPlage.Name) & ",""feuille"":" & a.Sheet & ",""c1"":" & a.StartColumn & ",""l1"":" & a.StartRow _
-			      & ",""libre"":" & IIf(bLibre, "true", "false") _
+			      & ",""libre"":" & IIf(bLibre, "true", "false") & ",""style"":" & Texte(StyleDe(oFeuille, a)) _
+			      & ",""ocre"":" & IIf(Reglage("ocre", oPlage.Name) = "non", "false", "true") _
 			      & ",""c2"":" & a.EndColumn & ",""l2"":" & a.EndRow & ",""totaux"":" & IIf(oPlage.TotalsRow, "true", "false") _
 			      & ",""colonnes"":[" & sCols & "],""filtres"":[" & sFiltres & "]}"
 		End If
@@ -317,6 +318,10 @@ Function Renommer(sAncien As String, sNouveau As String) As String
 		Exit Function
 	End If
 	oDoc.DatabaseRanges.getByName(sAncien).Name = t
+	If Reglage("ocre", sAncien) <> "" Then
+		Regler(t, "ocre", Reglage("ocre", sAncien))
+		ThisComponent.DocumentProperties.UserDefinedProperties.removeProperty("Sama.ocre." & sAncien)
+	End If
 	Renommer = t
 	Exit Function
 Erreur:
@@ -359,7 +364,6 @@ End Function
 Function Lignes(sNom As String) As String
 	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, oCase As Object
 	Dim l As Long, l2 As Long, c As Long, s As String, sCols As String, sV As String, sN As String, bVide As Boolean
-	Dim bCalcul As Boolean, bNombre As Boolean, sFormule As String, sGenre As String, nType As Long
 	On Error GoTo Erreur
 	oDoc = ThisComponent
 	oPlage = oDoc.DatabaseRanges.getByName(sNom)
@@ -367,38 +371,7 @@ Function Lignes(sNom As String) As String
 	oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
 	l2 = a.EndRow
 	If oPlage.TotalsRow Then l2 = l2 - 1
-	sCols = ""
-	For c = a.StartColumn To a.EndColumn
-		bCalcul = False
-		sFormule = ""
-		If l2 > a.StartRow Then
-			oCase = oFeuille.getCellByPosition(c, a.StartRow + 1)
-			If oCase.Type = com.sun.star.table.CellContentType.FORMULA Then
-				bCalcul = True
-				sFormule = oCase.FormulaLocal
-			End If
-		End If
-		bNombre = ColonneNumerique(oFeuille, c, a.StartRow + 1, l2)
-		' (montant, date, heure, pourcentage, texte : le format de la première case de la colonne)
-		sGenre = ""
-		If l2 > a.StartRow Then
-			nType = oDoc.NumberFormats.getByKey(oFeuille.getCellByPosition(c, a.StartRow + 1).NumberFormat).Type
-			If (nType And com.sun.star.util.NumberFormat.DATE) <> 0 Then
-				sGenre = "date"
-			ElseIf (nType And com.sun.star.util.NumberFormat.TIME) <> 0 Then
-				sGenre = "heure"
-			ElseIf (nType And com.sun.star.util.NumberFormat.CURRENCY) <> 0 Then
-				sGenre = "montant"
-			ElseIf (nType And com.sun.star.util.NumberFormat.PERCENT) <> 0 Then
-				sGenre = "pourcent"
-			ElseIf (nType And com.sun.star.util.NumberFormat.TEXT) <> 0 Then
-				sGenre = "texte"
-			End If
-		End If
-		If sCols <> "" Then sCols = sCols & ","
-		sCols = sCols & "{""nom"":" & Texte(oFeuille.getCellByPosition(c, a.StartRow).String) & ",""calcul"":" & IIf(bCalcul, "true", "false") _
-		        & ",""formule"":" & Texte(sFormule) & ",""nombre"":" & IIf(bNombre, "true", "false") & ",""genre"":" & Texte(sGenre) & "}"
-	Next c
+	sCols = ListeColonnes(oDoc, oPlage, a, oFeuille, l2)
 	s = ""
 	For l = a.StartRow + 1 To l2
 		sV = ""
@@ -427,6 +400,50 @@ Function Lignes(sNom As String) As String
 	Exit Function
 Erreur:
 	Lignes = "!" & Error$
+End Function
+
+' Les colonnes d'un tableau, en JSON : nom, colonne calculée et sa formule, nombres, genre (d'après le format de sa
+' première case : montant, date, heure, pourcent, texte), calcul de la ligne des totaux
+Function ListeColonnes(oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, l2 As Long) As String
+	Dim c As Long, oCase As Object, sCols As String, bCalcul As Boolean, bNombre As Boolean, sFormule As String
+	Dim sGenre As String, nType As Long, sTotal As String
+	sCols = ""
+	For c = a.StartColumn To a.EndColumn
+		bCalcul = False
+		sFormule = ""
+		If l2 > a.StartRow Then
+			oCase = oFeuille.getCellByPosition(c, a.StartRow + 1)
+			If oCase.Type = com.sun.star.table.CellContentType.FORMULA Then
+				bCalcul = True
+				sFormule = oCase.FormulaLocal
+			End If
+		End If
+		bNombre = ColonneNumerique(oFeuille, c, a.StartRow + 1, l2)
+		' (montant, date, heure, pourcentage, texte : le format de la première case de la colonne)
+		sGenre = ""
+		If l2 > a.StartRow Then
+			nType = oDoc.NumberFormats.getByKey(oFeuille.getCellByPosition(c, a.StartRow + 1).NumberFormat).Type
+			If (nType And com.sun.star.util.NumberFormat.DATE) <> 0 Then
+				sGenre = "date"
+			ElseIf (nType And com.sun.star.util.NumberFormat.TIME) <> 0 Then
+				sGenre = "heure"
+			ElseIf (nType And com.sun.star.util.NumberFormat.CURRENCY) <> 0 Then
+				sGenre = "montant"
+			ElseIf (nType And com.sun.star.util.NumberFormat.PERCENT) <> 0 Then
+				sGenre = "pourcent"
+			ElseIf (nType And com.sun.star.util.NumberFormat.TEXT) <> 0 Then
+				sGenre = "texte"
+			End If
+		End If
+		' (le calcul de sa case dans la ligne des totaux)
+		sTotal = ""
+		If oPlage.TotalsRow Then sTotal = CalculDe(oFeuille.getCellByPosition(c, a.EndRow))
+		If sCols <> "" Then sCols = sCols & ","
+		sCols = sCols & "{""nom"":" & Texte(oFeuille.getCellByPosition(c, a.StartRow).String) & ",""calcul"":" & IIf(bCalcul, "true", "false") _
+		        & ",""formule"":" & Texte(sFormule) & ",""nombre"":" & IIf(bNombre, "true", "false") & ",""genre"":" & Texte(sGenre) _
+		        & ",""total"":" & Texte(sTotal) & "}"
+	Next c
+	ListeColonnes = sCols
 End Function
 
 ' Valeurs d'une colonne (sans doublons, telles qu'affichées) et celles que le filtre garde (null : pas de filtre)
@@ -527,5 +544,504 @@ Function Filtrer(sNom As String, sCol As String, sGardees As String, sTout As St
 	Exit Function
 Erreur:
 	Filtrer = "!" & Error$
+End Function
+
+' ——— Le panneau du tableau ———
+
+' Réglages de Sama pour un tableau, gardés dans les propriétés du classeur (« Sama.ocre.Cotisations ») : le .xlsx les
+' enregistre, Excel les ignore
+Function Reglage(sCle As String, sNom As String) As String
+	Dim oProps As Object, n As String
+	oProps = ThisComponent.DocumentProperties.UserDefinedProperties
+	n = "Sama." & sCle & "." & sNom
+	Reglage = ""
+	If oProps.getPropertySetInfo().hasPropertyByName(n) Then Reglage = CStr(oProps.getPropertyValue(n))
+End Function
+
+Function Regler(sNom As String, sCle As String, sValeur As String) As String
+	Dim oProps As Object, n As String
+	On Error GoTo Erreur
+	oProps = ThisComponent.DocumentProperties.UserDefinedProperties
+	n = "Sama." & sCle & "." & sNom
+	If oProps.getPropertySetInfo().hasPropertyByName(n) Then
+		oProps.setPropertyValue(n, sValeur)
+	Else
+		oProps.addProperty(n, com.sun.star.beans.PropertyAttribute.REMOVABLE, sValeur)
+	End If
+	ThisComponent.setModified(True)
+	Regler = ""
+	Exit Function
+Erreur:
+	Regler = "!" & Error$
+End Function
+
+' Le style d'un tableau, d'après le fond de son premier titre : lagune, sable, sobre (ou autre, mis à la main)
+Function StyleDe(oFeuille As Object, a As Object) As String
+	Dim n As Long, oC As Object
+	oC = oFeuille.getCellByPosition(a.StartColumn, a.StartRow)
+	n = oC.CellBackColor
+	If oC.IsCellBackgroundTransparent Then
+		StyleDe = "sobre"
+	ElseIf n = FondTitre() Then
+		StyleDe = "lagune"
+	ElseIf n = RGB(239, 230, 217) Then
+		StyleDe = "sable"
+	ElseIf n = -1 Or n = RGB(255, 255, 255) Then
+		StyleDe = "sobre"
+	Else
+		StyleDe = "autre"
+	End If
+End Function
+
+' Fond, encre et trait des titres et des totaux pour chaque style (-1 : pas de fond)
+Function CouleursStyle(sStyle As String) As Variant
+	Select Case sStyle
+	Case "sable"
+		CouleursStyle = Array(RGB(239, 230, 217), RGB(31, 28, 24), RGB(138, 126, 112))
+	Case "sobre"
+		CouleursStyle = Array(-1, RGB(31, 28, 24), RGB(31, 28, 24))
+	Case Else
+		CouleursStyle = Array(FondTitre(), Encre(), Lagune())
+	End Select
+End Function
+
+Sub Peindre(oZone As Object, aC As Variant)
+	If aC(0) = -1 Then
+		oZone.IsCellBackgroundTransparent = True
+	Else
+		oZone.CellBackColor = aC(0)
+	End If
+	oZone.CharColor = aC(1)
+End Sub
+
+Function Styler(sNom As String, sStyle As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, oZone As Object, aC As Variant
+	Dim oTrait As New com.sun.star.table.BorderLine2, bAnnuler As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+	aC = CouleursStyle(sStyle)
+	oDoc.UndoManager.enterUndoContext("Style du tableau")
+	bAnnuler = True
+	oTrait.Color = aC(2)
+	oTrait.OuterLineWidth = 40
+	oZone = oFeuille.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.StartRow)
+	Peindre(oZone, aC)
+	oZone.BottomBorder = oTrait
+	If oPlage.TotalsRow Then
+		oZone = oFeuille.getCellRangeByPosition(a.StartColumn, a.EndRow, a.EndColumn, a.EndRow)
+		Peindre(oZone, aC)
+		oZone.TopBorder = oTrait
+	End If
+	oDoc.UndoManager.leaveUndoContext()
+	Styler = ""
+	Exit Function
+Erreur:
+	If bAnnuler Then oDoc.UndoManager.leaveUndoContext()
+	Styler = "!" & Error$
+End Function
+
+' Le calcul d'une case de la ligne des totaux : somme, moyenne, nombre, min, max, aucun, texte (« Total »), autre
+Function CalculDe(oC As Object) As String
+	Dim f As String, i As Long
+	If oC.Type = com.sun.star.table.CellContentType.EMPTY Then
+		CalculDe = "aucun"
+	ElseIf oC.Type = com.sun.star.table.CellContentType.FORMULA Then
+		f = oC.Formula
+		i = InStr(1, f, "SUBTOTAL(", 1)
+		CalculDe = "autre"
+		If i > 0 Then
+			Select Case Val(Mid(f, i + 9))
+			Case 9, 109
+				CalculDe = "somme"
+			Case 1, 101
+				CalculDe = "moyenne"
+			Case 3, 103
+				CalculDe = "nombre"
+			Case 5, 105
+				CalculDe = "min"
+			Case 4, 104
+				CalculDe = "max"
+			End Select
+		End If
+	Else
+		CalculDe = "texte"
+	End If
+End Function
+
+' Numéro de colonne (dans la feuille) d'après son titre, ou -1
+Function ColonneDe(oFeuille As Object, a As Object, sCol As String) As Long
+	Dim c As Long
+	ColonneDe = -1
+	For c = a.StartColumn To a.EndColumn
+		If LCase(oFeuille.getCellByPosition(c, a.StartRow).String) = LCase(sCol) Then
+			ColonneDe = c
+			Exit Function
+		End If
+	Next c
+End Function
+
+' Les colonnes d'un tableau (sans ses lignes) : pour le panneau
+Function Colonnes(sNom As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, l2 As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	Colonnes = "{""colonnes"":[" & ListeColonnes(oDoc, oPlage, a, oFeuille, l2) & "]}"
+	Exit Function
+Erreur:
+	Colonnes = "!" & Error$
+End Function
+
+' Le calcul d'une colonne dans la ligne des totaux (la ligne est ajoutée s'il le faut) ; SOUS.TOTAL : les lignes
+' cachées par un filtre ne comptent pas
+Function Totaliser(sNom As String, sCol As String, sCalcul As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, oC As Object, c As Long, n As Integer, bAnnuler As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	oDoc.UndoManager.enterUndoContext("Total de la colonne")
+	bAnnuler = True
+	If Not oPlage.TotalsRow Then Totaux(sNom, "1")
+	a = oPlage.DataArea
+	oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+	c = ColonneDe(oFeuille, a, sCol)
+	If c < 0 Then Error 1
+	oC = oFeuille.getCellByPosition(c, a.EndRow)
+	Select Case sCalcul
+	Case "somme"
+		n = 109
+	Case "moyenne"
+		n = 101
+	Case "nombre"
+		n = 103
+	Case "min"
+		n = 105
+	Case "max"
+		n = 104
+	Case Else
+		n = 0
+	End Select
+	If n = 0 Then
+		oC.clearContents(TOUT_CONTENU)
+	Else
+		oC.FormulaLocal = "=SOUS.TOTAL(" & n & ";" & sNom & "[" & NomColonne(sCol) & "])"
+		If n = 103 Then
+			oC.NumberFormat = 0
+		Else
+			oC.NumberFormat = oFeuille.getCellByPosition(c, a.StartRow + 1).NumberFormat
+		End If
+	End If
+	oDoc.UndoManager.leaveUndoContext()
+	Totaliser = ""
+	Exit Function
+Erreur:
+	If bAnnuler Then oDoc.UndoManager.leaveUndoContext()
+	Totaliser = "!" & Error$
+End Function
+
+' Le format des données d'une colonne : texte, montant, nombre, date, pourcent (et celui de son total)
+Function FormaterColonne(sNom As String, sCol As String, sGenre As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, oZone As Object, c As Long, l2 As Long
+	Dim n As Long, sTotal As String, bAnnuler As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+	c = ColonneDe(oFeuille, a, sCol)
+	If c < 0 Then Error 1
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	If l2 <= a.StartRow Then Error 1
+	Select Case sGenre
+	Case "texte"
+		n = FormatType(com.sun.star.util.NumberFormat.TEXT)
+	Case "montant"
+		n = FormatMontant(False)
+	Case "date"
+		n = FormatCode("D MMM")
+	Case "pourcent"
+		n = FormatType(com.sun.star.util.NumberFormat.PERCENT)
+	Case Else
+		n = FormatIndex(com.sun.star.i18n.NumberFormatIndex.NUMBER_STANDARD)
+	End Select
+	oDoc.UndoManager.enterUndoContext("Format de la colonne")
+	bAnnuler = True
+	oZone = oFeuille.getCellRangeByPosition(c, a.StartRow + 1, c, l2)
+	oZone.NumberFormat = n
+	' (les dates : à gauche, en gris ; les autres reprennent l'alignement et l'encre ordinaires)
+	If sGenre = "date" Then
+		oZone.HoriJustify = com.sun.star.table.CellHoriJustify.LEFT
+		oZone.CharColor = RGB(102, 94, 84)
+	Else
+		oZone.HoriJustify = com.sun.star.table.CellHoriJustify.STANDARD
+		If oZone.CharColor = RGB(102, 94, 84) Then oZone.CharColor = -1
+	End If
+	If oPlage.TotalsRow Then
+		sTotal = CalculDe(oFeuille.getCellByPosition(c, a.EndRow))
+		If sTotal = "somme" Or sTotal = "moyenne" Or sTotal = "min" Or sTotal = "max" Then oFeuille.getCellByPosition(c, a.EndRow).NumberFormat = n
+	End If
+	oDoc.UndoManager.leaveUndoContext()
+	FormaterColonne = ""
+	Exit Function
+Erreur:
+	If bAnnuler Then oDoc.UndoManager.leaveUndoContext()
+	FormaterColonne = "!" & Error$
+End Function
+
+' ——— Convertir en cases ordinaires (comme « Convertir en plage » d'Excel) ———
+' La mise en forme reste, les filtres partent ; les formules qui nomment le tableau (Cotisations[Part],
+' Cotisations[[#This Row];[Part]]) prennent d'abord des adresses ordinaires ($B$5:$B$14, B5) : sans cela, elles
+' tomberaient en erreur.
+
+Function Lettres(c As Long) As String
+	Dim s As String, n As Long
+	n = c + 1
+	s = ""
+	Do While n > 0
+		s = Chr(65 + ((n - 1) Mod 26)) & s
+		n = (n - 1) \ 26
+	Loop
+	Lettres = s
+End Function
+
+Function CaractereDeNom(ch As String) As Boolean
+	CaractereDeNom = False
+	If ch = "" Then Exit Function
+	CaractereDeNom = (InStr(PERMIS, ch) > 0 Or Asc(ch) > 191 Or ch = "'" Or ch = "$")
+End Function
+
+Function Desechapper(s As String) As String
+	Dim i As Long, r As String, ch As String
+	r = ""
+	i = 1
+	Do While i <= Len(s)
+		ch = Mid(s, i, 1)
+		If ch = "'" Then
+			i = i + 1
+			ch = Mid(s, i, 1)
+		End If
+		r = r & ch
+		i = i + 1
+	Loop
+	Desechapper = r
+End Function
+
+Sub Etendre(r1 As Long, r2 As Long, x1 As Long, x2 As Long)
+	If r1 < 0 Or x1 < r1 Then r1 = x1
+	If r2 < 0 Or x2 > r2 Then r2 = x2
+End Sub
+
+' L'adresse ordinaire de ce qu'il y a entre les crochets d'une référence de tableau (forme anglaise de l'API), vue de
+' la case oC ; « ! » si Sama ne sait pas la lire
+Function AdresseDe(sDedans As String, oFeuille As Object, a As Object, bTotaux As Boolean, oC As Object) As String
+	Dim aParts() As String, nParts As Long, i As Long, ch As String, nProf As Long, sCourant As String, p As String
+	Dim r1 As Long, r2 As Long, c1 As Long, c2 As Long, k As Long, lDonnees As Long, bRelatif As Boolean, s As String
+	lDonnees = a.EndRow
+	If bTotaux Then lDonnees = a.EndRow - 1
+	c1 = a.StartColumn
+	c2 = a.EndColumn
+	r1 = -1
+	r2 = -1
+	bRelatif = False
+	nParts = 0
+	sCourant = ""
+	nProf = 0
+	i = 1
+	Do While i <= Len(sDedans)
+		ch = Mid(sDedans, i, 1)
+		If ch = "'" Then
+			sCourant = sCourant & ch & Mid(sDedans, i + 1, 1)
+			i = i + 2
+		Else
+			If ch = "[" Then nProf = nProf + 1
+			If ch = "]" Then nProf = nProf - 1
+			If (ch = ";" Or ch = ",") And nProf = 0 Then
+				ReDim Preserve aParts(nParts)
+				aParts(nParts) = Trim(sCourant)
+				nParts = nParts + 1
+				sCourant = ""
+			Else
+				sCourant = sCourant & ch
+			End If
+			i = i + 1
+		End If
+	Loop
+	ReDim Preserve aParts(nParts)
+	aParts(nParts) = Trim(sCourant)
+	nParts = nParts + 1
+	For i = 0 To nParts - 1
+		p = aParts(i)
+		If p <> "" Then
+			If Left(p, 1) <> "[" Then p = "[" & p & "]"
+			If Left(p, 2) = "[#" Then
+				Select Case LCase(Mid(p, 3, Len(p) - 3))
+				Case "this row"
+					Etendre(r1, r2, oC.CellAddress.Row, oC.CellAddress.Row)
+					bRelatif = True
+				Case "all"
+					Etendre(r1, r2, a.StartRow, a.EndRow)
+				Case "headers"
+					Etendre(r1, r2, a.StartRow, a.StartRow)
+				Case "data"
+					Etendre(r1, r2, a.StartRow + 1, lDonnees)
+				Case "totals"
+					If Not bTotaux Then
+						AdresseDe = "!"
+						Exit Function
+					End If
+					Etendre(r1, r2, a.EndRow, a.EndRow)
+				Case Else
+					AdresseDe = "!"
+					Exit Function
+				End Select
+			Else
+				k = InStr(p, "]:[")
+				If k > 0 Then
+					c1 = ColonneDe(oFeuille, a, Desechapper(Mid(p, 2, k - 2)))
+					c2 = ColonneDe(oFeuille, a, Desechapper(Mid(p, k + 3, Len(p) - k - 3)))
+				Else
+					c1 = ColonneDe(oFeuille, a, Desechapper(Mid(p, 2, Len(p) - 2)))
+					c2 = c1
+				End If
+				If c1 < 0 Or c2 < 0 Then
+					AdresseDe = "!"
+					Exit Function
+				End If
+			End If
+		End If
+	Next i
+	If r1 < 0 Then
+		r1 = a.StartRow + 1
+		r2 = lDonnees
+	End If
+	If bRelatif Then
+		s = Lettres(c1) & (r1 + 1)
+		If c2 <> c1 Or r2 <> r1 Then s = s & ":" & Lettres(c2) & (r2 + 1)
+	Else
+		s = "$" & Lettres(c1) & "$" & (r1 + 1)
+		If c2 <> c1 Or r2 <> r1 Then s = s & ":$" & Lettres(c2) & "$" & (r2 + 1)
+	End If
+	If oC.CellAddress.Sheet <> a.Sheet Then s = "$'" & Replace(oFeuille.Name, "'", "''") & "'." & s
+	AdresseDe = s
+End Function
+
+' Une formule sans références au tableau sNom, ou « ! »
+Function SansReferences(sF As String, sNom As String, oFeuille As Object, a As Object, bTotaux As Boolean, oC As Object) As String
+	Dim s As String, i As Long, j As Long, k As Long, nProf As Long, nGuillemets As Long, ch As String, sAvant As String
+	Dim sApres As String, sRef As String, bPris As Boolean
+	s = sF
+	i = InStr(1, s, sNom, 1)
+	Do While i > 0
+		bPris = False
+		nGuillemets = 0
+		For k = 1 To i - 1
+			If Mid(s, k, 1) = """" Then nGuillemets = nGuillemets + 1
+		Next k
+		sAvant = ""
+		If i > 1 Then sAvant = Mid(s, i - 1, 1)
+		sApres = Mid(s, i + Len(sNom), 1)
+		If nGuillemets Mod 2 = 0 And Not CaractereDeNom(sAvant) Then
+			If sApres = "[" Then
+				' (le crochet fermant qui va avec, en sautant les caractères échappés par ')
+				nProf = 0
+				j = i + Len(sNom)
+				Do While j <= Len(s)
+					ch = Mid(s, j, 1)
+					If ch = "'" Then
+						j = j + 1
+					ElseIf ch = "[" Then
+						nProf = nProf + 1
+					ElseIf ch = "]" Then
+						nProf = nProf - 1
+						If nProf = 0 Then Exit Do
+					End If
+					j = j + 1
+				Loop
+				If nProf <> 0 Then
+					SansReferences = "!"
+					Exit Function
+				End If
+				sRef = AdresseDe(Mid(s, i + Len(sNom) + 1, j - i - Len(sNom) - 1), oFeuille, a, bTotaux, oC)
+				If sRef = "!" Then
+					SansReferences = "!"
+					Exit Function
+				End If
+				s = Left(s, i - 1) & sRef & Mid(s, j + 1)
+				bPris = True
+			ElseIf Not CaractereDeNom(sApres) Then
+				' (le nom seul : les données du tableau)
+				sRef = AdresseDe("", oFeuille, a, bTotaux, oC)
+				s = Left(s, i - 1) & sRef & Mid(s, i + Len(sNom))
+				bPris = True
+			End If
+		End If
+		If bPris Then
+			i = InStr(i + Len(sRef), s, sNom, 1)
+		Else
+			i = InStr(i + 1, s, sNom, 1)
+		End If
+	Loop
+	SansReferences = s
+End Function
+
+Function Convertir(sNom As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, oEnum As Object, oC As Object
+	Dim i As Long, n As Long, f As String, g As String, bTotaux As Boolean, bAnnuler As Boolean
+	Dim aFeuilles() As Long, aColonnes() As Long, aLignes() As Long, aFormules() As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+	bTotaux = oPlage.TotalsRow
+	' 1. Les nouvelles formules, sans rien changer encore
+	n = 0
+	For i = 0 To oDoc.Sheets.Count - 1
+		oEnum = oDoc.Sheets.getByIndex(i).queryContentCells(com.sun.star.sheet.CellFlags.FORMULA).Cells.createEnumeration()
+		Do While oEnum.hasMoreElements()
+			oC = oEnum.nextElement()
+			f = oC.Formula
+			If InStr(1, f, sNom, 1) > 0 Then
+				g = SansReferences(f, sNom, oFeuille, a, bTotaux, oC)
+				If g = "!" Then
+					Convertir = "!La formule de " & Mid(oC.AbsoluteName, InStr(oC.AbsoluteName, ".") + 1) & " nomme ce tableau d'une façon que Sama ne sait pas encore convertir."
+					Exit Function
+				End If
+				If g <> f Then
+					ReDim Preserve aFeuilles(n)
+					ReDim Preserve aColonnes(n)
+					ReDim Preserve aLignes(n)
+					ReDim Preserve aFormules(n)
+					aFeuilles(n) = oC.CellAddress.Sheet
+					aColonnes(n) = oC.CellAddress.Column
+					aLignes(n) = oC.CellAddress.Row
+					aFormules(n) = g
+					n = n + 1
+				End If
+			End If
+		Loop
+	Next i
+	' 2. Les formules, puis le tableau
+	oDoc.UndoManager.enterUndoContext("Convertir en cases ordinaires")
+	bAnnuler = True
+	For i = 0 To n - 1
+		oDoc.Sheets.getByIndex(aFeuilles(i)).getCellByPosition(aColonnes(i), aLignes(i)).Formula = aFormules(i)
+	Next i
+	oPlage.AutoFilter = False
+	oDoc.DatabaseRanges.removeByName(sNom)
+	oDoc.UndoManager.leaveUndoContext()
+	Convertir = ""
+	Exit Function
+Erreur:
+	If bAnnuler Then oDoc.UndoManager.leaveUndoContext()
+	Convertir = "!" & Error$
 End Function
 ]]></script:module>

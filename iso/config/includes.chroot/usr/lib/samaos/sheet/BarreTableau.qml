@@ -10,8 +10,8 @@ Rectangle {
     readonly property var tableaux: fenetre.tableaux
     readonly property var t: fenetre.tableauVu
     readonly property bool enFiches: fenetre.vue === "fiches"
-    // (dans la grille, l'onglet posé au-dessus du tableau la remplace, quand il y a la place)
-    readonly property bool utile: t !== null && (enFiches || !t.libre)
+    // (dans la grille, l'onglet posé au-dessus du tableau et son panneau la remplacent)
+    readonly property bool utile: t !== null && (enFiches || (!t.libre && !fenetre.panneauOuvert))
     implicitHeight: utile ? 38 : 0
     visible: utile
     color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, Couleurs.sombre ? 0.16 : 0.07)

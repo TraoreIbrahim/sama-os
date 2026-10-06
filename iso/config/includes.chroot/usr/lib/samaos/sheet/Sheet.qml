@@ -39,6 +39,8 @@ Window {
     property var modeleEnAttente: null
     // Vue du tableau : « grille » ou « fiches » (le tableau vu en fiches est retrouvé par son nom)
     property string vue: "grille"
+    // Le panneau du tableau (fermé par son ×, rouvert par l'onglet du tableau)
+    property bool panneauOuvert: true
     property string nomFiches: ""
     readonly property var tableauFiches: {
         for (var i = 0; i < tableaux.liste.length; i++) if (tableaux.liste[i].nom === nomFiches) return tableaux.liste[i]
@@ -339,11 +341,24 @@ Window {
             Keys.onEscapePressed: fenetre.voirGrille()
         }
 
-        Grille {
-            id: grille
+        // La grille, et le panneau du tableau à sa droite quand la case courante est dans un tableau
+        RowLayout {
             visible: fenetre.vue === "grille"
             Layout.fillWidth: true
             Layout.fillHeight: true
+            spacing: 0
+            Grille {
+                id: grille
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+            PanneauTableau {
+                id: panneauTableau
+                visible: fenetre.panneauOuvert && fenetre.tableaux.courant !== null
+                Layout.preferredWidth: 300
+                Layout.fillHeight: true
+                onFermer: { fenetre.panneauOuvert = false; fenetre.doc.forceActiveFocus() }
+            }
         }
 
         // ——— Feuilles ———

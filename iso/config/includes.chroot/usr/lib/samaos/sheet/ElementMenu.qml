@@ -11,6 +11,9 @@ QQC2.MenuItem {
     readonly property var commande: cle ? fenetre.actions.trouver(cle) : null
     readonly property string detail: cle ? (fenetre.actions.details[cle] || "") : ""
     readonly property string raccourci: commande ? commande.raccourci : ""
+    property string picto: cle ? (fenetre.actions.pictos[cle] || "") : ""
+    // (le choix en cours, dans une liste de choix)
+    property bool coche: false
     text: commande ? commande.nom : subMenu ? subMenu.title : ""
     enabled: !commande || !commande.actif || commande.actif()
     implicitHeight: detail ? 46 : 36
@@ -26,6 +29,7 @@ QQC2.MenuItem {
         spacing: 11
         opacity: element.enabled ? 1 : 0.38
         Rectangle {
+            visible: element.picto !== ""
             Layout.preferredWidth: 28
             Layout.preferredHeight: 28
             radius: 8
@@ -34,12 +38,13 @@ QQC2.MenuItem {
                 anchors.centerIn: parent
                 width: 16
                 height: 16
-                trace: element.cle ? (fenetre.actions.pictos[element.cle] || "") : ""
+                trace: element.picto
                 encre: element.highlighted ? fenetre.accentEncre : Couleurs.texte2
             }
         }
         ColumnLayout {
             Layout.fillWidth: true
+            Layout.leftMargin: element.picto === "" ? 6 : 0
             spacing: 1
             Text {
                 Layout.fillWidth: true
@@ -67,6 +72,14 @@ QQC2.MenuItem {
             border.width: 0.5
             border.color: Couleurs.bord
             Text { id: touche; anchors.centerIn: parent; text: element.raccourci; font.pixelSize: 11; color: Couleurs.texte2 }
+        }
+        Picto {
+            visible: element.coche
+            width: 15
+            height: 15
+            trace: "M5 12.5l4.5 4.5L19 7.5"
+            encre: fenetre.accentEncre
+            trait: 2.2
         }
         Picto {
             visible: element.subMenu !== null

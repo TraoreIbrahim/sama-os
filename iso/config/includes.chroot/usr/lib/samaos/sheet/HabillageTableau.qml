@@ -17,10 +17,16 @@ Item {
     readonly property var tableaux: fenetre.tableaux
     anchors.fill: parent
 
-    // ——— Couleurs (maquette) ———
-    readonly property color fondTitre: Couleurs.sombre ? "#2B3A42" : "#E4ECEF"
-    readonly property color fondTitreActif: Couleurs.sombre ? "#33505C" : "#D2DFE4"
-    readonly property color bande: Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.045)
+    // ——— Couleurs du style du tableau (choisi dans son panneau) : lagune, sable, sobre ———
+    readonly property string style: t.style === "sable" || t.style === "sobre" ? t.style : "lagune"
+    readonly property color fondTitre: style === "sable" ? "#EFE6D9" : style === "sobre" ? (Couleurs.sombre ? "#1E2230" : "#FFFFFF")
+                                       : Couleurs.sombre ? "#2B3A42" : "#E4ECEF"
+    readonly property color fondTitreActif: style === "sable" ? "#E6D9C7" : style === "sobre" ? (Couleurs.sombre ? "#2A2F42" : "#F2F1EF")
+                                            : Couleurs.sombre ? "#33505C" : "#D2DFE4"
+    readonly property color encre: style === "lagune" ? fenetre.accentEncre : Couleurs.texte
+    readonly property color trait: style === "sable" ? "#8A7E70" : style === "sobre" ? Couleurs.texte : fenetre.accent
+    readonly property color bande: style === "sable" ? Qt.rgba(140 / 255, 110 / 255, 70 / 255, 0.06)
+                                   : style === "sobre" ? "transparent" : Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.045)
     readonly property color separation: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.07)
 
     // ——— Données : les lignes du tableau, telles qu'affichées ———
@@ -169,13 +175,13 @@ Item {
                     readonly property string genre: habillage.genres[modelData.i]
                     readonly property string valeur: ligne.r.v[modelData.i] || ""
                     readonly property var nombre: ligne.r.n[modelData.i]
-                    readonly property bool doit: genre === "reste" && nombre !== null && nombre > 0
+                    readonly property bool doit: genre === "reste" && nombre !== null && nombre > 0 && habillage.t.ocre !== false
                     readonly property bool solde: genre === "reste" && nombre !== null && nombre <= 0 && habillage.progression !== null
                                                   && ligne.r.n[habillage.progression.du] > 0
                     x: modelData.x - habillage.moteur.vueX + 0.5
                     width: modelData.w - 1
                     height: ligne.height - 1
-                    visible: (valeur !== "" || solde) && !habillage.cachee(modelData.c, ligne.vue.l)
+                    visible: (genre === "reste" ? doit || solde : valeur !== "") && !habillage.cachee(modelData.c, ligne.vue.l)
                     color: Couleurs.sombre ? "#1E2230" : "#FFFFFF"
                     clip: true
                     // Initiales et nom
@@ -277,7 +283,7 @@ Item {
                         Layout.preferredWidth: 13 * habillage.echelle
                         Layout.preferredHeight: 13 * habillage.echelle
                         trace: habillage.pictos[habillage.genres[modelData.i] || ""] || ""
-                        encre: fenetre.accentEncre
+                        encre: habillage.encre
                         trait: 2
                         opacity: 0.75
                     }
@@ -286,7 +292,7 @@ Item {
                         text: titre.nom
                         font.pointSize: 10 * habillage.echelle
                         font.weight: Font.Bold
-                        color: fenetre.accentEncre
+                        color: habillage.encre
                         elide: Text.ElideRight
                     }
                     // Trier et filtrer
@@ -328,7 +334,7 @@ Item {
             width: habillage.droite - habillage.gauche
             anchors.bottom: parent.bottom
             height: 1.5
-            color: fenetre.accent
+            color: habillage.trait
         }
     }
 
@@ -342,18 +348,18 @@ Item {
         height: habillage.bandeTotaux ? habillage.bandeTotaux.fin - habillage.bandeTotaux.debut : 0
         color: habillage.fondTitre
         clip: true
-        Rectangle { width: parent.width; height: 1.5; color: fenetre.accent }
+        Rectangle { width: parent.width; height: 1.5; color: habillage.trait }
         Row {
             x: 9 * habillage.echelle
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6 * habillage.echelle
-            Text { text: "Total"; font.pointSize: 10 * habillage.echelle; font.weight: Font.Bold; color: fenetre.accentEncre; anchors.baseline: compte.baseline }
+            Text { text: "Total"; font.pointSize: 10 * habillage.echelle; font.weight: Font.Bold; color: habillage.encre; anchors.baseline: compte.baseline }
             Text {
                 id: compte
                 readonly property int n: habillage.donnees.lignes.filter(function (r) { return !r.vide }).length
                 text: "· " + n + " " + (n > 1 ? habillage.pluriel(habillage.t.colonnes[0]) : String(habillage.t.colonnes[0] || "ligne").toLowerCase())
                 font.pointSize: 9 * habillage.echelle
-                color: fenetre.accentEncre
+                color: habillage.encre
             }
         }
     }
@@ -438,7 +444,12 @@ Item {
         }
         MenuSama {
             id: menuTableau
-            ElementMenu { text: "Renommer le tableau…"; onTriggered: renommage.ouvrir() }
+            ElementMenu {
+                text: fenetre.panneauOuvert ? "Fermer le panneau du tableau" : "Ouvrir le panneau du tableau"
+                picto: "M4 5h16v14H4z M14.5 5v14"
+                onTriggered: fenetre.panneauOuvert = !fenetre.panneauOuvert
+            }
+            ElementMenu { text: "Renommer le tableau…"; picto: "M4 20h4L18.5 9.5l-4-4L4 16z M12.5 7.5l4 4"; onTriggered: renommage.ouvrir() }
             ElementMenu { cle: "fiches" }
             ElementMenu { cle: "ligneTableau" }
             ElementMenu { cle: "totauxTableau" }
