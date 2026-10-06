@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cinq appuis sur le bouton marche : le SOS de Sama (Réglages › Urgence), pas un écran vide. -->
+    <string name="config_preferredEmergencySosPackage" translatable="false">africa.samaos.reglages</string>
+</resources>

@@ -2,6 +2,8 @@
 
 Sama OS est un système d'exploitation africain, ouvert et souverain, basé sur Debian et le noyau Linux.
 Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Plasma 6, habillée aux couleurs de Sama, qui démarre depuis une clé USB.
+Il contient aussi **Sama mobile** (dossier `mobile/`), le prototype du système pour téléphone, bâti sur Android (AOSP) en Kotlin et Jetpack Compose :
+voir [mobile/README.md](mobile/README.md).
 
 - Cahier des charges : https://claude.ai/code/artifact/40f0b8a8-8a5d-4400-85d1-1a79bbcf1a5d
 - Prototype des écrans : https://claude.ai/artifact/TbcYm7U1R36ZajrUVcB9Jj
@@ -50,6 +52,7 @@ iso/                 Configuration live-build de l'ISO
   config/hooks/      Scripts exécutés pendant la construction (identité, fonds d'écran)
   config/includes.chroot/ Fichiers copiés tels quels dans le système (couleurs, apparence, Espaces)
 docker/              Environnement de construction (Debian 13 + live-build)
+mobile/              Sama mobile : Accueil, Natte, Pouls, Espaces, Réglages, applis natives, bouclier anti-arnaques (Android, Kotlin)
 scripts/             Script de construction
 sortie/              ISO produites (non versionné)
 ```

@@ -1,0 +1,12 @@
+# Gradle et Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+# Clés de test d'AOSP : téléchargées par systeme/cles/fabriquer.sh, jamais versionnées.
+systeme/cles/plateforme.p12
+systeme/cles/platform.pk8
+systeme/cles/platform.x509.pem

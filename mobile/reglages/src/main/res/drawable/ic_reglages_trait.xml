@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les curseurs de Banco, en blanc sur la latérite. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group android:scaleX="0.5" android:scaleY="0.5" android:translateX="6" android:translateY="6">
+        <path
+            android:pathData="M4 7h10 M18 7h2 M4 17h4 M12 17h8 M16 5v4 M10 15v4"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.9"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Pas d'écran « Passage à … » d'Android entre deux profils : Sama montre son propre passage d'un Espace à l'autre. -->
+    <bool name="config_customUserSwitchUi">true</bool>
+
+    <!-- Le Pouls reçoit les notifications dans chaque Espace, sans le demander à chaque fois. -->
+    <string name="config_defaultListenerAccessPackages" translatable="false">africa.samaos.accueil</string>
+    <!-- La tuile Ne pas déranger du Pouls. -->
+    <string name="config_defaultDndAccessPackages" translatable="false">africa.samaos.accueil</string>
+</resources>

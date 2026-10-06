@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Tous les fichiers du téléphone, comme un gestionnaire de fichiers. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- La place prise par sorte de fichiers, les applis inutilisées. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- Vider les fichiers temporaires des applis. -->
+    <uses-permission android:name="android.permission.CLEAR_APP_CACHE" />
+    <!-- Les téléchargements en cours de toutes les applis, et « Attendre le Wi-Fi au-delà de 50 Mo ». -->
+    <uses-permission android:name="android.permission.ACCESS_ALL_DOWNLOADS" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Proposer de désinstaller une appli inutilisée, d'installer une appli reçue (Android redemande). -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <application android:icon="@mipmap/ic_appli" android:label="Fichiers" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+        <activity android:name=".Fichiers" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.APP_FILES" />
+            </intent-filter>
+        </activity>
+        <!-- Lire un PDF, d'ici ou de n'importe quelle appli. -->
+        <activity android:name=".LirePdf" android:exported="true" android:label="PDF">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+        </activity>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="africa.samaos.fichiers.partage"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/chemins" />
+        </provider>
+    </application>
+</manifest>

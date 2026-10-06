@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- L'éléphant de Sama sur latérite (même géométrie que le logo du prototype, grille de 100). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="@color/laterite"
+        android:pathData="M0,0h100v100h-100z" />
+    <group
+        android:scaleX="0.6"
+        android:scaleY="0.6"
+        android:translateX="20"
+        android:translateY="22">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M4,40a21,21 0,1 0,42,0a21,21 0,1 0,-42,0z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,40a21,21 0,1 0,42,0a21,21 0,1 0,-42,0z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:strokeColor="@color/laterite"
+            android:strokeWidth="4"
+            android:pathData="M31,40a19,23 0,1 0,38,0a19,23 0,1 0,-38,0z" />
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="10"
+            android:strokeLineCap="round"
+            android:pathData="M50,58C50,70 63,66 63,77C63,88 47,90 42,83" />
+    </group>
+</vector>

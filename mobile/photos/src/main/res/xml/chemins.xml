@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les copies sans le lieu, préparées pour le partage. -->
+<paths>
+    <cache-path name="partage" path="partage/" />
+</paths>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les droits système de l'Accueil de Sama, accordés parce qu'il est installé dans /system/priv-app.
+     Android refuse de démarrer si une appli système demande un droit absent de cette liste :
+     tenir la liste à jour avec les <uses-permission> privilégiées du manifeste. -->
+<permissions>
+    <privapp-permissions package="africa.samaos.accueil">
+        <permission name="android.permission.STATUS_BAR" />
+        <permission name="android.permission.MANAGE_USERS" />
+        <permission name="android.permission.INTERACT_ACROSS_USERS" />
+        <permission name="android.permission.CHANGE_OVERLAY_PACKAGES" />
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
+        <permission name="android.permission.MODIFY_DAY_NIGHT_MODE" />
+        <permission name="android.permission.CHANGE_COMPONENT_ENABLED_STATE" />
+        <permission name="android.permission.INSTALL_PACKAGES" />
+        <permission name="android.permission.CHANGE_CONFIGURATION" />
+        <permission name="android.permission.MODIFY_PHONE_STATE" />
+        <permission name="android.permission.POWER_SAVER" />
+        <permission name="android.permission.TETHER_PRIVILEGED" />
+        <permission name="android.permission.MEDIA_CONTENT_CONTROL" />
+        <permission name="android.permission.BIND_APPWIDGET" />
+    </privapp-permissions>
+    <!-- Les Réglages de Sama : signés avec la clé de la plateforme, ils ont déjà ces droits ;
+         la liste évite qu'Android refuse de démarrer si un droit privilégié n'y figurait pas. -->
+    <privapp-permissions package="africa.samaos.reglages">
+        <permission name="android.permission.WRITE_SETTINGS" />
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
+        <permission name="android.permission.NETWORK_SETTINGS" />
+        <permission name="android.permission.NETWORK_AIRPLANE_MODE" />
+        <permission name="android.permission.TETHER_PRIVILEGED" />
+        <permission name="android.permission.MODIFY_PHONE_STATE" />
+        <permission name="android.permission.READ_PRIVILEGED_PHONE_STATE" />
+        <permission name="android.permission.BLUETOOTH_PRIVILEGED" />
+        <permission name="android.permission.MANAGE_USERS" />
+        <permission name="android.permission.INTERACT_ACROSS_USERS" />
+        <permission name="android.permission.OBSERVE_APP_USAGE" />
+        <permission name="android.permission.SUSPEND_APPS" />
+        <permission name="android.permission.CALL_PRIVILEGED" />
+        <permission name="android.permission.MASTER_CLEAR" />
+        <permission name="android.permission.SCHEDULE_EXACT_ALARM" />
+        <permission name="android.permission.PACKAGE_USAGE_STATS" />
+        <permission name="android.permission.GET_APP_OPS_STATS" />
+        <permission name="android.permission.MANAGE_APP_OPS_MODES" />
+        <permission name="android.permission.GRANT_RUNTIME_PERMISSIONS" />
+        <permission name="android.permission.REVOKE_RUNTIME_PERMISSIONS" />
+        <permission name="android.permission.GET_RUNTIME_PERMISSIONS" />
+        <permission name="android.permission.MANAGE_NOTIFICATIONS" />
+        <permission name="android.permission.POWER_SAVER" />
+        <permission name="android.permission.DEVICE_POWER" />
+        <permission name="android.permission.BATTERY_STATS" />
+        <permission name="android.permission.CHANGE_CONFIGURATION" />
+        <permission name="android.permission.SET_TIME" />
+        <permission name="android.permission.SET_TIME_ZONE" />
+        <permission name="android.permission.FORCE_STOP_PACKAGES" />
+        <permission name="android.permission.CLEAR_APP_USER_DATA" />
+        <permission name="android.permission.DELETE_PACKAGES" />
+        <permission name="android.permission.CHANGE_COMPONENT_ENABLED_STATE" />
+        <permission name="android.permission.MANAGE_ROLE_HOLDERS" />
+        <permission name="android.permission.MODIFY_DAY_NIGHT_MODE" />
+        <permission name="android.permission.CONTROL_DISPLAY_BRIGHTNESS" />
+        <permission name="android.permission.STATUS_BAR" />
+        <permission name="android.permission.CONTROL_VPN" />
+        <permission name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" />
+        <permission name="android.permission.MANAGE_NETWORK_POLICY" />
+        <permission name="android.permission.READ_NETWORK_USAGE_HISTORY" />
+        <permission name="android.permission.MANAGE_APP_HIBERNATION" />
+        <permission name="android.permission.DELETE_CACHE_FILES" />
+        <permission name="android.permission.MANAGE_USB" />
+        <permission name="android.permission.INTERACT_ACROSS_USERS_FULL" />
+        <permission name="android.permission.STATUS_BAR_SERVICE" />
+        <permission name="android.permission.ACCESS_NOTIFICATIONS" />
+        <permission name="android.permission.CLEAR_APP_CACHE" />
+        <permission name="android.permission.BATTERY_PREDICTION" />
+        <permission name="android.permission.MANAGE_NOTIFICATION_LISTENERS" />
+        <permission name="android.permission.CONTROL_DISPLAY_COLOR_TRANSFORMS" />
+        <permission name="android.permission.MANAGE_SENSOR_PRIVACY" />
+        <permission name="android.permission.GET_ACCOUNTS_PRIVILEGED" />
+        <permission name="android.permission.CHANGE_OVERLAY_PACKAGES" />
+        <permission name="android.permission.READ_SYNC_SETTINGS" />
+        <permission name="android.permission.WRITE_SYNC_SETTINGS" />
+        <permission name="android.permission.READ_DEVICE_CONFIG" />
+    </privapp-permissions>
+</permissions>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les réglages de constructeur que Sama OS change dans Android, posés en surcouche statique (/product/overlay). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="africa.samaos.surcouche.android">
+
+    <overlay
+        android:isStatic="true"
+        android:priority="50"
+        android:targetPackage="android" />
+
+    <application android:hasCode="false" />
+</manifest>

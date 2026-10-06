@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Un écran d'accueil doit voir toutes les applis installées pour les afficher dans la Cour. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- Les tuiles du Pouls : état du Wi-Fi et des données. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Prévenir quand le téléphone chauffe. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Installé comme appli système de Sama OS : l'Accueil coupe le volet d'Android pour ne laisser que le Pouls.
+         Ailleurs, la permission n'est simplement pas accordée et le volet d'Android reste. -->
+    <uses-permission
+        android:name="android.permission.STATUS_BAR"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Sama système : chaque Espace est un profil Android (créer, lister, passer de l'un à l'autre),
+         et chaque profil règle sa navigation par gestes. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_USERS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.INTERACT_ACROSS_USERS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.CHANGE_OVERLAY_PACKAGES"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Les réglages partagés des Espaces (couleur, paysage) et les couleurs des écrans d'Android. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Les applis de chaque Espace : en masquer une, ou y copier une appli déjà sur le téléphone.
+         INSTALL_PACKAGES ne sert qu'à cette copie (installExistingPackage) : rien n'est jamais téléchargé ni installé de neuf. -->
+    <uses-permission
+        android:name="android.permission.CHANGE_COMPONENT_ENABLED_STATE"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.INSTALL_PACKAGES"
+        tools:ignore="ProtectedPermissions" />
+    <!-- « Verrouiller avec » : le niveau de code qu'Android exige quand on le choisit pour un Espace. -->
+    <uses-permission android:name="android.permission.REQUEST_PASSWORD_COMPLEXITY" />
+    <!-- Premier démarrage : la langue du téléphone, la SIM qui porte Internet, et lire les SIM présentes. -->
+    <uses-permission
+        android:name="android.permission.CHANGE_CONFIGURATION"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.MODIFY_PHONE_STATE"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Le thème sombre d'Android suit la Nuit de Banco. -->
+    <uses-permission
+        android:name="android.permission.MODIFY_DAY_NIGHT_MODE"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Le paysage de Banco en fond d'écran du système, seulement quand Sama est le système. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <uses-permission android:name="android.permission.SET_WALLPAPER_HINTS" />
+    <!-- Le curseur de luminosité du Pouls ; accordé par la personne dans les réglages du système. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Les tuiles du Pouls qui se commandent d'une touche : économiseur de batterie et point d'accès. -->
+    <uses-permission
+        android:name="android.permission.POWER_SAVER"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.TETHER_PRIVILEGED"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Le lecteur du Pouls : la musique ou la vidéo en cours, dans n'importe quelle appli. -->
+    <uses-permission
+        android:name="android.permission.MEDIA_CONTENT_CONTROL"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Les widgets posés sur l'Accueil. -->
+    <uses-permission
+        android:name="android.permission.BIND_APPWIDGET"
+        tools:ignore="ProtectedPermissions" />
+    <!-- La recherche de la Cour trouve aussi les contacts, les SMS et les fichiers (par leur nom) ;
+         « Désinstaller » dans le menu d'une appli. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <!-- directBootAware : l'Accueil démarre avec l'Espace, avant même son déverrouillage, sans écran d'attente d'Android. -->
+    <application
+        android:directBootAware="true"
+        android:icon="@drawable/ic_sama"
+        android:label="Sama"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Sama">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Priorité prise en compte pour une appli système : Sama devient l'accueil de chaque nouveau profil. -->
+            <intent-filter android:priority="10">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Les Réglages de Sama ouvrent ici les réglages des Espaces (ils vivent avec l'Accueil). -->
+            <intent-filter>
+                <action android:name="africa.samaos.action.REGLAGES_ESPACES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Le premier démarrage passe avant l'Accueil (priorité plus haute) tant que le téléphone n'est pas
+             configuré, puis se désactive. -->
+        <activity
+            android:name=".DemarrageActivity"
+            android:configChanges="locale|layoutDirection|uiMode|keyboard|keyboardHidden|orientation|screenSize"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter android:priority="20">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Donne au Pouls les notifications des autres applis, une fois l'accès accordé. -->
+        <service
+            android:name=".Ecouteur"
+            android:exported="true"
+            android:label="Le Pouls de Sama"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

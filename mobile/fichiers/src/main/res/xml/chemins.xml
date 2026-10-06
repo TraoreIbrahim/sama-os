@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ce que Fichiers peut confier à une autre appli (ouvrir, partager) : le stockage partagé et les cartes SD. -->
+<paths>
+    <external-path name="telephone" path="." />
+    <root-path name="volumes" path="/storage" />
+</paths>

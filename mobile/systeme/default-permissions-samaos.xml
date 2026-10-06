@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les droits ordinaires que le système accorde d'office à Sama, sans fenêtre de demande :
+     lire les SIM présentes (premier démarrage, tuiles du Pouls),
+     chercher dans les contacts et les SMS depuis la Cour. -->
+<exceptions>
+    <exception package="africa.samaos.accueil">
+        <permission name="android.permission.READ_PHONE_STATE" fixed="false" />
+        <permission name="android.permission.READ_CONTACTS" fixed="false" />
+        <permission name="android.permission.READ_SMS" fixed="false" />
+        <permission name="android.permission.POST_NOTIFICATIONS" fixed="false" />
+    </exception>
+    <!-- Les Réglages : voir les SIM et les réseaux, les appareils Bluetooth à portée ;
+         pendant un SOS, envoyer la position par SMS et le dire dans une notification. -->
+    <exception package="africa.samaos.reglages">
+        <permission name="android.permission.READ_PHONE_STATE" fixed="false" />
+        <permission name="android.permission.ACCESS_FINE_LOCATION" fixed="false" />
+        <permission name="android.permission.BLUETOOTH_CONNECT" fixed="false" />
+        <permission name="android.permission.BLUETOOTH_SCAN" fixed="false" />
+        <permission name="android.permission.SEND_SMS" fixed="false" />
+        <permission name="android.permission.READ_SMS" fixed="false" />
+        <permission name="android.permission.CALL_PHONE" fixed="false" />
+        <permission name="android.permission.POST_NOTIFICATIONS" fixed="false" />
+    </exception>
+</exceptions>
