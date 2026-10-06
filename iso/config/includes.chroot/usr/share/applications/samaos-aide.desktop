@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Aide
+Comment=Comment faire, en français, sans Internet
+Exec=sama-aide
+Icon=/usr/share/samaos/icones/aide.svg
+StartupWMClass=samaos-aide
+Categories=Documentation;Utility;
+Terminal=false
+Keywords=aide;comment faire;manuel;guide;question;problème;arnaque;

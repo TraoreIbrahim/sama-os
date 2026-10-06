@@ -1,0 +1,4 @@
+#!/bin/sh
+# Aide hors ligne de Sama. Usage : sama-aide [thème/article]  (ex. sama-aide securite/arnaques)
+# L'exécutable porte le nom de l'application : son identité (tuile dans la Natte, Alt+Tab) en découle.
+exec /usr/lib/samaos/bin/samaos-aide /usr/lib/samaos/aide/Aide.qml -- "$@"

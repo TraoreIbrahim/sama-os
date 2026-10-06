@@ -59,6 +59,8 @@ envoyer)
 	# Identité visuelle, couleurs, thème Plasma, apparence (fichiers système : sudo sans mot de passe en session d'essai)
 	tar --no-xattrs -C "$racine/branding" -czf - logo-sama.svg logo-cour.svg fonds icones demarrage installateur \
 		| vm 'sudo mkdir -p /usr/share/samaos && sudo tar -xzf - -C /usr/share/samaos --no-same-owner'
+	# Aide hors ligne (articles)
+	tar --no-xattrs -C "$racine" -czf - aide | vm 'sudo rm -rf /usr/share/samaos/aide && sudo tar -xzf - -C /usr/share/samaos --no-same-owner'
 	tar --no-xattrs -C "$inclus/usr/share" -czf - color-schemes plasma/desktoptheme plasma/look-and-feel icons/sama icons/sama-sombre konsole kwin/tabbox knotifications6 \
 		| vm 'sudo tar -xzf - -C /usr/share --no-same-owner'
 	# Réglages par défaut du système (barres de titre, terminal…)

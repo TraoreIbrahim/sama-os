@@ -32,6 +32,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | Application bloquée : « Sama Docs ne répond pas », dernière sauvegarde des documents, « Attendre » ou « Forcer l'arrêt » (à la place de la fenêtre de KWin) | fait |
 | Capture d'écran (Impr.) : zone, fenêtre ou écran entier, minuteur, vidéo ; copiée et rangée dans Images › Captures d'écran, « Annoter » | fait |
 | Moniteur système : ce que consomme chaque application (processeur, mémoire, énergie), détails de ses processus, « Forcer à quitter » ; courbes ; applications ouvertes au démarrage ; débits et data. Méta+Échap ou Ctrl+Maj+Échap | fait (data par application : à venir, le noyau ne la compte pas par application sans outil dédié) |
+| Aide hors ligne : 28 articles en français, en 6 thèmes (premiers pas, Espaces, data, fichiers et clé USB, sécurité et arnaques, écoles), recherche sans tenir compte des accents, liens qui ouvrent le bon réglage. `sama-aide thème/article` ouvre un article (articles : dossier `aide/`) | fait (julakan, wolof, kiswahili : à traduire, un dossier par langue ; vidéos : à venir) |
 | Fichiers : favoris et clés USB, grille ou liste, recherche, filtres, corbeille, copies et conflits, glisser-déposer, aperçus des PDF et des vidéos, « Ouvrir avec… » | fait |
 | Suite Sama (Griot, Sugu, Sama Docs…) | à faire : des logiciels provisoires renommés les remplacent (Chromium, Discover, LibreOffice en français, Haruna, KWrite) |
 

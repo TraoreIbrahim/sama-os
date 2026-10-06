@@ -6,3 +6,4 @@ mkdir -p /usr/lib/samaos/bin
 cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-reglages
 cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-fichiers
 cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-moniteur
+cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/samaos-aide

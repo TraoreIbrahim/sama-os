@@ -41,9 +41,10 @@ renommer() {
 }
 
 # Logiciels provisoires remplacés par Griot, Sama Docs, Sama Sheet, Fichiers, Sugu, Photos, Réglages, Capture d'écran,
-# Moniteur système (Spectacle reste l'outil de prise de vue et d'annotation de la Capture d'écran de Sama)
+# Moniteur système, Aide (Spectacle reste l'outil de prise de vue et d'annotation de la Capture d'écran de Sama ;
+# l'aide de KDE répond encore aux menus « Aide » des applications de KDE)
 masquer chromium libreoffice-writer libreoffice-calc libreoffice-impress \
-	org.kde.dolphin org.kde.discover org.kde.gwenview org.kde.spectacle org.kde.plasma-systemmonitor
+	org.kde.dolphin org.kde.discover org.kde.gwenview org.kde.spectacle org.kde.plasma-systemmonitor org.kde.khelpcenter
 # Impr. va à la Capture d'écran de Sama : Spectacle garde ses autres raccourcis (Maj+Impr., Méta+Impr.…). Les
 # raccourcis se déclarent dans /usr/share/kglobalaccel : celui de Spectacle (fichier du paquet) est détourné vers sa
 # copie sans raccourci principal, et la Capture de Sama y est ajoutée.
@@ -77,7 +78,6 @@ masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.k
 
 # Noms clairs pour les applications gardées
 renommer org.kde.konsole "Terminal" terminal
-renommer org.kde.khelpcenter "Aide" aide
 renommer org.kde.okular "Lecteur PDF" pdf
 renommer org.kde.ark "Archives" archives
 renommer org.kde.haruna "Lecteur vidéo" lecteur

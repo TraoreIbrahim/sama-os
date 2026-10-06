@@ -22,6 +22,9 @@ cp "$racine"/branding/demarrage/*.svg "$inclus/usr/share/samaos/demarrage/"
 mkdir -p "$inclus/usr/share/samaos/installateur"
 cp "$racine"/branding/installateur/*.svg "$inclus/usr/share/samaos/installateur/"
 cp "$racine"/branding/icones/*.svg "$inclus/usr/share/samaos/icones/"
+# Aide hors ligne : les articles (aide/<langue>/<thème>/*.md)
+rm -rf "$inclus/usr/share/samaos/aide"
+cp -R "$racine/aide" "$inclus/usr/share/samaos/aide"
 # Widgets de Sama : la barre (natte/) et les cartes du bureau (bureau/)
 for dossier in "$racine"/natte/org.samaos.* "$racine"/bureau/org.samaos.*; do
 	widget=$(basename "$dossier")
