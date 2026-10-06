@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Parler aux points Sama du réseau local. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Voir les applis du téléphone (mises à jour, « Mes applis »). -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+    <!-- Installer les applis vérifiées sans seconde question : Sugu est le magasin du système (priv-app). -->
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES" tools:ignore="ProtectedPermissions" />
+    <!-- Les points Sama et le bilan, partagés avec les Réglages (réglages globaux). -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
+
+    <application android:icon="@mipmap/ic_appli" android:label="Sugu" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+        <activity android:name=".Sugu" android:exported="true" android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.APP_MARKET" />
+            </intent-filter>
+            <!-- Depuis les Réglages : un point Sama ; depuis les autres applis : la fiche d'une appli. -->
+            <intent-filter>
+                <action android:name="africa.samaos.action.SUGU_AUTOUR" />
+                <action android:name="africa.samaos.action.SUGU_FICHE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <receiver android:name=".ResultatInstallation" android:exported="false" />
+    </application>
+</manifest>

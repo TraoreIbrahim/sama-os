@@ -22,7 +22,6 @@
     <!-- Les Réglages de Sama : signés avec la clé de la plateforme, ils ont déjà ces droits ;
          la liste évite qu'Android refuse de démarrer si un droit privilégié n'y figurait pas. -->
     <privapp-permissions package="africa.samaos.reglages">
-        <permission name="android.permission.INSTALL_PACKAGES" />
         <permission name="android.permission.WRITE_SETTINGS" />
         <permission name="android.permission.WRITE_SECURE_SETTINGS" />
         <permission name="android.permission.NETWORK_SETTINGS" />
@@ -79,5 +78,9 @@
         <permission name="android.permission.READ_SYNC_SETTINGS" />
         <permission name="android.permission.WRITE_SYNC_SETTINGS" />
         <permission name="android.permission.READ_DEVICE_CONFIG" />
+    </privapp-permissions>
+    <privapp-permissions package="africa.samaos.sugu">
+        <permission name="android.permission.INSTALL_PACKAGES" />
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
     </privapp-permissions>
 </permissions>

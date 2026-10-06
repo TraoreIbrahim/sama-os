@@ -40,5 +40,6 @@ include(":dictaphone")
 include(":lecteur")
 include(":griot")
 include(":appareil")
+include(":sugu")
 // Appli d'essai pour l'émulateur (lecture, message avec réponse) ; jamais installée ailleurs.
 include(":essais")

@@ -24,3 +24,9 @@ kotlin {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
+
+dependencies {
+    implementation(project(":bouclier"))
+    // L'état des réceptions est observé par les écrans (Compose) de Sugu et des Réglages.
+    api("androidx.compose.runtime:runtime:1.9.0")
+}

@@ -48,6 +48,7 @@ import africa.samaos.banco.PaysageEspace
 import africa.samaos.banco.Polices
 import africa.samaos.banco.palette
 import africa.samaos.proches.Decouverte
+import africa.samaos.proches.Partage
 import africa.samaos.proches.Editeurs
 import africa.samaos.proches.Manifeste
 import africa.samaos.proches.Point
@@ -86,38 +87,10 @@ object MoteurProches {
     fun limite(c: Context) = prefs(c).getLong("limite", 2_000_000_000L)
     fun limiteSuivante(c: Context) = prefs(c).edit().putLong("limite", LIMITES[(LIMITES.indexOf(limite(c)) + 1) % LIMITES.size]).apply()
 
-    // ——— Le bilan ———
-    fun economise(c: Context) = prefs(c).getLong("economise", 0L)
-    fun noterEconomise(c: Context, octets: Long) = prefs(c).edit().putLong("economise", economise(c) + octets).apply()
+    // ——— Le bilan (le reçu est compté par Sugu, dans les réglages partagés) ———
+    fun economise(c: Context) = Partage.economise(c)
     fun donne(c: Context) = prefs(c).getLong("donne", 0L)
     fun personnes(c: Context) = prefs(c).getInt("personnes", 0)
-
-    // ——— Les points Sama ajoutés à la main (quand le réseau de l'école ne les annonce pas) ———
-    fun points(c: Context): List<Point> = prefs(c).getStringSet("points", emptySet()).orEmpty().mapNotNull { e ->
-        val (nom, adresse) = e.split('\t').let { (it.getOrNull(0) ?: "") to (it.getOrNull(1) ?: return@mapNotNull null) }
-        val hote = adresse.substringBeforeLast(':')
-        val port = adresse.substringAfterLast(':').toIntOrNull() ?: Protocole.PORT
-        Point(nom.ifBlank { "Point Sama" }, hote, port)
-    }.sortedBy { it.nom }
-
-    fun ajouterPoint(c: Context, p: Point) {
-        val l = prefs(c).getStringSet("points", emptySet()).orEmpty().filter { !it.endsWith("\t" + p.adresse) } + "${p.nom}\t${p.adresse}"
-        prefs(c).edit().putStringSet("points", l.toSet()).apply()
-    }
-
-    /** « 10.0.2.2:8765 », « 192.168.1.20 » : une adresse de point lisible, ou null. */
-    fun lireAdresse(t: String): Point? {
-        val m = Regex("^\\s*([A-Za-z0-9.-]+)(?::(\\d{1,5}))?\\s*$").find(t) ?: return null
-        return Point("Point Sama", m.groupValues[1], m.groupValues[2].toIntOrNull() ?: Protocole.PORT)
-    }
-
-    // ——— Les sources dont on ne veut plus rien ———
-    fun bloque(c: Context, source: String) = source in prefs(c).getStringSet("bloques", emptySet()).orEmpty()
-    fun reglerBloque(c: Context, source: String, oui: Boolean) {
-        val l = prefs(c).getStringSet("bloques", emptySet()).orEmpty().toMutableSet()
-        if (oui) l += source else l -= source
-        prefs(c).edit().putStringSet("bloques", l).apply()
-    }
 
     fun resume(c: Context): String = when {
         receptionOuverte(c) -> "Réception ouverte · encore ${((receptionJusqua(c) - System.currentTimeMillis()) / 60_000 + 1)} min"
@@ -125,110 +98,16 @@ object MoteurProches {
         else -> "Recevoir sans data, entre proches"
     }
 
-    /** Installer une appli vérifiée. Les Réglages ont le droit du système (INSTALL_PACKAGES) : pas de seconde question. */
-    fun installer(c: Context, f: File, m: Manifeste) {
-        val pi = c.packageManager.packageInstaller
-        val p = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-            setAppPackageName(m.paquet)
-            setSize(f.length())
-            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
-        }
-        val id = pi.createSession(p)
-        pi.openSession(id).use { s ->
-            s.openWrite("base.apk", 0, f.length()).use { o ->
-                f.inputStream().use { it.copyTo(o) }
-                s.fsync(o)
-            }
-            val i = Intent(c, ResultatInstallation::class.java).putExtra("sha", m.sha256)
-            s.commit(PendingIntent.getBroadcast(c, id, i, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT).intentSender)
+    /** Ouvrir Sugu sur un point Sama : c'est Sugu qui reçoit, vérifie et installe. */
+    fun ouvrirSugu(c: Context, p: Point?) {
+        try {
+            val i = Intent("africa.samaos.action.SUGU_AUTOUR").setPackage("africa.samaos.sugu").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (p != null) i.putExtra("nom", p.nom).putExtra("hote", p.hote).putExtra("port", p.port)
+            c.startActivity(i)
+        } catch (_: Exception) {
         }
     }
 }
-
-/** Les réceptions en cours ou finies, suivies par l'écran de réception. */
-object Receptions {
-    enum class Etape { RECEPTION, VERIFICATION, INSTALLATION, INSTALLEE, REFUSEE, ECHEC }
-
-    class Etat(val m: Manifeste, val point: Point, val versionAvant: Long?) {
-        var recu by mutableLongStateOf(0L)
-        var etape by mutableStateOf(Etape.RECEPTION)
-        var intact by mutableStateOf<Boolean?>(null)
-        var message by mutableStateOf<String?>(null)
-        val debut = System.currentTimeMillis()
-        @Volatile var arret = false
-    }
-
-    val etats = mutableStateMapOf<String, Etat>()
-
-    private fun fichier(c: Context, m: Manifeste) = File(File(c.filesDir, "proches").apply { mkdirs() }, "${m.sha256}.part")
-
-    fun lancer(c: Context, p: Point, m: Manifeste): Etat {
-        etats[m.sha256]?.takeIf { it.etape == Etape.RECEPTION || it.etape == Etape.INSTALLATION || it.etape == Etape.VERIFICATION }?.let { return it }
-        val e = Etat(m, p, Verification.versionInstallee(c, m.paquet))
-        etats[m.sha256] = e
-        val app = c.applicationContext
-        Thread {
-            val f = fichier(app, m)
-            try {
-                // Avant même de recevoir : fiche signée, version plus récente.
-                if (!Verification.signature(app, m) || !Verification.plusRecente(app, m)) {
-                    e.etape = Etape.REFUSEE
-                    return@Thread
-                }
-                Protocole.recevoir(p, m, f, { e.recu = it }) { e.arret }
-                if (e.arret) return@Thread
-                // Seul un fichier complet est vérifié : un morceau ne prouve rien, il attend la suite.
-                if (f.length() < m.taille) throw java.io.IOException("incomplet")
-                e.etape = Etape.VERIFICATION
-                val bon = Verification.intact(f, m) && Verification.appli(app, f, m)
-                e.intact = bon
-                if (!bon) {
-                    // Un fichier qui n'est pas celui de la fiche ne reste pas sur le téléphone.
-                    f.delete()
-                    e.etape = Etape.REFUSEE
-                    africa.samaos.bouclier.Bouclier.noter(app, "proches", "Fichier refusé", "${m.nom} · ${p.nom}")
-                    return@Thread
-                }
-                e.etape = Etape.INSTALLATION
-                MoteurProches.installer(app, f, m)
-            } catch (ex: Exception) {
-                e.message = "La connexion s'est coupée. Rapprochez-vous du point : la réception reprendra où elle s'est arrêtée."
-                e.etape = Etape.ECHEC
-            }
-        }.start()
-        return e
-    }
-
-    fun fini(c: Context, sha: String, ok: Boolean, message: String?) {
-        val e = etats[sha] ?: return
-        fichier(c, e.m).delete()
-        if (ok) {
-            e.etape = Etape.INSTALLEE
-            MoteurProches.noterEconomise(c, e.m.taille)
-        } else {
-            e.message = message ?: "Android n'a pas pu installer l'appli."
-            e.etape = Etape.ECHEC
-        }
-    }
-}
-
-/** Le résultat de l'installation, envoyé par Android. */
-class ResultatInstallation : BroadcastReceiver() {
-    override fun onReceive(c: Context, i: Intent) {
-        val sha = i.getStringExtra("sha") ?: return
-        when (val statut = i.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
-            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                // Sans le droit du système, Android demande confirmation : on montre sa question.
-                @Suppress("DEPRECATION")
-                (i.getParcelableExtra<Intent>(Intent.EXTRA_INTENT))?.let { c.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            }
-            PackageInstaller.STATUS_SUCCESS -> Receptions.fini(c, sha, true, null)
-            else -> Receptions.fini(c, sha, false, i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)?.let { "Android a refusé l'installation ($statut)." })
-        }
-    }
-}
-
-// ——— Les écrans ———
 
 /** Proche en proche (maquette i6-reglages). */
 @Composable
@@ -254,19 +133,19 @@ fun PageProches(nav: Nav) {
     val ouverte = remember(v) { MoteurProches.receptionOuverte(c) }
     PageReglages(titre = "Proche en proche", sousTitre = "Recevoir et donner sans data, entre proches", retour = nav.retour) {
         section("Recevoir d'un point Sama", cle = "points") {
-            val connus = remember(v) { MoteurProches.points(c) }
+            val connus = remember(v) { Partage.points(c) }
             val tous = (trouves + connus).distinctBy { it.adresse }
             tous.forEach { p ->
-                Ligne(p.nom, detail = p.adresse, icone = Icones.TELECHARGE) { nav.aller(Page.PointSama(p.nom, p.hote, p.port)) }
+                Ligne(p.nom, detail = "${p.adresse} · ouvrir dans Sugu", icone = Icones.TELECHARGE) { MoteurProches.ouvrirSugu(c, p) }
             }
             if (tous.isEmpty()) Explication("Aucun point Sama sur ce réseau. Les points sont des ordinateurs Sama d'écoles, de mairies ou de cybercafés.")
             if (ajout) {
                 Champ(saisie, "Adresse, par exemple 192.168.1.20", { saisie = it.trim().take(40) }, clavier = KeyboardType.Uri)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     BoutonTexte("Annuler") { ajout = false }
-                    MoteurProches.lireAdresse(saisie)?.let { p ->
+                    Partage.lireAdresse(saisie)?.let { p ->
                         BoutonTexte("Ajouter") {
-                            MoteurProches.ajouterPoint(c, p)
+                            Partage.ajouterPoint(c, p)
                             ajout = false
                             saisie = ""
                             v++
@@ -335,191 +214,6 @@ fun PageProches(nav: Nav) {
                 "Seuls les fichiers publiés par Sama et Sugu passent, signés : le téléphone vérifie la signature, la version " +
                     "et le fichier entier avant d'installer quoi que ce soit. Une mise à jour n'arrive jamais par un fichier qu'on vous envoie.",
             )
-        }
-    }
-}
-
-/** Un point Sama et ce qu'il propose (maquette i6-point-partage). */
-@Composable
-fun PagePointSama(nom: String, hote: String, port: Int, nav: Nav) {
-    val c = LocalContext.current
-    val reprise = LocalReprise.current
-    val p = remember(hote, port) { Point(nom, hote, port) }
-    var catalogue by remember { mutableStateOf<Protocole.Catalogue?>(null) }
-    var erreur by remember { mutableStateOf<String?>(null) }
-    var v by remember { mutableIntStateOf(0) }
-    LaunchedEffect(v, reprise) {
-        erreur = null
-        try {
-            catalogue = withContext(Dispatchers.IO) { Protocole.catalogue(c, p) }
-            // Le point a donné son nom : on le garde pour la prochaine fois.
-            catalogue?.nom?.let { MoteurProches.ajouterPoint(c, Point(it, hote, port)) }
-        } catch (_: Exception) {
-            erreur = "Le point ne répond pas. Il faut être sur le même réseau (Wi-Fi de l'école, de la mairie…)."
-        }
-    }
-    val cat = catalogue
-    val bloque = remember(v) { MoteurProches.bloque(c, p.adresse) }
-    PageReglages(titre = "Point Sama", sousTitre = listOfNotNull(cat?.nom ?: nom, hote).joinToString(" · "), retour = nav.retour) {
-        if (bloque) {
-            section(cle = "bloque") {
-                Explication("Vous avez choisi de ne plus rien recevoir de ce point.", LocalBanco.current.lateriteTexte)
-                Ligne("Recevoir de nouveau de ce point", fin = Fin.Rien) {
-                    MoteurProches.reglerBloque(c, p.adresse, false)
-                    v++
-                }
-            }
-            return@PageReglages
-        }
-        erreur?.let { section(cle = "erreur") { Explication(it, LocalBanco.current.lateriteTexte) } }
-        if (cat != null) {
-            section("Disponible ici", cle = "paquets") {
-                if (cat.paquets.isEmpty()) Explication("Ce point n'a rien à proposer pour l'instant.")
-                cat.paquets.forEach { m ->
-                    val installee = remember(m.paquet, reprise, v) { Verification.versionInstallee(c, m.paquet) }
-                    val etat = Receptions.etats[m.sha256]
-                    val fin = when {
-                        etat != null && etat.etape in setOf(Receptions.Etape.RECEPTION, Receptions.Etape.VERIFICATION, Receptions.Etape.INSTALLATION) -> Fin.Valeur("En cours")
-                        installee != null && installee >= m.version -> Fin.Valeur("À jour")
-                        installee != null -> Fin.Bouton("Mettre à jour", plein = true)
-                        else -> Fin.Bouton("Recevoir")
-                    }
-                    Ligne(
-                        m.nom,
-                        detail = "${taille(m.taille)} · ${if (m.versionNom.isNotBlank()) "version ${m.versionNom} · " else ""}signée par ${Editeurs.nomLisible(m.editeur)}",
-                        icone = Icones.APPLI, fin = fin,
-                    ) {
-                        if (fin is Fin.Bouton || fin == Fin.Valeur("En cours")) {
-                            Receptions.lancer(c, Point(cat.nom ?: nom, hote, port), m)
-                            nav.aller(Page.Reception(m.sha256))
-                        }
-                    }
-                }
-                if (cat.ecartes > 0) {
-                    Explication(
-                        "${cat.ecartes} fichier${if (cat.ecartes > 1) "s" else ""} écarté${if (cat.ecartes > 1) "s" else ""} : pas de signature valable de Sama ou de Sugu.",
-                        LocalBanco.current.lateriteTexte,
-                    )
-                }
-            }
-        }
-        section(cle = "note") {
-            Explication("Les points Sama gardent une copie des applis et des mises à jour pour tout le quartier. Ils ne peuvent rien installer à votre place : c'est vous qui choisissez, et le téléphone vérifie tout.")
-        }
-    }
-}
-
-/** La réception d'un fichier (maquette i6-reception), puis son installation. */
-@Composable
-fun PageReception(sha: String, nav: Nav) {
-    val c = LocalContext.current
-    val e = Receptions.etats[sha] ?: run {
-        LaunchedEffect(Unit) { nav.retour() }
-        return
-    }
-    val m = e.m
-    // Le fichier refusé a son propre écran.
-    LaunchedEffect(e.etape) { if (e.etape == Receptions.Etape.REFUSEE) nav.aller(Page.Refuse(sha)) }
-    val part = (e.recu.toFloat() / m.taille.coerceAtLeast(1)).coerceIn(0f, 1f)
-    val titre = when (e.etape) {
-        Receptions.Etape.RECEPTION -> "Réception · ${(part * 100).toInt()} %"
-        Receptions.Etape.VERIFICATION -> "Vérification"
-        Receptions.Etape.INSTALLATION -> "Installation"
-        Receptions.Etape.INSTALLEE -> if (e.versionAvant != null) "Mise à jour faite" else "Installée"
-        Receptions.Etape.REFUSEE -> "Fichier refusé"
-        Receptions.Etape.ECHEC -> "Réception arrêtée"
-    }
-    PageReglages(titre = titre, sousTitre = "${m.nom} · depuis ${e.point.nom}", retour = nav.retour) {
-        section(cle = "avance") {
-            Jauge(part, modifier = Modifier.padding(top = 8.dp))
-            val ecoule = (System.currentTimeMillis() - e.debut).coerceAtLeast(1)
-            val reste = if (e.recu > 0) ((m.taille - e.recu) * ecoule / e.recu / 60_000).coerceAtLeast(0) else null
-            Explication(
-                when (e.etape) {
-                    Receptions.Etape.RECEPTION -> "${taille(e.recu)} sur ${taille(m.taille)}" + (reste?.let { if (it < 1) " · moins d'une minute" else " · encore $it min" } ?: "") +
-                        ". Restez près du point : la réception reprend où elle s'est arrêtée."
-                    Receptions.Etape.INSTALLEE -> "${taille(m.taille)} reçus sans toucher à votre forfait."
-                    else -> e.message ?: "${taille(e.recu)} sur ${taille(m.taille)}"
-                },
-            )
-        }
-        section("Vérifications", cle = "verifs") {
-            Ligne("Signature de ${Editeurs.nomLisible(m.editeur)}", detail = "Le fichier vient bien de son éditeur", icone = Icones.BOUCLIER, fin = Fin.Valeur("✓"))
-            Ligne(
-                if (e.versionAvant != null) "Plus récente que la vôtre" else "Nouvelle appli",
-                detail = if (e.versionAvant != null) "Version ${m.versionNom} : remplace la vôtre" else "Elle n'est pas encore sur ce téléphone",
-                icone = Icones.MISE_A_JOUR, fin = Fin.Valeur("✓"),
-            )
-            Ligne(
-                "Fichier intact", detail = "Contrôlé à la fin de la réception", icone = Icones.COCHE,
-                fin = Fin.Valeur(when (e.intact) { null -> "À venir"; true -> "✓"; false -> "✗" }),
-            )
-        }
-        section(cle = "actions") {
-            when (e.etape) {
-                Receptions.Etape.ECHEC -> Ligne("Reprendre", icone = Icones.ROTATION, fin = Fin.Bouton("Reprendre", plein = true)) {
-                    Receptions.etats.remove(sha)
-                    Receptions.lancer(c, e.point, m)
-                }
-                Receptions.Etape.INSTALLEE -> {
-                    val ouvrir = remember { c.packageManager.getLaunchIntentForPackage(m.paquet) }
-                    if (ouvrir != null) Ligne("Ouvrir ${m.nom}", icone = Icones.OUVRIR, fin = Fin.Bouton("Ouvrir", plein = true)) {
-                        c.startActivity(ouvrir.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                    }
-                }
-                Receptions.Etape.RECEPTION -> Ligne("Arrêter", icone = Icones.FERMER, fin = Fin.Rien) {
-                    e.arret = true
-                    e.message = "Réception arrêtée. Elle reprendra où elle s'est arrêtée."
-                    e.etape = Receptions.Etape.ECHEC
-                }
-                else -> {}
-            }
-        }
-    }
-}
-
-/** Le fichier refusé (maquette i6-verif-echec) : supprimé, rien d'installé. */
-@Composable
-fun PageRefuse(sha: String, nav: Nav) {
-    val c = LocalContext.current
-    val e = Receptions.etats[sha] ?: run {
-        LaunchedEffect(Unit) { nav.retour() }
-        return
-    }
-    var v by remember { mutableIntStateOf(0) }
-    val source = e.point.adresse
-    val bloque = remember(v) { MoteurProches.bloque(c, source) }
-    val raison = when {
-        !Verification.signature(c, e.m) -> "n'est pas signé par Sama ni par Sugu"
-        e.intact == false -> "n'est pas celui que ${Editeurs.nomCourt(e.m.editeur)} a publié"
-        else -> "n'est pas plus récent que celui du téléphone"
-    }
-    PageReglages(titre = "Fichier refusé", sousTitre = "${e.m.nom} reçu de ${e.point.nom} $raison. Sama l'a supprimé.", retour = { nav.retour(); nav.retour() }) {
-        section(cle = "choix") {
-            Ligne("Ne plus rien recevoir de ${e.point.nom}", icone = Icones.CADENAS, fin = Fin.Inter(bloque)) {
-                MoteurProches.reglerBloque(c, source, !bloque)
-                v++
-            }
-            Explication("Rien n'a été installé. Si c'est le téléphone d'un proche, il est peut-être piraté : prévenez-le par un autre moyen.")
-        }
-        section(cle = "compris") {
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                BasicText(
-                    "Compris",
-                    modifier = Modifier.padding(end = 4.dp).clickable(role = Role.Button) {
-                        Receptions.etats.remove(sha)
-                        nav.retour()
-                        nav.retour()
-                    }.padding(horizontal = 8.dp, vertical = 12.dp),
-                    style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = LocalBanco.current.encre),
-                )
-                Avancer(true, "Compris") {
-                    Receptions.etats.remove(sha)
-                    nav.retour()
-                    nav.retour()
-                }
-            }
         }
     }
 }

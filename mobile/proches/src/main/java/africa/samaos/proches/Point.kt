@@ -66,17 +66,53 @@ object Protocole {
         return Reponse(code, entetes, e, s)
     }
 
-    /** Le nom du point et ses fiches. Les fiches mal signées ou d'un éditeur inconnu sont écartées et comptées. */
-    class Catalogue(val nom: String?, val paquets: List<Manifeste>, val ecartes: Int)
+    /**
+     * Le nom du point et ce qu'il propose. Les fiches mal signées ou d'un éditeur inconnu sont écartées et comptées ;
+     * une vitrine n'est gardée que si elle est signée par le même éditeur et parle de la même version.
+     */
+    class Catalogue(val nom: String?, val offres: List<Offre>, val ecartes: Int) {
+        val paquets get() = offres.map { it.fiche }
+    }
 
     fun catalogue(c: Context, p: Point): Catalogue {
         val r = demander(p, "/proches/v1/catalogue")
         val texte = r.socket.use { if (r.code == 200) r.corps.readBytes().decodeToString() else error("Le point a répondu ${r.code}") }
         val o = JSONObject(texte)
+        val nom = o.optJSONObject("point")?.optString("nom")?.ifBlank { null }
+        val ici = Point(nom ?: p.nom, p.hote, p.port)
         val bruts = o.optJSONArray("paquets")
-        val tous = (0 until (bruts?.length() ?: 0)).mapNotNull { Manifeste.depuis(bruts!!.getJSONObject(it)) }
-        val bons = tous.filter { Verification.signature(c, it) }
-        return Catalogue(o.optJSONObject("point")?.optString("nom")?.ifBlank { null }, bons, (bruts?.length() ?: 0) - bons.size)
+        var ecartes = 0
+        val offres = (0 until (bruts?.length() ?: 0)).mapNotNull { i ->
+            val j = bruts!!.getJSONObject(i)
+            val m = Manifeste.depuis(j)?.takeIf { Verification.signature(c, it) }
+            if (m == null) {
+                ecartes++
+                return@mapNotNull null
+            }
+            val v = j.optJSONObject("vitrine")?.let { Vitrine.depuis(it) }
+                ?.takeIf { it.paquet == m.paquet && it.version == m.version && it.editeur == m.editeur && Vitrine.verifier(c, it) }
+            Offre(m, v, ici)
+        }
+        return Catalogue(nom, offres, ecartes)
+    }
+
+    /** Une petite image (icône) servie par son empreinte : refusée si elle ne correspond pas, ou si elle est trop grosse. */
+    fun image(p: Point, sha256: String, maximum: Int = 256 * 1024): ByteArray? = try {
+        val r = demander(p, "/proches/v1/fichier/$sha256")
+        r.socket.use {
+            if (r.code != 200) return null
+            val b = java.io.ByteArrayOutputStream()
+            val t = ByteArray(16 * 1024)
+            while (true) {
+                val n = r.corps.read(t)
+                if (n < 0) break
+                b.write(t, 0, n)
+                if (b.size() > maximum) return null
+            }
+            b.toByteArray().takeIf { Verification.sha256(it) == sha256 }
+        }
+    } catch (_: Exception) {
+        null
     }
 
     /**

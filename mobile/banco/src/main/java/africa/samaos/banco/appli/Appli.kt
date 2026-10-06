@@ -132,6 +132,15 @@ object Identites {
         fond = Color(0xFF1B1612), surface = Color(0xFF26201A), champ = Color(0x1AFFFFFF), encre = Color(0xFFF2EAE0), encre2 = Color(0xFFB5A796),
         trait = Color(0x1FFFFFFF), accent = Color(0xFFC9A787), surAccent = Color(0xFF2A1E14), voile = Color(0x29C9A787), sombre = true,
     )
+    /** Sugu : le marché, sa poussière claire et la latérite. */
+    val Sugu = Identite(
+        fond = Color(0xFFFFF7EF), surface = Color(0xFFFFFFFF), champ = Color(0x0F2A1A12), encre = Color(0xFF2A1A12), encre2 = Color(0xFF6E5A4E),
+        trait = Color(0x1A2A1A12), accent = Color(0xFFB5532F), surAccent = Color(0xFFFFF4EA), voile = Color(0x1FB5532F), accentTexte = Color(0xFF93401F),
+    )
+    val SuguNuit = Identite(
+        fond = Color(0xFF1C1512), surface = Color(0xFF2A201B), champ = Color(0x1AFFFFFF), encre = Color(0xFFF6ECE4), encre2 = Color(0xFFBFAA9C),
+        trait = Color(0x1FFFFFFF), accent = Color(0xFFE07A52), surAccent = Color(0xFF2A1A12), voile = Color(0x29E07A52), accentTexte = Color(0xFFF0A27E), sombre = true,
+    )
     /** Photos : le blanc qui laisse la place aux images, l'ocre. */
     val Photos = Identite(
         fond = Color(0xFFFFFFFF), surface = Color(0xFFF6F1EC), champ = Color(0x0F221A14), encre = Color(0xFF221A14), encre2 = Color(0xFF6E6259),

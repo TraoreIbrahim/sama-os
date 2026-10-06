@@ -42,7 +42,7 @@ Android Studio sous le nom `Sama`), Sama s'installe dans le système au lieu d'�
 outils/sama-systeme.sh
 ```
 
-Le script installe l'Accueil dans `/system/priv-app` avec ses droits système
+Le script installe l'Accueil, les Réglages et Sugu dans `/system/priv-app` avec leurs droits système
 (`systeme/privapp-permissions-samaos.xml`), l'animation de démarrage Banco
 (`systeme/animation/fabriquer.py`), le français de Côte d'Ivoire et la navigation par gestes.
 Ensuite, pour voir une modification : `./gradlew :accueil:assembleRelease` puis
@@ -238,28 +238,55 @@ Pas encore fait : codes de solde vérifiés par opérateur (pour lire tout seul,
 forfait (i1-forfait-conseil), achat (i1-achat), carte de recharge scannée (i1-carte-recharge). Les règles de
 lecture des SMS sont écrites d'après des formulations courantes : à valider sur de vrais SMS d'Orange, MTN et Moov.
 
+## Sugu, le magasin d'applis (maquettes l2-sug-accueil, l2-sug-fiche, l2-sug-maj, i6-sugu-proches)
+
+Sugu montre et installe les applis signées par Sama ou par Sugu. Pour l'instant, il les trouve sur les
+**points Sama** à portée (Proche en proche, sans data) ; le catalogue en ligne viendra avec le serveur de Sama.
+Tout ce qu'il affiche est signé : la fiche (ce qui sera installé) et la **vitrine** (éditeur, description,
+catégorie, « marche sans connexion », icône, ce que l'appli demande). Un point ne peut donc pas faire passer
+une appli pour une autre en changeant sa description.
+
+- **Découvrir** : recherche, filtres (Sans data, Légères, catégories), « Près de vous, sans data », les applis par
+  catégorie avec Installer, Mettre à jour ou Ouvrir.
+- **Fiche** : version, taille, hors ligne ou non, ce que l'appli demande, d'où elle vient ; l'avancement de
+  l'installation, qu'on peut arrêter (elle reprend où elle s'était arrêtée).
+- **Autour** : chaque point Sama et ses applis, l'ajout d'un point par son adresse, les points bloqués (et
+  « Débloquer »), la data économisée.
+- **Mises à jour** : celles que proposent les points, « Tout mettre à jour », « Attendre le Wi-Fi ».
+- **Mes applis** : celles installées par Sugu, et celles **venues d'ailleurs** (« Hors Sugu »), reconnues à leur
+  signature et non à leur nom : une fausse appli qui s'appelle `africa.samaos.…` y apparaît quand même.
+- **Fichier refusé** : un fichier qui ne correspond pas à sa fiche est supprimé sans rien installer ; on peut
+  ne plus rien recevoir de ce point.
+
+Sugu est une appli système (`/system/priv-app/SamaSugu`) : il installe sans seconde question ce qu'il a vérifié
+(droit INSTALL_PACKAGES), et Android le reconnaît comme magasin (`APP_MARKET`). « Envoyer à un proche » et
+« Chez vos proches » attendent l'échange entre téléphones.
+
 ## Proche en proche (innovation 6, premier pas)
 
 Recevoir sans data, depuis un **point Sama** du réseau local, les applis signées par Sama ou Sugu. La
 bibliothèque `proches` vérifie la fiche signée de l'éditeur, la version (jamais plus ancienne), le fichier entier
 (taille, empreinte) et le certificat de l'appli ; un fichier qui ne correspond pas est supprimé sans rien
-installer (« Fichier refusé »). Les Réglages installent ensuite l'appli eux-mêmes (droit du système
-INSTALL_PACKAGES). Le protocole est décrit dans [proches/PROTOCOLE.md](proches/PROTOCOLE.md).
+installer (« Fichier refusé »). C'est Sugu qui reçoit et installe. Le protocole est décrit dans
+[proches/PROTOCOLE.md](proches/PROTOCOLE.md).
 
-- **Réglages › Proche en proche** : les points Sama (trouvés en mDNS ou ajoutés par leur adresse), la réception
-  entre contacts (10 minutes, à la demande), le don, le bilan.
-- **Réception** : progression, vérifications, reprise après une coupure, puis installation.
+- **Réglages › Proche en proche** : les points Sama connus (« ouvrir dans Sugu »), l'ajout d'un point par son
+  adresse, la reconnaissance des proches, le don, le bilan.
 - **Fichiers** : une appli reçue qui se dit « mise à jour » ou qui porte le nom d'une appli de Sama ouvre
   « Ce n'est pas une mise à jour » ; « Supprimer » la met à la corbeille.
 
-Essai sur l'émulateur :
+Essai sur l'émulateur (la clé d'éditeur de test se crée avec `systeme/cles-proches/fabriquer.sh`) :
 
 ```bash
-mobile/outils/signer-paquet.py mobile/calculatrice/build/outputs/apk/release/calculatrice-release.apk --nom Calculatrice
+mobile/outils/signer-paquet.py mobile/dictaphone/build/outputs/apk/release/dictaphone-release.apk --nom Dictaphone --editeur-nom Sama --resume "Enregistrer un cours, une réunion" --categorie ecole --hors-ligne --sans-traceur --droit "Le micro, pour enregistrer"
+```
+
+```bash
 mobile/outils/point-sama.py --nom "Lycée du quartier" --debit 200
 ```
 
-puis Réglages › Proche en proche › « Ajouter un point par son adresse » › `10.0.2.2:8765`.
+puis Sugu › Autour › « Ajouter un point par son adresse » › `10.0.2.2:8765`. Pour proposer une mise à jour,
+signer une version plus récente : `./gradlew :calculatrice:assembleRelease -PversionCode=2 -PversionName=0.2`.
 **Se reconnaître entre proches** : Réglages › Proche en proche › « Reconnaître un proche » montre le code QR du
 téléphone (clé créée dans la puce de sécurité, ni numéro ni compte) ; on scanne celui du proche, on compare à voix
 haute le code de vérification à 8 chiffres, puis il fait de même. Un code « proche » scanné avec l'Appareil photo

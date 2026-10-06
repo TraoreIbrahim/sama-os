@@ -14,6 +14,7 @@ MOBILE=$(cd "$(dirname "$0")/.." && pwd)
 APK=$MOBILE/accueil/build/outputs/apk/release/accueil-release.apk
 APK_REGLAGES=$MOBILE/reglages/build/outputs/apk/release/reglages-release.apk
 APK_APPAREIL=$MOBILE/appareil/build/outputs/apk/release/appareil-release.apk
+APK_SUGU=$MOBILE/sugu/build/outputs/apk/release/sugu-release.apk
 ANIM=$MOBILE/systeme/build/bootanimation.zip
 PAQUET=africa.samaos.accueil
 
@@ -33,7 +34,7 @@ redemarrer() {
 
 echo "• Construction de l'Accueil et de l'animation"
 python3 "$MOBILE/outils/droits-reglages.py" >/dev/null
-(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease)
+(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease :sugu:assembleRelease)
 [ -f "$ANIM" ] || python3 "$MOBILE/systeme/animation/fabriquer.py"
 "$MOBILE/systeme/surcouche-android/fabriquer.sh" >/dev/null
 "$MOBILE/systeme/surcouche-systemui/fabriquer.sh" >/dev/null
@@ -64,6 +65,10 @@ $ADB push "$APK_REGLAGES" /system/priv-app/SamaReglages/SamaReglages.apk >/dev/n
 $ADB uninstall africa.samaos.appareil >/dev/null 2>&1 || true
 $ADB shell mkdir -p /system/app/SamaAppareil
 $ADB push "$APK_APPAREIL" /system/app/SamaAppareil/SamaAppareil.apk >/dev/null
+# Sugu, le magasin de Sama : il installe sans seconde question les applis qu'il a vérifiées (INSTALL_PACKAGES).
+$ADB uninstall africa.samaos.sugu >/dev/null 2>&1 || true
+$ADB shell mkdir -p /system/priv-app/SamaSugu
+$ADB push "$APK_SUGU" /system/priv-app/SamaSugu/SamaSugu.apk >/dev/null
 $ADB push "$MOBILE/systeme/privapp-permissions-samaos.xml" /system/etc/permissions/ >/dev/null
 $ADB shell mkdir -p /system/etc/default-permissions
 $ADB push "$MOBILE/systeme/default-permissions-samaos.xml" /system/etc/default-permissions/ >/dev/null

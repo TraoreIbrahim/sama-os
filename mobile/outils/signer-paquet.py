@@ -28,6 +28,15 @@ def main():
     a.add_argument("--dossier", default=os.path.join(ICI, "point-essai"))
     a.add_argument("--editeur", default="test-emulateur")
     a.add_argument("--cle", default=os.path.join(MOBILE, "systeme", "cles-proches", "editeur-test.pem"))
+    # La vitrine de Sugu (signée aussi) : ce que le magasin montre de l'appli.
+    a.add_argument("--editeur-nom", default="")
+    a.add_argument("--resume", default="")
+    a.add_argument("--description", default="")
+    a.add_argument("--categorie", default="", help="ecole, commerce, sante, argent, agriculture, langues, outils, jeux")
+    a.add_argument("--hors-ligne", action="store_true", help="l'appli marche sans Internet")
+    a.add_argument("--sans-traceur", action="store_true", help="aucun traceur publicitaire")
+    a.add_argument("--droit", action="append", default=[], help="ce que l'appli demande, en clair (plusieurs fois)")
+    a.add_argument("--icone", default=None, help="image PNG de l'icône (servie par son empreinte)")
     o = a.parse_args()
     if not os.path.exists(o.cle):
         subprocess.run(["sh", os.path.join(MOBILE, "systeme", "cles-proches", "fabriquer.sh")], check=True)
@@ -53,6 +62,25 @@ def main():
         t.flush()
         sig = subprocess.run(["openssl", "dgst", "-sha256", "-sign", o.cle, t.name], capture_output=True, check=True).stdout
     fiche["signature"] = base64.b64encode(sig).decode()
+
+    os.makedirs(os.path.join(o.dossier, "fichiers"), exist_ok=True)
+    icone = ""
+    if o.icone:
+        octets_icone = open(o.icone, "rb").read()
+        icone = hashlib.sha256(octets_icone).hexdigest()
+        open(os.path.join(o.dossier, "fichiers", icone), "wb").write(octets_icone)
+    vitrine = {
+        "paquet": paquet, "version": version, "editeurNom": o.editeur_nom, "resume": o.resume, "description": o.description,
+        "categorie": o.categorie, "horsLigne": o.hors_ligne, "sansTraceur": o.sans_traceur, "icone": icone, "droits": o.droit, "editeur": o.editeur,
+    }
+    canon_v = "\n".join(["sugu-vitrine-1", paquet, str(version), o.editeur_nom, o.resume, o.description, o.categorie,
+                         "1" if o.hors_ligne else "0", "1" if o.sans_traceur else "0", icone, "|".join(o.droit), o.editeur]).encode("utf-8")
+    with tempfile.NamedTemporaryFile() as t:
+        t.write(canon_v)
+        t.flush()
+        sig_v = subprocess.run(["openssl", "dgst", "-sha256", "-sign", o.cle, t.name], capture_output=True, check=True).stdout
+    vitrine["signature"] = base64.b64encode(sig_v).decode()
+    fiche["vitrine"] = vitrine
 
     os.makedirs(os.path.join(o.dossier, "fichiers"), exist_ok=True)
     shutil.copyfile(o.apk, os.path.join(o.dossier, "fichiers", fiche["sha256"]))

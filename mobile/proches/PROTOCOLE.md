@@ -31,6 +31,28 @@ Avant d'installer, le téléphone vérifie, dans l'ordre :
 sama-proches-1, type, paquet, nom, version, versionNom, taille, sha256, certificat, editeur
 ```
 
+## La vitrine
+
+Ce que Sugu montre d'une appli est signé lui aussi, par le même éditeur que la fiche, et joint à elle dans le
+catalogue (`"vitrine": {…}`) :
+
+```json
+{"paquet": "africa.samaos.dictaphone", "version": 1, "editeurNom": "Sama", "resume": "…", "description": "…",
+ "categorie": "ecole", "horsLigne": true, "sansTraceur": true, "icone": "<sha256 de l'image>",
+ "droits": ["Le micro, pour enregistrer"], "editeur": "test-emulateur", "signature": "…"}
+```
+
+Champs signés, joints par des retours à la ligne :
+
+```
+sugu-vitrine-1, paquet, version, editeurNom, resume, description, categorie, horsLigne (1/0),
+sansTraceur (1/0), icone, droits joints par « | », editeur
+```
+
+Une vitrine mal signée, ou qui ne correspond pas au paquet et à la version de sa fiche, est ignorée : l'appli
+reste proposée, sans description. L'icône est servie comme un fichier (`/proches/v1/fichier/<sha256>`) et
+vérifiée par son empreinte.
+
 ## Le point Sama
 
 Du HTTP/1.1 tout simple sur le réseau local, port 8765, annoncé en mDNS (`_samapoint._tcp`, attribut `nom`) :
@@ -41,7 +63,7 @@ Du HTTP/1.1 tout simple sur le réseau local, port 8765, annoncé en mDNS (`_sam
 
 Un point ne fait que fournir : il ne peut rien pousser ni installer. Le téléphone écarte les fiches mal signées
 et peut bloquer un point qui a servi un fichier refusé. Quand le réseau de l'école n'annonce pas le point,
-on l'ajoute par son adresse (Réglages › Proche en proche).
+on l'ajoute par son adresse (Sugu › Autour, ou Réglages › Proche en proche).
 
 Point de référence pour les essais : `outils/point-sama.py` (avec `--debit` pour simuler une liaison lente).
 Fiches de test : `outils/signer-paquet.py`, avec la clé d'éditeur de test (`systeme/cles-proches`,

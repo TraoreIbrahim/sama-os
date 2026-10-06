@@ -1,0 +1,70 @@
+package africa.samaos.proches
+
+import android.content.Context
+import android.provider.Settings
+import org.json.JSONArray
+import org.json.JSONObject
+
+/**
+ * Ce que Sugu et les Réglages partagent (réglages globaux du système, comme le bouclier) : les points Sama
+ * connus, ceux dont on ne veut plus rien, et ce que Proche en proche a fait économiser. Rien de secret.
+ */
+object Partage {
+    private const val CLE_POINTS = "sama_points"
+    private const val CLE_BLOQUES = "sama_points_bloques"
+    private const val CLE_ECONOMISE = "sama_proches_economise"
+
+    private fun lire(c: Context, cle: String) = Settings.Global.getString(c.contentResolver, cle)
+
+    private fun ecrire(c: Context, cle: String, v: String) {
+        try {
+            Settings.Global.putString(c.contentResolver, cle, v)
+        } catch (_: Exception) {
+        }
+    }
+
+    fun points(c: Context): List<Point> = try {
+        val a = JSONArray(lire(c, CLE_POINTS) ?: "[]")
+        (0 until a.length()).map { a.getJSONObject(it) }.map { Point(it.optString("nom", "Point Sama"), it.getString("hote"), it.optInt("port", Protocole.PORT)) }
+            .sortedBy { it.nom.lowercase() }
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    /** Ajouter ou renommer un point (le nom qu'il donne lui-même remplace « Point Sama »). */
+    fun ajouterPoint(c: Context, p: Point) {
+        val l = points(c).filter { it.adresse != p.adresse } + p
+        ecrire(c, CLE_POINTS, JSONArray(l.map { JSONObject().put("nom", it.nom).put("hote", it.hote).put("port", it.port) }).toString())
+    }
+
+    fun retirerPoint(c: Context, p: Point) {
+        val l = points(c).filter { it.adresse != p.adresse }
+        ecrire(c, CLE_POINTS, JSONArray(l.map { JSONObject().put("nom", it.nom).put("hote", it.hote).put("port", it.port) }).toString())
+    }
+
+    /** « 10.0.2.2:8765 », « 192.168.1.20 » : une adresse de point lisible, ou null. */
+    fun lireAdresse(t: String): Point? {
+        val m = Regex("^\\s*([A-Za-z0-9.-]+)(?::(\\d{1,5}))?\\s*$").find(t) ?: return null
+        return Point("Point Sama", m.groupValues[1], m.groupValues[2].toIntOrNull() ?: Protocole.PORT)
+    }
+
+    /** Les adresses des points dont on ne veut plus rien recevoir. */
+    fun bloques(c: Context): Set<String> = try {
+        val a = JSONArray(lire(c, CLE_BLOQUES) ?: "[]")
+        (0 until a.length()).map { a.getString(it) }.toSet()
+    } catch (_: Exception) {
+        emptySet()
+    }
+
+    fun bloque(c: Context, source: String) = source in bloques(c)
+
+    fun reglerBloque(c: Context, source: String, oui: Boolean) {
+        val l = bloques(c).toMutableSet()
+        if (oui) l += source else l -= source
+        ecrire(c, CLE_BLOQUES, JSONArray(l.toList()).toString())
+    }
+
+    fun economise(c: Context): Long = lire(c, CLE_ECONOMISE)?.toLongOrNull() ?: 0L
+
+    fun noterEconomise(c: Context, octets: Long) = ecrire(c, CLE_ECONOMISE, (economise(c) + octets).toString())
+}

@@ -1,4 +1,4 @@
-// La Calculatrice de Sama (maquette l2-calc), avec la conversion F CFA ↔ euro au taux fixe.
+// Sugu, le magasin d'applis de Sama (maquettes l2-sug, i6-sugu-proches) : trouver, recevoir et mettre à jour des applis vérifiées, depuis les points Sama et vos proches, sans data.
 // Signé avec la clé de la plateforme de l'émulateur (clés de test publiques d'AOSP), comme les applis du vrai Sama OS.
 plugins {
     id("com.android.application")
@@ -12,16 +12,15 @@ if (!file("$cles/plateforme.p12").exists()) {
 }
 
 android {
-    namespace = "africa.samaos.calculatrice"
+    namespace = "africa.samaos.sugu"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "africa.samaos.calculatrice"
+        applicationId = "africa.samaos.sugu"
         minSdk = 26
         targetSdk = 36
-        // -PversionCode=2 -PversionName=0.2 : une version d'essai, pour essayer les mises à jour de Sugu.
-        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = (project.findProperty("versionName") as String?) ?: "0.1"
+        versionCode = 1
+        versionName = "0.1"
     }
 
     signingConfigs {
@@ -64,6 +63,7 @@ kotlin {
 
 dependencies {
     implementation(project(":banco"))
+    implementation(project(":proches"))
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.activity:activity-compose:1.10.1")
 }
