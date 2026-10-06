@@ -47,6 +47,7 @@ for i, c in enumerate("1234567890"):
 TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE, "suppr": e.KEY_DELETE, "f2": e.KEY_F2, "tab": e.KEY_TAB,
            "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT}
 TOUCHES.update({"f%d" % n: getattr(e, "KEY_F%d" % n) for n in range(1, 13)})
+TOUCHES["impr"] = e.KEY_SYSRQ
 
 capacites = {
     e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE] + [k for k, _ in AZERTY.values()]

@@ -44,6 +44,19 @@ renommer() {
 # (Spectacle reste l'outil de prise de vue et d'annotation de la Capture d'écran de Sama)
 masquer chromium libreoffice-writer libreoffice-calc libreoffice-impress \
 	org.kde.dolphin org.kde.discover org.kde.gwenview org.kde.spectacle
+# Impr. va à la Capture d'écran de Sama : Spectacle garde ses autres raccourcis (Maj+Impr., Méta+Impr.…). Les
+# raccourcis se déclarent dans /usr/share/kglobalaccel : celui de Spectacle (fichier du paquet) est détourné vers sa
+# copie sans raccourci principal, et la Capture de Sama y est ajoutée.
+if [ -f "$CIBLE/org.kde.spectacle.desktop" ]; then
+	sed -i '/^\[Desktop Entry\]/,/^\[Desktop Action/{/^X-KDE-Shortcuts=/d}' "$CIBLE/org.kde.spectacle.desktop"
+	if [ -e /usr/share/kglobalaccel/org.kde.spectacle.desktop ] && ! dpkg-divert --list | grep -q kglobalaccel/org.kde.spectacle.desktop; then
+		dpkg-divert --local --rename --divert /usr/share/kglobalaccel/org.kde.spectacle.desktop.kde \
+			--add /usr/share/kglobalaccel/org.kde.spectacle.desktop >/dev/null
+	fi
+	ln -sf "$CIBLE/org.kde.spectacle.desktop" /usr/share/kglobalaccel/org.kde.spectacle.desktop
+fi
+[ -f /usr/share/applications/samaos-capture.desktop ] && mkdir -p /usr/share/kglobalaccel &&
+	ln -sf /usr/share/applications/samaos-capture.desktop /usr/share/kglobalaccel/samaos-capture.desktop
 
 # Outils techniques, doublons et utilitaires réservés aux experts
 masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.kwalletmanager \
