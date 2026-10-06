@@ -10,9 +10,11 @@ Rectangle {
     readonly property var tableaux: fenetre.tableaux
     readonly property var t: fenetre.tableauVu
     readonly property bool enFiches: fenetre.vue === "fiches"
-    implicitHeight: t ? 38 : 0
-    visible: t !== null
-    color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, Couleurs.sombre ? 0.16 : 0.07)
+    // (dans la grille, l'onglet posé au-dessus du tableau la remplace, quand il y a la place)
+    readonly property bool utile: t !== null && (enFiches || !t.libre)
+    implicitHeight: utile ? 38 : 0
+    visible: utile
+    color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, Couleurs.sombre ? 0.16 : 0.07)
     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: Couleurs.bord }
 
     RowLayout {
@@ -25,7 +27,7 @@ Rectangle {
             Layout.preferredHeight: 26
             Layout.preferredWidth: titre.implicitWidth + 20
             radius: 7
-            color: fenetre.vert
+            color: fenetre.accent
             RowLayout {
                 id: titre
                 anchors.centerIn: parent
@@ -40,14 +42,14 @@ Rectangle {
             text: barre.t ? barre.t.nom : ""
             font.pixelSize: 14
             font.weight: Font.DemiBold
-            color: fenetre.vertEncre
+            color: fenetre.accentEncre
             selectByMouse: true
             Layout.preferredWidth: Math.max(80, contentWidth + 4)
             Accessible.name: "Nom du tableau"
             onAccepted: { if (barre.t && text.trim() && text !== barre.t.nom) barre.tableaux.renommer(barre.t, text); fenetre.doc.forceActiveFocus() }
             Keys.onEscapePressed: { text = barre.t ? barre.t.nom : ""; fenetre.doc.forceActiveFocus() }
             onActiveFocusChanged: if (!activeFocus) text = Qt.binding(function () { return barre.t ? barre.t.nom : "" })
-            Rectangle { anchors.fill: parent; anchors.margins: -4; radius: 6; z: -1; color: "transparent"; border.width: nom.activeFocus ? 1.5 : 0; border.color: fenetre.vert }
+            Rectangle { anchors.fill: parent; anchors.margins: -4; radius: 6; z: -1; color: "transparent"; border.width: nom.activeFocus ? 1.5 : 0; border.color: fenetre.accent }
             QQC2.ToolTip.visible: zoneNom.containsMouse && !nom.activeFocus
             QQC2.ToolTip.text: "Cliquez pour renommer le tableau ; les formules s'en servent : " + (barre.t ? barre.t.nom : "") + "[Colonne]"
             QQC2.ToolTip.delay: 700
@@ -82,8 +84,8 @@ Rectangle {
                         contentItem: RowLayout {
                             id: contenuVue
                             spacing: 5
-                            Picto { width: 13; height: 13; trace: modelData[2]; encre: vue.choisie ? fenetre.vertEncre : Couleurs.texte2 }
-                            Text { text: modelData[1]; font.pixelSize: 12; font.weight: vue.choisie ? Font.DemiBold : Font.Normal; color: vue.choisie ? fenetre.vertEncre : Couleurs.texte2 }
+                            Picto { width: 13; height: 13; trace: modelData[2]; encre: vue.choisie ? fenetre.accentEncre : Couleurs.texte2 }
+                            Text { text: modelData[1]; font.pixelSize: 12; font.weight: vue.choisie ? Font.DemiBold : Font.Normal; color: vue.choisie ? fenetre.accentEncre : Couleurs.texte2 }
                         }
                     }
                 }

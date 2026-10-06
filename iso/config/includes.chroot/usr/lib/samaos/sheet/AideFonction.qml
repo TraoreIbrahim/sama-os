@@ -52,13 +52,13 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 30
                 radius: 7
-                color: index === aide.choisie ? fenetre.vertFond : zone.containsMouse ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : "transparent"
+                color: index === aide.choisie ? fenetre.accentFond : zone.containsMouse ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : "transparent"
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 8
                     anchors.rightMargin: 8
                     spacing: 10
-                    Text { text: modelData.nom; font.pixelSize: 13; font.weight: Font.DemiBold; color: index === aide.choisie ? fenetre.vertEncre : Couleurs.texte }
+                    Text { text: modelData.nom; font.pixelSize: 13; font.weight: Font.DemiBold; color: index === aide.choisie ? fenetre.accentEncre : Couleurs.texte }
                     Text { Layout.fillWidth: true; text: modelData.texte; font.pixelSize: 12; color: Couleurs.texte2; elide: Text.ElideRight }
                 }
                 MouseArea { id: zone; anchors.fill: parent; hoverEnabled: true; onClicked: { aide.choisie = index; aide.accepter() } }
@@ -95,7 +95,7 @@ Rectangle {
             Layout.fillWidth: true
             text: aide.fonction ? "Exemple : " + aide.fonction.exemple : ""
             font.pixelSize: 12
-            color: fenetre.vertEncre
+            color: fenetre.accentEncre
             wrapMode: Text.Wrap
         }
     }

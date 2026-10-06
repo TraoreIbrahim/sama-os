@@ -56,7 +56,7 @@ Rectangle {
         property real largeur: 100
         implicitWidth: largeur
         implicitHeight: 28
-        background: Rectangle { radius: 7; color: Couleurs.champ; border.width: 0.5; border.color: liste.hovered ? fenetre.vert : Couleurs.bord }
+        background: Rectangle { radius: 7; color: Couleurs.champ; border.width: 0.5; border.color: liste.hovered ? fenetre.accent : Couleurs.bord }
         contentItem: RowLayout {
             spacing: 4
             Text { Layout.fillWidth: true; Layout.leftMargin: 8; text: liste.text; font.pixelSize: 13; color: Couleurs.texte; elide: Text.ElideRight }
@@ -283,7 +283,7 @@ Rectangle {
                 text: "Tableau"
                 picto: "M4 5h16v14H4z M4 10h16 M10 5v14"
                 aide: "Mettre en tableau : titres, filtres et ligne des totaux ; enregistré comme un tableau Excel (Ctrl+T)"
-                background: Rectangle { radius: 8; color: Couleurs.champ; border.width: 0.5; border.color: parent.hovered ? fenetre.vert : Couleurs.bord }
+                background: Rectangle { radius: 8; color: Couleurs.champ; border.width: 0.5; border.color: parent.hovered ? fenetre.accent : Couleurs.bord }
                 onClicked: actions.lancer("tableau")
             }
         }

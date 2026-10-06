@@ -60,7 +60,7 @@ End Function
 ' [{ nom, feuille, c1, l1, c2, l2 (0 = première ligne ou colonne), totaux, colonnes: [...], filtres: [colonnes filtrées] }]
 Function Decrire() As String
 	Dim oDoc As Object, oPlages As Object, oPlage As Object, a As Object, oFeuille As Object, aChamps As Variant
-	Dim s As String, sCols As String, sFiltres As String, i As Long, j As Long
+	Dim s As String, sCols As String, sFiltres As String, i As Long, j As Long, bLibre As Boolean
 	On Error GoTo Erreur
 	oDoc = ThisComponent
 	oPlages = oDoc.DatabaseRanges
@@ -81,8 +81,11 @@ Function Decrire() As String
 				If sFiltres <> "" Then sFiltres = sFiltres & ","
 				sFiltres = sFiltres & aChamps(j).Field
 			Next j
+			bLibre = False
+			If a.StartRow > 0 Then bLibre = EstVide(oFeuille.getCellRangeByPosition(a.StartColumn, a.StartRow - 1, a.EndColumn, a.StartRow - 1))
 			If Len(s) > 1 Then s = s & ","
 			s = s & "{""nom"":" & Texte(oPlage.Name) & ",""feuille"":" & a.Sheet & ",""c1"":" & a.StartColumn & ",""l1"":" & a.StartRow _
+			      & ",""libre"":" & IIf(bLibre, "true", "false") _
 			      & ",""c2"":" & a.EndColumn & ",""l2"":" & a.EndRow & ",""totaux"":" & IIf(oPlage.TotalsRow, "true", "false") _
 			      & ",""colonnes"":[" & sCols & "],""filtres"":[" & sFiltres & "]}"
 		End If
@@ -93,21 +96,46 @@ Erreur:
 	Decrire = "!" & Error$
 End Function
 
-' Un tableau sur la plage a, nommé sNom (aussi pour les modèles de SamaModeles) : titres en gras, sur le vert pâle
-' de Sama Sheet, un trait vert dessous ; filtres
+' Couleurs des tableaux de Sama Sheet (bleu lagune) : l'encre des titres, leur fond, le trait
+Function Encre() As Long
+	Encre = RGB(25, 75, 98)
+End Function
+Function FondTitre() As Long
+	FondTitre = RGB(228, 236, 239)
+End Function
+Function Lagune() As Long
+	Lagune = RGB(31, 94, 122)
+End Function
+
+' Hauteur d'une ligne, sans jamais la réduire (une ligne au texte sur plusieurs lignes garde la sienne) ;
+' en centièmes de millimètre : 741 = 28 pixels, 847 = 32
+Sub AuMoins(oFeuille As Object, r As Long, nHauteur As Long)
+	Dim oLigne As Object
+	oLigne = oFeuille.Rows.getByIndex(r)
+	If oLigne.Height < nHauteur Then oLigne.Height = nHauteur
+End Sub
+
+' Un tableau sur la plage a, nommé sNom (aussi pour les modèles de SamaModeles) : titres en gras, encre lagune sur
+' fond lagune pâle, un trait lagune dessous ; lignes de 28 pixels, texte centré en hauteur ; filtres. Sama dessine
+' par-dessus les titres (icône du genre de la colonne, ▾), les bandes, les initiales et les pastilles.
 Sub Nouveau(oFeuille As Object, a As Object, sNom As String)
-	Dim oPlage As Object, oEntete As Object, oTrait As New com.sun.star.table.BorderLine2
+	Dim oPlage As Object, oEntete As Object, oTrait As New com.sun.star.table.BorderLine2, r As Long
 	ThisComponent.DatabaseRanges.addNewByName(sNom, a)
 	oPlage = ThisComponent.DatabaseRanges.getByName(sNom)
 	oPlage.ContainsHeader = True
 	oPlage.AutoFilter = True
 	oEntete = oFeuille.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.StartRow)
 	oEntete.CharWeight = com.sun.star.awt.FontWeight.BOLD
-	oEntete.CharColor = RGB(31, 85, 68)
-	oEntete.CellBackColor = RGB(221, 235, 227)
-	oTrait.Color = RGB(47, 107, 87)
-	oTrait.OuterLineWidth = 35
+	oEntete.CharColor = Encre()
+	oEntete.CellBackColor = FondTitre()
+	oTrait.Color = Lagune()
+	oTrait.OuterLineWidth = 40
 	oEntete.BottomBorder = oTrait
+	oFeuille.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.EndRow).VertJustify = com.sun.star.table.CellVertJustify2.CENTER
+	AuMoins(oFeuille, a.StartRow, 847)
+	For r = a.StartRow + 1 To a.EndRow
+		AuMoins(oFeuille, r, 741)
+	Next r
 End Sub
 
 ' Met en tableau la plage choisie, ou la zone de données autour de la case choisie. Rend le nom du tableau.
@@ -204,9 +232,13 @@ Function Totaux(sNom As String, sOui As String) As String
 		Next c
 		oLigne = oFeuille.getCellRangeByPosition(a.StartColumn, r, a.EndColumn, r)
 		oLigne.CharWeight = com.sun.star.awt.FontWeight.BOLD
-		oTrait.Color = RGB(47, 107, 87)
-		oTrait.OuterLineWidth = 35
+		oLigne.CharColor = Encre()
+		oLigne.CellBackColor = FondTitre()
+		oLigne.VertJustify = com.sun.star.table.CellVertJustify2.CENTER
+		oTrait.Color = Lagune()
+		oTrait.OuterLineWidth = 40
 		oLigne.TopBorder = oTrait
+		AuMoins(oFeuille, r, 847)
 		oFeuille.Rows.getByIndex(r).IsVisible = True   ' (un filtre en cours ne la cache pas)
 	ElseIf sOui = "0" And oPlage.TotalsRow Then
 		r = a.EndRow
@@ -248,6 +280,7 @@ Function AjouterLigne(sNom As String) As String
 	If r - 1 > a.StartRow Then
 		oFeuille.copyRange(oFeuille.getCellByPosition(a.StartColumn, r).CellAddress, oFeuille.getCellRangeByPosition(a.StartColumn, r - 1, a.EndColumn, r - 1).RangeAddress)
 		oFeuille.getCellRangeByPosition(a.StartColumn, r, a.EndColumn, r).clearContents(7)
+		AuMoins(oFeuille, r, oFeuille.Rows.getByIndex(r - 1).Height)
 	End If
 	oDoc.UndoManager.leaveUndoContext()
 	AjouterLigne = oFeuille.getCellByPosition(a.StartColumn, r).AbsoluteName
@@ -326,7 +359,7 @@ End Function
 Function Lignes(sNom As String) As String
 	Dim oDoc As Object, oPlage As Object, a As Object, oFeuille As Object, oCase As Object
 	Dim l As Long, l2 As Long, c As Long, s As String, sCols As String, sV As String, sN As String, bVide As Boolean
-	Dim bCalcul As Boolean, bNombre As Boolean, sFormule As String
+	Dim bCalcul As Boolean, bNombre As Boolean, sFormule As String, sGenre As String, nType As Long
 	On Error GoTo Erreur
 	oDoc = ThisComponent
 	oPlage = oDoc.DatabaseRanges.getByName(sNom)
@@ -346,9 +379,25 @@ Function Lignes(sNom As String) As String
 			End If
 		End If
 		bNombre = ColonneNumerique(oFeuille, c, a.StartRow + 1, l2)
+		' (montant, date, heure, pourcentage, texte : le format de la première case de la colonne)
+		sGenre = ""
+		If l2 > a.StartRow Then
+			nType = oDoc.NumberFormats.getByKey(oFeuille.getCellByPosition(c, a.StartRow + 1).NumberFormat).Type
+			If (nType And com.sun.star.util.NumberFormat.DATE) <> 0 Then
+				sGenre = "date"
+			ElseIf (nType And com.sun.star.util.NumberFormat.TIME) <> 0 Then
+				sGenre = "heure"
+			ElseIf (nType And com.sun.star.util.NumberFormat.CURRENCY) <> 0 Then
+				sGenre = "montant"
+			ElseIf (nType And com.sun.star.util.NumberFormat.PERCENT) <> 0 Then
+				sGenre = "pourcent"
+			ElseIf (nType And com.sun.star.util.NumberFormat.TEXT) <> 0 Then
+				sGenre = "texte"
+			End If
+		End If
 		If sCols <> "" Then sCols = sCols & ","
 		sCols = sCols & "{""nom"":" & Texte(oFeuille.getCellByPosition(c, a.StartRow).String) & ",""calcul"":" & IIf(bCalcul, "true", "false") _
-		        & ",""formule"":" & Texte(sFormule) & ",""nombre"":" & IIf(bNombre, "true", "false") & "}"
+		        & ",""formule"":" & Texte(sFormule) & ",""nombre"":" & IIf(bNombre, "true", "false") & ",""genre"":" & Texte(sGenre) & "}"
 	Next c
 	s = ""
 	For l = a.StartRow + 1 To l2

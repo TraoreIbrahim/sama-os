@@ -136,8 +136,8 @@ Rectangle {
             text: "Enregistrer"
             picto: "M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6"
             aide: "Enregistrer (Ctrl+S)"
-            encre: fenetre.vertEncre
-            background: Rectangle { radius: 8; color: parent.hovered ? Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.2) : fenetre.vertFond }
+            encre: fenetre.accentEncre
+            background: Rectangle { radius: 8; color: parent.hovered ? Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.2) : fenetre.accentFond }
             onClicked: fenetre.enregistrer()
         }
     }

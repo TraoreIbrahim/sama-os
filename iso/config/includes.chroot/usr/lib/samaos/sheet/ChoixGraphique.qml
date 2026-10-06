@@ -31,9 +31,9 @@ Volet {
                 onClicked: { choix.close(); choix.choisi(modelData[0]) }
                 background: Rectangle {
                     radius: 10
-                    color: carte.hovered ? fenetre.vertFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.035)
+                    color: carte.hovered ? fenetre.accentFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.035)
                     border.width: carte.hovered ? 1 : 0
-                    border.color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.4)
+                    border.color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.4)
                 }
                 contentItem: ColumnLayout {
                     spacing: 6
@@ -43,13 +43,13 @@ Volet {
                         width: 30; height: 30
                         trace: modelData[2]
                         trait: modelData[3]
-                        encre: fenetre.vert
+                        encre: fenetre.accent
                     }
                     Text {
                         Layout.alignment: Qt.AlignHCenter
                         text: modelData[1]
                         font.pixelSize: 12
-                        color: carte.hovered ? fenetre.vertEncre : Couleurs.texte
+                        color: carte.hovered ? fenetre.accentEncre : Couleurs.texte
                     }
                 }
             }

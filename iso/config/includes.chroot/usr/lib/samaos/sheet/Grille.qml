@@ -12,9 +12,9 @@ Item {
     property alias doc: document
     readonly property int largeurEntetes: 44
     readonly property int hauteurEntetes: 24
-    readonly property color fondEntete: Couleurs.sombre ? "#2A2F42" : "#F4F1EC"
-    readonly property color fondEnteteActif: Couleurs.sombre ? Qt.rgba(163 / 255, 214 / 255, 193 / 255, 0.22) : "#DDEBE3"
-    readonly property color trait: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.12)
+    readonly property color fondEntete: Couleurs.sombre ? "#2A2F42" : "#F6F1EA"
+    readonly property color fondEnteteActif: fenetre.accentFond
+    readonly property color trait: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
 
     // Colonnes et lignes de la sélection, d'après son adresse (« F15 », « B2:D3 », « B:B », « 3:3 »)
     function numeroColonne(l) { var n = 0; for (var i = 0; i < l.length; i++) n = n * 26 + (l.charCodeAt(i) - 64); return n }
@@ -48,30 +48,58 @@ Item {
     }
     readonly property var colonnes: bandes(document.entetes.columns)
     readonly property var lignes: bandes(document.entetes.rows)
+    // (les mêmes, par lettres et par numéro)
+    readonly property var parLettres: { var m = {}; for (var i = 0; i < colonnes.length; i++) m[colonnes[i].texte] = colonnes[i]; return m }
+    readonly property var parNumero: { var m = {}; for (var i = 0; i < lignes.length; i++) m[lignes[i].texte] = lignes[i]; return m }
+    function ouvrirFiltre(t, colonne, bouton) {
+        var p = bouton.mapToItem(grille, 0, bouton.height + 2)
+        filtreColonne.ouvrirPour(t, colonne, Math.max(0, p.x + bouton.width - 300), p.y)
+    }
 
-    // Boutons ▾ des titres des tableaux visibles : un carré au bord droit de chaque titre (pixels du document)
-    readonly property var boutonsFiltre: {
-        var res = []
-        var tableaux = fenetre.tableaux.visibles
-        for (var i = 0; i < tableaux.length; i++) {
-            var t = tableaux[i]
-            var ligne = null
-            for (var k = 0; k < lignes.length; k++) if (lignes[k].texte === String(t.l1 + 1)) ligne = lignes[k]
-            if (!ligne) continue
-            var h = ligne.fin - ligne.debut
-            for (var c = t.c1; c <= t.c2; c++) {
-                var lettres = fenetre.tableaux.lettres(c)
-                for (var j = 0; j < colonnes.length; j++) {
-                    if (colonnes[j].texte !== lettres) continue
-                    // (le bouton du moteur fait jusqu'à 18 points de large, à droite de la case : on le couvre en entier)
-                    var l = Math.min((colonnes[j].fin - colonnes[j].debut) / 2, Math.max(h, 18) * 1.35)
-                    res.push({ x: colonnes[j].fin - l, y: ligne.debut, largeur: l, cote: h, gauche: colonnes[j].debut, fin: colonnes[j].fin,
-                               tableau: t, colonne: c - t.c1,
-                               filtree: t.filtres.indexOf(c - t.c1) >= 0 })
-                }
-            }
+    // ——— Largeur des colonnes, hauteur des lignes : on tire le bord dans les en-têtes ; double-clic : ajuster ———
+    // { colonne, numero, nom, debut, origine, taille } pendant qu'on tire (pixels du document), sinon null
+    property var redim: null
+    function tirer(colonne, bande, numero) {
+        redim = { colonne: colonne, numero: numero, nom: bande.texte, debut: bande.debut, origine: bande.fin - bande.debut, taille: bande.fin - bande.debut }
+    }
+    function suivre(taille) {
+        if (!redim) return
+        var r = redim
+        redim = { colonne: r.colonne, numero: r.numero, nom: r.nom, debut: r.debut, origine: r.origine, taille: Math.max(r.colonne ? 8 : 6, Math.round(taille)) }
+    }
+    // Les colonnes (ou lignes) touchées : celle qu'on tire, ou toutes celles choisies si elle en fait partie
+    function touchees(colonne, numero) {
+        var p = plage
+        if (colonne && p.colonnesEntieres && numero >= p.c1 && numero <= p.c2) return { de: p.c1, a: p.c2 }
+        if (!colonne && p.lignesEntieres && numero >= p.l1 && numero <= p.l2) return { de: p.l1, a: p.l2 }
+        return { de: numero, a: numero }
+    }
+    function lacherBord() {
+        var r = redim
+        redim = null
+        if (!r || Math.abs(r.taille - r.origine) < 1) return
+        // (en centièmes de millimètre, au zoom 100 %)
+        var centiemes = Math.round(r.taille / document.zoom * 2540 / 96)
+        var z = touchees(r.colonne, r.numero)
+        for (var n = z.de; n <= z.a; n++) {
+            if (r.colonne) fenetre.actions.uno(".uno:ColumnWidth", { ColumnWidth: { type: "unsigned short", value: centiemes }, Column: { type: "long", value: n } })
+            else fenetre.actions.uno(".uno:RowHeight", { RowHeight: { type: "unsigned short", value: centiemes }, Row: { type: "long", value: n } })
         }
-        return res
+        document.forceActiveFocus()
+    }
+    // Double-clic sur un bord : la largeur de la plus longue valeur (ou la hauteur du texte), puis la sélection revient
+    function ajuster(colonne, numero) {
+        var avant = document.adresse, z = touchees(colonne, numero)
+        var a = colonne ? fenetre.tableaux.lettres(z.de - 1) + ":" + fenetre.tableaux.lettres(z.a - 1) : z.de + ":" + z.a
+        document.allerA(a)
+        if (colonne) fenetre.actions.uno(".uno:SetOptimalColumnWidthDirect")
+        else fenetre.actions.uno(".uno:SetOptimalRowHeight", { aExtraHeight: { type: "unsigned short", value: 0 } })
+        if (avant) document.allerA(avant)
+        document.forceActiveFocus()
+    }
+    function mesure(px) {
+        var cm = px / document.zoom * 2.54 / 96
+        return cm.toFixed(cm < 10 ? 2 : 1).replace(".", ",") + " cm"
     }
 
     // Coin
@@ -106,12 +134,30 @@ Item {
                     text: modelData.texte
                     font.pixelSize: 11
                     font.weight: parent.courante ? Font.DemiBold : Font.Normal
-                    color: parent.courante ? fenetre.vertEncre : Couleurs.texte2
+                    color: parent.courante ? fenetre.accentEncre : Couleurs.texte2
                 }
                 Rectangle { anchors.right: parent.right; width: 0.5; height: parent.height; color: grille.trait }
             }
         }
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: grille.trait }
+        // Bords des colonnes, à tirer
+        Repeater {
+            model: grille.colonnes
+            delegate: MouseArea {
+                x: modelData.fin - document.vueX - 4
+                width: 9
+                height: parent.height
+                visible: modelData.fin > modelData.debut
+                cursorShape: Qt.SplitHCursor
+                preventStealing: true
+                property real depart: 0
+                onPressed: m => { depart = mapToItem(grille, m.x, 0).x; grille.tirer(true, modelData, grille.numeroColonne(modelData.texte)) }
+                onPositionChanged: m => { if (pressed) grille.suivre(grille.redim ? grille.redim.origine + mapToItem(grille, m.x, 0).x - depart : 0) }
+                onReleased: grille.lacherBord()
+                onCanceled: grille.redim = null
+                onDoubleClicked: grille.ajuster(true, grille.numeroColonne(modelData.texte))
+            }
+        }
     }
 
     // En-têtes de lignes
@@ -137,12 +183,64 @@ Item {
                     text: modelData.texte
                     font.pixelSize: 11
                     font.weight: parent.courante ? Font.DemiBold : Font.Normal
-                    color: parent.courante ? fenetre.vertEncre : Couleurs.texte2
+                    color: parent.courante ? fenetre.accentEncre : Couleurs.texte2
                 }
                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: grille.trait }
             }
         }
         Rectangle { anchors.right: parent.right; width: 0.5; height: parent.height; color: grille.trait }
+        // Bords des lignes, à tirer
+        Repeater {
+            model: grille.lignes
+            delegate: MouseArea {
+                y: modelData.fin - document.vueY - 4
+                height: 9
+                width: parent.width
+                visible: modelData.fin > modelData.debut
+                cursorShape: Qt.SplitVCursor
+                preventStealing: true
+                property real depart: 0
+                onPressed: m => { depart = mapToItem(grille, 0, m.y).y; grille.tirer(false, modelData, Number(modelData.texte)) }
+                onPositionChanged: m => { if (pressed) grille.suivre(grille.redim ? grille.redim.origine + mapToItem(grille, 0, m.y).y - depart : 0) }
+                onReleased: grille.lacherBord()
+                onCanceled: grille.redim = null
+                onDoubleClicked: grille.ajuster(false, Number(modelData.texte))
+            }
+        }
+    }
+
+    // Pendant qu'on tire un bord : le trait de la nouvelle limite sur toute la feuille, et la mesure
+    Item {
+        anchors.fill: parent
+        visible: grille.redim !== null
+        z: 20
+        readonly property real bord: !grille.redim ? 0 : grille.redim.colonne
+                                     ? grille.largeurEntetes + grille.redim.debut + grille.redim.taille - document.vueX
+                                     : grille.hauteurEntetes + grille.redim.debut + grille.redim.taille - document.vueY
+        Rectangle {
+            x: grille.redim && grille.redim.colonne ? parent.bord - 1 : 0
+            y: grille.redim && !grille.redim.colonne ? parent.bord - 1 : 0
+            width: grille.redim && grille.redim.colonne ? 2 : parent.width
+            height: grille.redim && grille.redim.colonne ? parent.height : 2
+            color: fenetre.accent
+            opacity: 0.8
+        }
+        Rectangle {
+            x: grille.redim && grille.redim.colonne ? Math.min(parent.bord + 8, parent.width - width - 4) : grille.largeurEntetes + 8
+            y: grille.redim && grille.redim.colonne ? grille.hauteurEntetes + 6 : Math.max(2, parent.bord - height - 6)
+            width: mesureTexte.implicitWidth + 16
+            height: 24
+            radius: 7
+            color: "#1F1C18"
+            opacity: 0.9
+            Text {
+                id: mesureTexte
+                anchors.centerIn: parent
+                text: grille.redim ? (grille.redim.colonne ? "Largeur " : "Hauteur ") + grille.mesure(grille.redim.taille) : ""
+                font.pixelSize: 12
+                color: "#FFFFFF"
+            }
+        }
     }
 
     // Les cellules (fond blanc sous les tuiles pas encore dessinées)
@@ -161,6 +259,18 @@ Item {
             focus: true
         }
 
+        // Les tableaux visibles, habillés comme dans la maquette (titres, bandes, initiales, pastilles, onglet)
+        // (un nombre, pas la liste : relire les tableaux ne refait pas leur habillage)
+        Repeater {
+            model: fenetre.tableaux.visibles.length
+            delegate: HabillageTableau {
+                required property int index
+                t: fenetre.tableaux.visibles[index] || ({ nom: "", c1: 0, l1: 0, c2: -1, l2: -1, colonnes: [], filtres: [], totaux: false, libre: false })
+                vueGrille: grille
+                moteur: document
+            }
+        }
+
         // Sélection (plage de cellules)
         Repeater {
             model: document.selection
@@ -169,9 +279,9 @@ Item {
                 y: modelData.y - document.vueY
                 width: modelData.width
                 height: modelData.height
-                color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.1)
+                color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.1)
                 border.width: 1
-                border.color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.55)
+                border.color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.55)
             }
         }
         // Curseur de cellule (caché quand un graphique est choisi)
@@ -183,89 +293,16 @@ Item {
             height: document.curseur.height + 2
             color: "transparent"
             border.width: 2
-            border.color: fenetre.vert
+            border.color: fenetre.accent
             // Poignée de recopie
             Rectangle {
                 width: 7; height: 7
                 x: parent.width - 4; y: parent.height - 4
-                color: fenetre.vert
+                color: fenetre.accent
                 border.width: 1
                 border.color: "#FFFFFF"
             }
         }
-        // Boutons ▾ des titres des tableaux (par-dessus ceux du moteur, dont la fenêtre ne s'afficherait pas)
-        Repeater {
-            model: grille.boutonsFiltre
-            delegate: QQC2.AbstractButton {
-                id: boutonFiltre
-                x: modelData.x - document.vueX
-                y: modelData.y - document.vueY
-                width: modelData.largeur
-                height: modelData.cote
-                hoverEnabled: true
-                focusPolicy: Qt.NoFocus
-                Accessible.name: "Trier et filtrer " + modelData.tableau.colonnes[modelData.colonne]
-                onClicked: {
-                    var p = boutonFiltre.mapToItem(grille, 0, boutonFiltre.height + 2)
-                    filtreColonne.ouvrirPour(modelData.tableau, modelData.colonne, Math.max(0, p.x + boutonFiltre.width - 300), p.y)
-                }
-                // Le bouton du moteur est caché sous la couleur du titre (prise dans le dessin, à gauche du titre) ; par-dessus,
-                // une petite pastille : discrète au repos, verte quand la colonne est filtrée.
-                background: Rectangle {
-                    // (couleurs prises dans le dessin : fond du titre, trait du bas, trait de droite)
-                    function prise(x, y, sinon) {
-                        document.dessins
-                        var c = document.couleurAu(x, y)
-                        return c.a > 0 ? c : sinon
-                    }
-                    // Le fond : en haut de la case, là où le texte (en bas de la case) ne va pas ; la couleur qui revient
-                    // le plus parmi trois points
-                    color: {
-                        var y = modelData.y + 1
-                        var a = prise(modelData.gauche + 1, y, "#DDEBE3"), b = prise((modelData.gauche + modelData.x) / 2, y, "#DDEBE3"),
-                            c = prise(modelData.x - 2, y, "#DDEBE3")
-                        return Qt.colorEqual(a, b) || Qt.colorEqual(a, c) ? a : b
-                    }
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        width: parent.width
-                        height: 1
-                        color: parent.prise(modelData.gauche + 1, modelData.y + modelData.cote - 0.5, "transparent")
-                    }
-                    Rectangle {
-                        anchors.right: parent.right
-                        width: 1
-                        height: parent.height - 1
-                        color: parent.prise(modelData.fin - 1, modelData.y + modelData.cote / 2, "transparent")
-                    }
-                    Rectangle {
-                        readonly property real cote: Math.min(20, boutonFiltre.height - 4)
-                        anchors.centerIn: parent
-                        width: cote
-                        height: cote
-                        radius: 6
-                        color: modelData.filtree ? fenetre.vert
-                             : boutonFiltre.down ? Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.24)
-                             : boutonFiltre.hovered ? Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.14) : "transparent"
-                        Behavior on color { ColorAnimation { duration: 90 } }
-                    }
-                }
-                contentItem: Item {
-                    Picto {
-                        anchors.centerIn: parent
-                        width: Math.min(modelData.filtree ? 12 : 13, boutonFiltre.height - 8); height: width
-                        trace: modelData.filtree ? "M5 6h14l-5.5 6.5V18l-3-1.5v-4z" : "M7 10l5 5 5-5"
-                        encre: modelData.filtree ? "#FFFFFF" : fenetre.vertEncre
-                        opacity: modelData.filtree || boutonFiltre.hovered ? 1 : 0.55
-                        trait: 2
-                    }
-                }
-                QQC2.ToolTip.visible: hovered
-                QQC2.ToolTip.delay: 600
-                QQC2.ToolTip.text: modelData.filtree ? "Filtrée : cliquez pour changer" : "Trier et filtrer"
-            }
-        }
-
         // Curseur de saisie (pendant qu'on écrit dans une cellule)
         Rectangle {
             id: caret
@@ -288,7 +325,7 @@ Item {
             y: document.objet.y - document.vueY
             width: document.objet.width
             height: document.objet.height
-            Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1.5; border.color: fenetre.vert }
+            Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1.5; border.color: fenetre.accent }
             Repeater {
                 model: 8
                 delegate: Rectangle {
@@ -297,7 +334,7 @@ Item {
                     y: [0, 0, 0, 0.5, 1, 1, 1, 0.5][index] * cadreObjet.height - 4.5
                     color: "#FFFFFF"
                     border.width: 1.5
-                    border.color: fenetre.vert
+                    border.color: fenetre.accent
                 }
             }
         }
@@ -318,7 +355,7 @@ Item {
                 id: rangeeActions
                 anchors.centerIn: parent
                 spacing: 2
-                Text { text: "Graphique"; font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.vertEncre; Layout.leftMargin: 8; Layout.rightMargin: 4 }
+                Text { text: "Graphique"; font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.accentEncre; Layout.leftMargin: 8; Layout.rightMargin: 4 }
                 Outil {
                     Layout.preferredHeight: 26
                     text: "Supprimer"

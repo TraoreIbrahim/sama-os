@@ -91,7 +91,7 @@ Volet {
             radius: 8
             color: Couleurs.champ
             border.width: recherche.activeFocus ? 1.5 : 0.5
-            border.color: recherche.activeFocus ? fenetre.vert : Couleurs.bord
+            border.color: recherche.activeFocus ? fenetre.accent : Couleurs.bord
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 10
@@ -114,13 +114,13 @@ Volet {
             Layout.topMargin: 4
             QQC2.AbstractButton {
                 focusPolicy: Qt.NoFocus
-                contentItem: Text { text: "Tout cocher"; font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.vertEncre }
+                contentItem: Text { text: "Tout cocher"; font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.accentEncre }
                 onClicked: filtre.toutCocher(true)
             }
             Text { text: "·"; color: Couleurs.texte3 }
             QQC2.AbstractButton {
                 focusPolicy: Qt.NoFocus
-                contentItem: Text { text: "Tout décocher"; font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.vertEncre }
+                contentItem: Text { text: "Tout décocher"; font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.accentEncre }
                 onClicked: filtre.toutCocher(false)
             }
             Item { Layout.fillWidth: true }
@@ -148,7 +148,7 @@ Volet {
                     Item { Layout.preferredWidth: 2 }
                     Rectangle {
                         width: 18; height: 18; radius: 5
-                        color: valeur.cochee ? fenetre.vert : Couleurs.champ
+                        color: valeur.cochee ? fenetre.accent : Couleurs.champ
                         border.width: valeur.cochee ? 0 : 1.5
                         border.color: Couleurs.texte3
                         Picto { anchors.centerIn: parent; width: 12; height: 12; visible: valeur.cochee; trace: "M5 12.5l4.5 4.5L19 7.5"; encre: "#FFFFFF"; trait: 3 }
@@ -185,7 +185,7 @@ Volet {
                 text: "Appliquer"
                 enabled: filtre.charge && filtre.nombreCochees > 0
                 encre: "#FFFFFF"
-                background: Rectangle { radius: 8; color: fenetre.vert; opacity: parent.hovered ? 0.9 : 1 }
+                background: Rectangle { radius: 8; color: fenetre.accent; opacity: parent.hovered ? 0.9 : 1 }
                 onClicked: filtre.appliquer()
             }
         }

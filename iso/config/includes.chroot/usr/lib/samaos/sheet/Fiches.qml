@@ -178,7 +178,7 @@ Rectangle {
                             radius: 14
                             color: Couleurs.champ
                             border.width: carte.ouverte ? 2 : 1
-                            border.color: carte.ouverte ? fenetre.vert : carte.hovered ? Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.4) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
+                            border.color: carte.ouverte ? fenetre.accent : carte.hovered ? Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.4) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
                         }
                         contentItem: ColumnLayout {
                             spacing: 9
@@ -209,7 +209,7 @@ Rectangle {
                                 Layout.preferredHeight: 6
                                 radius: 3
                                 color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.08)
-                                Rectangle { width: parent.width * carte.pct; height: 6; radius: 3; color: fenetre.vert }
+                                Rectangle { width: parent.width * carte.pct; height: 6; radius: 3; color: fenetre.accent }
                             }
                             // Sinon : les deux colonnes suivantes
                             Repeater {
@@ -280,8 +280,8 @@ Rectangle {
                     Rectangle {
                         Layout.preferredWidth: 48; Layout.preferredHeight: 48
                         radius: 24
-                        color: fenetre.vertFond
-                        Text { anchors.centerIn: parent; text: fiches.initiales(champNom.text); font.pixelSize: 16; font.weight: Font.Bold; color: fenetre.vertEncre }
+                        color: fenetre.accentFond
+                        Text { anchors.centerIn: parent; text: fiches.initiales(champNom.text); font.pixelSize: 16; font.weight: Font.Bold; color: fenetre.accentEncre }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -376,8 +376,8 @@ Rectangle {
                                             Layout.preferredHeight: 26
                                             Layout.preferredWidth: valeurCalculee.implicitWidth + 18
                                             radius: 6
-                                            color: doit ? Qt.rgba(226 / 255, 166 / 255, 43 / 255, 0.28) : fenetre.vertFond
-                                            Text { id: valeurCalculee; anchors.centerIn: parent; text: champ.solde ? "Soldé" : (champ.valeur || "—"); font.pixelSize: 15; font.weight: Font.Bold; color: parent.doit ? (Couleurs.sombre ? "#F2D27A" : "#1E2740") : fenetre.vertEncre }
+                                            color: doit ? Qt.rgba(226 / 255, 166 / 255, 43 / 255, 0.28) : fenetre.accentFond
+                                            Text { id: valeurCalculee; anchors.centerIn: parent; text: champ.solde ? "Soldé" : (champ.valeur || "—"); font.pixelSize: 15; font.weight: Font.Bold; color: parent.doit ? (Couleurs.sombre ? "#F2D27A" : "#1E2740") : fenetre.accentEncre }
                                         }
                                     }
                                 }
@@ -390,7 +390,7 @@ Rectangle {
                                     radius: 10
                                     color: Couleurs.champ
                                     border.width: saisie.activeFocus ? 1.5 : 1
-                                    border.color: saisie.activeFocus ? fenetre.vert : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.14)
+                                    border.color: saisie.activeFocus ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.14)
                                     RowLayout {
                                         anchors.fill: parent
                                         anchors.leftMargin: 12

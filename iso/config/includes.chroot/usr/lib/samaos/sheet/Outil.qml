@@ -22,7 +22,7 @@ QQC2.AbstractButton {
     QQC2.ToolTip.delay: 600
     background: Rectangle {
         radius: 8
-        color: outil.actif ? fenetre.vertFond : outil.down ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
+        color: outil.actif ? fenetre.accentFond : outil.down ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
                : outil.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : "transparent"
     }
     contentItem: Item {
@@ -30,7 +30,7 @@ QQC2.AbstractButton {
             id: rangee
             anchors.centerIn: parent
             spacing: 6
-            Picto { visible: outil.picto !== ""; trace: outil.picto; encre: outil.actif ? fenetre.vertEncre : outil.encre }
+            Picto { visible: outil.picto !== ""; trace: outil.picto; encre: outil.actif ? fenetre.accentEncre : outil.encre }
             Text {
                 visible: outil.text !== ""
                 text: outil.text
@@ -40,7 +40,7 @@ QQC2.AbstractButton {
                 font.italic: outil.police.italic
                 font.underline: outil.police.underline
                 font.strikeout: outil.police.strikeout
-                color: outil.actif ? fenetre.vertEncre : outil.encre
+                color: outil.actif ? fenetre.accentEncre : outil.encre
             }
         }
     }

@@ -23,10 +23,13 @@ Window {
     title: accueilOuvert ? "Sama Sheet" : (doc.modifie ? "• " : "") + nomFichier + " — Sama Sheet"
     color: Couleurs.fond
 
-    // Identité de Sama Sheet : le vert des tableaux
+    // Identité de Sama Sheet : le bleu lagune (celui de son icône) ; le vert reste celui de « c'est fait » (Soldé,
+    // Enregistré)
+    readonly property color accent: Couleurs.sombre ? "#4F95B5" : "#1F5E7A"
+    readonly property color accentEncre: Couleurs.sombre ? "#A6D2E6" : "#194B62"
+    readonly property color accentFond: Qt.rgba(31 / 255, 94 / 255, 122 / 255, Couleurs.sombre ? 0.3 : 0.12)
     readonly property color vert: "#2F6B57"
-    readonly property color vertEncre: Couleurs.sombre ? "#A3D6C1" : "#1F5544"
-    readonly property color vertFond: Qt.rgba(47 / 255, 107 / 255, 87 / 255, Couleurs.sombre ? 0.25 : 0.12)
+    readonly property color vertEncre: Couleurs.sombre ? "#A3D6C1" : "#2F6B57"
 
     readonly property var doc: grille.doc
     readonly property string nomFichier: doc.chemin ? doc.chemin.split("/").pop() : (nomPropose || "Nouveau classeur")
@@ -240,7 +243,7 @@ Window {
                     radius: 7
                     color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.3 : 0.05)
                     border.width: champAdresse.activeFocus ? 1.5 : 0
-                    border.color: fenetre.vert
+                    border.color: fenetre.accent
                     TextInput {
                         id: champAdresse
                         anchors.fill: parent
@@ -276,14 +279,14 @@ Window {
                                 implicitWidth: morceau.implicitWidth + (modelData.puce ? 16 : 0)
                                 implicitHeight: 24
                                 radius: 6
-                                color: modelData.puce ? fenetre.vertFond : "transparent"
+                                color: modelData.puce ? fenetre.accentFond : "transparent"
                                 Text {
                                     id: morceau
                                     anchors.centerIn: parent
                                     text: modelData.puce ? modelData.texte + (modelData.detail ? " · " + modelData.detail : "") : modelData.texte
                                     font.pixelSize: 13
                                     font.weight: modelData.puce ? Font.DemiBold : Font.Normal
-                                    color: modelData.puce ? fenetre.vertEncre : Couleurs.texte
+                                    color: modelData.puce ? fenetre.accentEncre : Couleurs.texte
                                 }
                             }
                         }
@@ -387,7 +390,7 @@ Window {
                             text: modelData
                             font.pixelSize: 12
                             font.weight: ongletFeuille.courante ? Font.DemiBold : Font.Normal
-                            color: ongletFeuille.courante ? fenetre.vertEncre : Couleurs.texte2
+                            color: ongletFeuille.courante ? fenetre.accentEncre : Couleurs.texte2
                         }
                         TextInput {
                             id: champNom
@@ -505,7 +508,7 @@ Window {
         titre: "Enregistrer « " + fenetre.nomFichier + " » ?"
         texte: "Les modifications seront perdues si vous fermez sans enregistrer."
         action: "Enregistrer"
-        teinte: fenetre.vert
+        teinte: fenetre.accent
         picto: "M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6"
         onConfirme: { ouverte = false; fenetre.fermetureDemandee = true; fenetre.enregistrer() }
         Outil {

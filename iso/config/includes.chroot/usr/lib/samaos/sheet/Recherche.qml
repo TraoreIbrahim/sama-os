@@ -26,7 +26,7 @@ Item {
         radius: 9
         color: champ.activeFocus ? Couleurs.champ : Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.25 : 0.055)
         border.width: champ.activeFocus ? 1.5 : 0
-        border.color: fenetre.vert
+        border.color: fenetre.accent
     }
     RowLayout {
         anchors.fill: parent
@@ -95,7 +95,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     radius: 8
-                    color: index === recherche.choisi ? fenetre.vertFond : zone.containsMouse ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : "transparent"
+                    color: index === recherche.choisi ? fenetre.accentFond : zone.containsMouse ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : "transparent"
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -106,7 +106,7 @@ Item {
                             text: modelData.nom
                             font.pixelSize: 13
                             font.weight: index === recherche.choisi ? Font.DemiBold : Font.Normal
-                            color: index === recherche.choisi ? fenetre.vertEncre : Couleurs.texte
+                            color: index === recherche.choisi ? fenetre.accentEncre : Couleurs.texte
                             elide: Text.ElideRight
                         }
                         Text {

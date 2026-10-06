@@ -91,7 +91,7 @@ Rectangle {
                                 color: Couleurs.champ
                                 border.width: 0.5
                                 border.color: Couleurs.bord
-                                Picto { anchors.centerIn: parent; trace: "M5 4h14v16H5z M5 9h14 M5 14h14 M10 4v16"; encre: fenetre.vert }
+                                Picto { anchors.centerIn: parent; trace: "M5 4h14v16H5z M5 9h14 M5 14h14 M10 4v16"; encre: fenetre.accent }
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -118,7 +118,7 @@ Rectangle {
                     text: "Ouvrir un fichier…"
                     picto: "M3 7h6l2 2h10v10H3z"
                     aide: "Un classeur Excel (.xlsx, .xls), OpenDocument (.ods) ou CSV (Ctrl+O)"
-                    background: Rectangle { radius: 10; color: Couleurs.champ; border.width: 0.5; border.color: parent.hovered ? fenetre.vert : Couleurs.bord }
+                    background: Rectangle { radius: 10; color: Couleurs.champ; border.width: 0.5; border.color: parent.hovered ? fenetre.accent : Couleurs.bord }
                     onClicked: fenetre.ouvrirDialogue("ouvrir")
                 }
             }
@@ -157,7 +157,7 @@ Rectangle {
                         radius: 9
                         color: Couleurs.champ
                         border.width: recherche.activeFocus ? 1.5 : 0.5
-                        border.color: recherche.activeFocus ? fenetre.vert : Couleurs.bord
+                        border.color: recherche.activeFocus ? fenetre.accent : Couleurs.bord
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 10
@@ -220,8 +220,8 @@ Rectangle {
                             hoverEnabled: true
                             focusPolicy: Qt.NoFocus
                             onClicked: accueil.categorie = modelData
-                            background: Rectangle { radius: 8; color: puce.choisie ? fenetre.vertFond : puce.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : "transparent" }
-                            contentItem: Text { id: nomPuce; text: modelData; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.pixelSize: 12; font.weight: puce.choisie ? Font.DemiBold : Font.Normal; color: puce.choisie ? fenetre.vertEncre : Couleurs.texte2 }
+                            background: Rectangle { radius: 8; color: puce.choisie ? fenetre.accentFond : puce.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : "transparent" }
+                            contentItem: Text { id: nomPuce; text: modelData; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.pixelSize: 12; font.weight: puce.choisie ? Font.DemiBold : Font.Normal; color: puce.choisie ? fenetre.accentEncre : Couleurs.texte2 }
                         }
                     }
                 }
@@ -241,7 +241,7 @@ Rectangle {
                             hoverEnabled: true
                             focusPolicy: Qt.NoFocus
                             onClicked: accueil.modele(modelData.cle, modelData.nom)
-                            background: Rectangle { radius: 14; color: Couleurs.champ; border.width: carte.hovered ? 1.5 : 0.5; border.color: carte.hovered ? fenetre.vert : Couleurs.bord }
+                            background: Rectangle { radius: 14; color: Couleurs.champ; border.width: carte.hovered ? 1.5 : 0.5; border.color: carte.hovered ? fenetre.accent : Couleurs.bord }
                             contentItem: ColumnLayout {
                                 spacing: 6
                                 RowLayout {
@@ -254,8 +254,8 @@ Rectangle {
                                         Layout.preferredHeight: 20
                                         Layout.preferredWidth: etiquette.implicitWidth + 14
                                         radius: 6
-                                        color: modelData.tableau ? fenetre.vertFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.06)
-                                        Text { id: etiquette; anchors.centerIn: parent; text: modelData.tableau ? "Tableau" : "Grille"; font.pixelSize: 11; font.weight: Font.DemiBold; color: modelData.tableau ? fenetre.vertEncre : Couleurs.texte2 }
+                                        color: modelData.tableau ? fenetre.accentFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.06)
+                                        Text { id: etiquette; anchors.centerIn: parent; text: modelData.tableau ? "Tableau" : "Grille"; font.pixelSize: 11; font.weight: Font.DemiBold; color: modelData.tableau ? fenetre.accentEncre : Couleurs.texte2 }
                                     }
                                 }
                                 Text { Layout.fillWidth: true; Layout.leftMargin: 4; Layout.rightMargin: 4; text: modelData.texte; font.pixelSize: 12; color: Couleurs.texte2; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight }
@@ -295,7 +295,7 @@ Rectangle {
         implicitHeight: 112
         hoverEnabled: true
         focusPolicy: Qt.NoFocus
-        background: Rectangle { radius: 16; color: Couleurs.champ; border.width: depart.hovered ? 1.5 : 0.5; border.color: depart.hovered ? fenetre.vert : Couleurs.bord }
+        background: Rectangle { radius: 16; color: Couleurs.champ; border.width: depart.hovered ? 1.5 : 0.5; border.color: depart.hovered ? fenetre.accent : Couleurs.bord }
         contentItem: RowLayout {
             spacing: 18
             Item { Layout.preferredWidth: 2 }
@@ -317,18 +317,18 @@ Rectangle {
                         Rectangle { width: 30; height: 16; color: "transparent"; border.width: 0.5; border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.15) }
                     }
                 }
-                Rectangle { visible: depart.grille; x: 30; y: 32; width: 31; height: 17; color: "transparent"; border.width: 2; border.color: fenetre.vert }
+                Rectangle { visible: depart.grille; x: 30; y: 32; width: 31; height: 17; color: "transparent"; border.width: 2; border.color: fenetre.accent }
                 Column {
                     visible: !depart.grille
                     anchors.fill: parent
                     anchors.margins: 10
                     spacing: 4
-                    Rectangle { width: parent.width; height: 11; radius: 3; color: fenetre.vert }
+                    Rectangle { width: parent.width; height: 11; radius: 3; color: fenetre.accent }
                     Repeater {
                         model: 3
-                        Rectangle { width: parent.width; height: 8; radius: 2; color: index % 2 ? fenetre.vertFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.07) }
+                        Rectangle { width: parent.width; height: 8; radius: 2; color: index % 2 ? fenetre.accentFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.07) }
                     }
-                    Rectangle { width: parent.width; height: 10; radius: 2; color: Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.22) }
+                    Rectangle { width: parent.width; height: 10; radius: 2; color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.22) }
                 }
             }
             ColumnLayout {
@@ -336,7 +336,7 @@ Rectangle {
                 spacing: 4
                 Text { text: depart.titre; font.pixelSize: 17; font.weight: Font.DemiBold; color: Couleurs.texte }
                 Text { Layout.fillWidth: true; text: depart.texte; font.pixelSize: 12; color: Couleurs.texte2; wrapMode: Text.Wrap }
-                Text { text: depart.indice; font.pixelSize: 11; font.weight: Font.DemiBold; color: fenetre.vertEncre; Layout.topMargin: 2 }
+                Text { text: depart.indice; font.pixelSize: 11; font.weight: Font.DemiBold; color: fenetre.accentEncre; Layout.topMargin: 2 }
             }
             Item { Layout.preferredWidth: 4 }
         }

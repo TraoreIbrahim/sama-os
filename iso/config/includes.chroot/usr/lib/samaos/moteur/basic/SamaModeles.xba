@@ -80,6 +80,15 @@ Sub Calcul(sColonne As String, l1 As Long, l2 As Long, sFormule As String)
 	Next l
 End Sub
 
+' Une colonne de dates : courtes, à gauche, en gris
+Sub Dates(sPlage As String, nFormat As Long)
+	Dim oZone As Object
+	oZone = oF.getCellRangeByName(sPlage)
+	oZone.NumberFormat = nFormat
+	oZone.HoriJustify = com.sun.star.table.CellHoriJustify.LEFT
+	oZone.CharColor = RGB(102, 94, 84)
+End Sub
+
 Sub Formater(sPlage As String, nFormat As Long)
 	oF.getCellRangeByName(sPlage).NumberFormat = nFormat
 End Sub
@@ -94,7 +103,7 @@ Sub Titre(sTitre As String, sSous As String)
 	oC = oF.getCellRangeByName("A1")
 	oC.CharHeight = 16
 	oC.CharWeight = com.sun.star.awt.FontWeight.BOLD
-	oC.CharColor = RGB(31, 85, 68)
+	oC.CharColor = Encre()
 	If sSous <> "" Then
 		Ecrire("A2", sSous)
 		oF.getCellRangeByName("A2").CharColor = RGB(102, 94, 84)
@@ -114,10 +123,10 @@ Sub Entete(sPlage As String)
 	Dim oZone As Object, oTrait As New com.sun.star.table.BorderLine2
 	oZone = oF.getCellRangeByName(sPlage)
 	oZone.CharWeight = com.sun.star.awt.FontWeight.BOLD
-	oZone.CharColor = RGB(31, 85, 68)
-	oZone.CellBackColor = RGB(221, 235, 227)
-	oTrait.Color = RGB(47, 107, 87)
-	oTrait.OuterLineWidth = 35
+	oZone.CharColor = Encre()
+	oZone.CellBackColor = FondTitre()
+	oTrait.Color = Lagune()
+	oTrait.OuterLineWidth = 40
 	oZone.BottomBorder = oTrait
 End Sub
 
@@ -144,6 +153,25 @@ End Sub
 Sub Tableau(sPlage As String, sNom As String)
 	Nouveau(oF, oF.getCellRangeByName(sPlage).RangeAddress, sNom)
 End Sub
+
+' Une ligne libre au-dessus du tableau, pour son onglet (nom, Grille ou Fiches) : on l'insère à l'index n (tout ce
+' qui est dessous descend, les formules suivent) ; la case de départ descend aussi
+Sub Onglet(n As Long)
+	Dim m As Long
+	oF.Rows.insertByIndex(n, 1)
+	oF.Rows.getByIndex(n).Height = 900
+	m = Val(Mid(sDepart, 2))
+	If m > n Then sDepart = Left(sDepart, 1) & (m + 1)
+End Sub
+
+' Un format de nombre par son code (mots-clés anglais : « D MMM »), les mois dans la langue de Sama : 3 oct.
+Function FormatCode(sCode As String) As Long
+	Dim oFormats As Object, n As Long
+	oFormats = ThisComponent.NumberFormats
+	n = oFormats.queryKey(sCode, Lieu(), False)
+	If n = -1 Then n = oFormats.addNew(sCode, Lieu())
+	FormatCode = n
+End Function
 
 ' Somme d'une colonne dans la ligne des totaux d'un tableau
 Sub Total(sNom As String, sColonne As String, nFormat As Long)
@@ -183,12 +211,16 @@ Function Remplir(sModele As String) As String
 	m = FormatMontant(False)
 	mz = FormatMontant(True)
 	d = FormatType(com.sun.star.util.NumberFormat.DATE)
+	On Error Resume Next
+	d = FormatCode("D MMM")
+	On Error GoTo Erreur
 	Select Case sModele
 	Case "tableau"
 		Rangee("A1", Array("Colonne 1", "Colonne 2", "Colonne 3"))
 		Tableau("A1:C6", "Tableau1")
 		Largeurs(Array(4, 4, 4))
 		Choisir("A1")
+		Onglet(0)
 
 	Case "cotisations"
 		oF.Name = "Cotisations"
@@ -198,12 +230,13 @@ Function Remplir(sModele As String) As String
 		Calcul("D", 4, 13, "=Cotisations[[#Cette ligne];[Part]]-Cotisations[[#Cette ligne];[Versé]]")
 		Formater("B4:C14", m)
 		Formater("D4:D14", mz)
-		Formater("E4:E13", d)
+		Dates("E4:E13", d)
 		Totaux("Cotisations", "1")
 		Total("Cotisations", "Part", m)
 		Total("Cotisations", "Versé", m)
 		Largeurs(Array(5.5, 3, 3, 3, 3, 3.5))
 		Choisir("A4")
+		Onglet(2)
 
 	Case "stock"
 		oF.Name = "Stock"
@@ -218,13 +251,14 @@ Function Remplir(sModele As String) As String
 		Totaux("Stock", "1")
 		Largeurs(Array(6, 3, 2.6, 2.6, 2.6, 3.6))
 		Choisir("A4")
+		Onglet(2)
 
 	Case "budget"
 		oF.Name = "Budget"
 		Titre("Budget du mois", "Entrées et dépenses ; le solde se calcule tout seul.")
 		Rangee("A3", Array("Date", "Libellé", "Catégorie", "Entrée", "Dépense"))
 		Tableau("A3:E23", "Budget")
-		Formater("A4:A23", d)
+		Dates("A4:A23", d)
 		Formater("D4:E24", m)
 		Totaux("Budget", "1")
 		Total("Budget", "Entrée", m)
@@ -235,6 +269,7 @@ Function Remplir(sModele As String) As String
 		Gras("C26:D26")
 		Largeurs(Array(3, 7, 4, 3.4, 3.4))
 		Choisir("A4")
+		Onglet(2)
 
 	Case "notes"
 		oF.Name = "Notes"
@@ -250,6 +285,7 @@ Function Remplir(sModele As String) As String
 		Gras("D35:E35")
 		Largeurs(Array(6, 2.6, 2.6, 3.2, 2.6, 2))
 		Choisir("A4")
+		Onglet(2)
 
 	Case "personnes"
 		oF.Name = "Personnes"
@@ -260,13 +296,14 @@ Function Remplir(sModele As String) As String
 		Formater("B4:B33", FormatType(com.sun.star.util.NumberFormat.TEXT))
 		Largeurs(Array(6, 3.6, 4, 3.6, 6))
 		Choisir("A4")
+		Onglet(2)
 
 	Case "facture"
 		oF.Name = "Facture"
 		Ecrire("A1", "FACTURE")
 		oF.getCellRangeByName("A1").CharHeight = 20
 		oF.getCellRangeByName("A1").CharWeight = com.sun.star.awt.FontWeight.BOLD
-		oF.getCellRangeByName("A1").CharColor = RGB(31, 85, 68)
+		oF.getCellRangeByName("A1").CharColor = Encre()
 		Ecrire("A2", "N° …        Date : …")
 		oF.getCellRangeByName("A2").CharColor = RGB(102, 94, 84)
 		Ecrire("A4", "Vendeur")
@@ -288,7 +325,7 @@ Function Remplir(sModele As String) As String
 		Ecrire("D24", "=D22-D23")
 		Formater("D22:D24", m)
 		Gras("C24:D24")
-		oF.getCellRangeByName("C24:D24").CellBackColor = RGB(221, 235, 227)
+		oF.getCellRangeByName("C24:D24").CellBackColor = FondTitre()
 		Ecrire("A26", "Arrêtée la présente facture à la somme de : …")
 		Largeurs(Array(8, 2.6, 3.4, 3.6))
 		Choisir("A9")
