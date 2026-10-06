@@ -1,5 +1,6 @@
 # Applications par défaut de Sama : les dossiers s'ouvrent dans Fichiers, les PDF dans le lecteur de documents,
-# le texte brut dans l'éditeur de texte (et non dans le traitement de texte), vidéos et musique dans le lecteur.
+# le texte brut dans l'éditeur de texte (et non dans le traitement de texte), vidéos et musique dans le lecteur,
+# les classeurs (Excel, OpenDocument, CSV) dans Sama Sheet.
 [Default Applications]
 inode/directory=samaos-fichiers.desktop
 application/pdf=org.kde.okular.desktop
@@ -20,3 +21,7 @@ audio/mp4=org.kde.haruna.desktop
 audio/aac=org.kde.haruna.desktop
 audio/x-opus+ogg=org.kde.haruna.desktop
 audio/x-m4a=org.kde.haruna.desktop
+application/vnd.openxmlformats-officedocument.spreadsheetml.sheet=samaos-sheet.desktop
+application/vnd.ms-excel=samaos-sheet.desktop
+application/vnd.oasis.opendocument.spreadsheet=samaos-sheet.desktop
+text/csv=samaos-sheet.desktop

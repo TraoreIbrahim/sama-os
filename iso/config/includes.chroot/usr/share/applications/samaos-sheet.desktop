@@ -1,10 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Sama Sheet
-Comment=Tableur de Sama (préversion)
-Exec=env PLASMA_INTEGRATION_USE_PORTAL=0 libreoffice --calc %U
+Comment=Tableur de Sama, compatible Excel
+Exec=sama-sheet %f
 Icon=/usr/share/samaos/icones/sheet.svg
-StartupWMClass=libreoffice-calc
+StartupWMClass=samaos-sheet
 Categories=Office;Spreadsheet;
+MimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.ms-excel;application/vnd.oasis.opendocument.spreadsheet;text/csv;
+Keywords=tableur;excel;classeur;feuille de calcul;xlsx;ods;budget;calc;
 Terminal=false
-X-Sama-Provisoire=true

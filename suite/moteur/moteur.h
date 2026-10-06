@@ -9,6 +9,7 @@
 #include <LibreOfficeKit/LibreOfficeKitEnums.h>
 
 #include <QObject>
+#include <QSet>
 #include <QThread>
 #include <functional>
 
@@ -27,6 +28,9 @@ public:
     // À n'utiliser que dans le fil du moteur
     LibreOfficeKit *lok();
     QString erreur() const { return m_erreur; }
+    // Documents ouverts (fermés proprement à la fin du programme)
+    void ajouter(LibreOfficeKitDocument *d);
+    void retirer(LibreOfficeKitDocument *d);
 
 private:
     Moteur();
@@ -35,4 +39,5 @@ private:
     LibreOfficeKit *m_lok = nullptr;
     bool m_essaye = false;
     QString m_erreur;
+    QSet<LibreOfficeKitDocument *> m_documents;
 };

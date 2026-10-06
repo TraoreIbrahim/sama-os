@@ -31,7 +31,7 @@ MODULES = {"com.sun.star.text.TextDocument": ("Sama Docs", "samaos-docs.desktop"
            "com.sun.star.sheet.SpreadsheetDocument": ("Sama Sheet", "samaos-sheet.desktop", "/usr/share/samaos/icones/sheet.svg"),
            "com.sun.star.presentation.PresentationDocument": ("Sama Présentations", "samaos-presentations.desktop",
                                                               "/usr/share/samaos/icones/presentations.svg")}
-LIBREOFFICE = {"samaos-docs.desktop", "samaos-sheet.desktop", "samaos-presentations.desktop", "libreoffice-writer.desktop",
+LIBREOFFICE = {"samaos-docs.desktop", "samaos-presentations.desktop", "libreoffice-writer.desktop",
                "libreoffice-calc.desktop", "libreoffice-impress.desktop", "libreoffice-startcenter.desktop"}
 
 

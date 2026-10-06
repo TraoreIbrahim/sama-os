@@ -25,6 +25,10 @@ cp "$racine"/branding/icones/*.svg "$inclus/usr/share/samaos/icones/"
 # Aide hors ligne : les articles (aide/<langue>/<thème>/*.md)
 rm -rf "$inclus/usr/share/samaos/aide"
 cp -R "$racine/aide" "$inclus/usr/share/samaos/aide"
+# Moteur de Sama Sheet et Sama Docs (module C++) : construit dans l'image par le hook 1600-sama-moteur
+rm -rf "$inclus/usr/src/sama-moteur"
+mkdir -p "$inclus/usr/src"
+cp -R "$racine/suite/moteur" "$inclus/usr/src/sama-moteur"
 # Widgets de Sama : la barre (natte/) et les cartes du bureau (bureau/)
 for dossier in "$racine"/natte/org.samaos.* "$racine"/bureau/org.samaos.*; do
 	widget=$(basename "$dossier")

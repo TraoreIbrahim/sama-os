@@ -1,0 +1,6 @@
+#!/bin/sh
+# Sama Sheet, le tableur de Sama. Usage : sama-sheet [fichier]
+# L'exécutable porte le nom de l'application : son identité (tuile dans la Natte, Alt+Tab) en découle.
+# Le module Sama.Moteur (moteur de LibreOffice) est dans /usr/lib/samaos/qml.
+export QML_IMPORT_PATH="/usr/lib/samaos/qml${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+exec /usr/lib/samaos/bin/samaos-sheet /usr/lib/samaos/sheet/Sheet.qml -- "$@"

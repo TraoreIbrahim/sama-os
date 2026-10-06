@@ -102,6 +102,7 @@ DocumentLO::~DocumentLO()
     auto *doc = m_doc;
     Moteur::instance()->executerEtAttendre([doc] {
         if (doc) {
+            Moteur::instance()->retirer(doc);
             doc->pClass->registerCallback(doc, nullptr, nullptr);
             doc->pClass->destroy(doc);
         }
@@ -143,6 +144,7 @@ void DocumentLO::charger(const QString &url)
     Moteur::instance()->executer([this, url, ancien, relais] {
         Moteur *moteur = Moteur::instance();
         if (ancien) {
+            moteur->retirer(ancien);
             ancien->pClass->registerCallback(ancien, nullptr, nullptr);
             ancien->pClass->destroy(ancien);
         }
@@ -162,6 +164,7 @@ void DocumentLO::charger(const QString &url)
                 erreur = e && *e ? QString::fromUtf8(e) : QStringLiteral("Ce fichier n'a pas pu être ouvert.");
                 if (e) lok->pClass->freeError(e);
             } else {
+                moteur->ajouter(doc);
                 doc->pClass->initializeForRendering(doc, "{}");
                 doc->pClass->registerCallback(doc, &rappelLok, relais);
                 type = doc->pClass->getDocumentType(doc);
@@ -652,16 +655,17 @@ void DocumentLO::enregistrerSous(const QString &chemin, const QString &format)
     auto *doc = m_doc;
     const QString f = format.isEmpty() ? chemin.section(QLatin1Char('.'), -1).toLower() : format;
     const QByteArray url = QUrl::fromLocalFile(chemin).toString(QUrl::FullyEncoded).toUtf8(), fb = f.toUtf8();
-    Moteur::instance()->executer([this, doc, url, fb, chemin] {
+    // (saveAs écrit une copie : le moteur se croit encore « modifié ». Sauf pour un export PDF, on lui dit qu'il ne
+    // l'est plus ; il le signalera de lui-même à la prochaine modification)
+    const bool exportation = f == QLatin1String("pdf");
+    Moteur::instance()->executer([this, doc, url, fb, chemin, exportation] {
         const bool ok = doc->pClass->saveAs(doc, url.constData(), fb.isEmpty() ? nullptr : fb.constData(), nullptr);
-        QMetaObject::invokeMethod(this, [this, ok, chemin] {
-            if (ok) {
-                if (chemin != m_chemin && !chemin.endsWith(QLatin1String(".pdf"))) {
-                    m_chemin = chemin;
-                    emit cheminChanged();
-                }
-                m_modifie = false;
-                emit modifieChanged();
+        if (ok && !exportation)
+            doc->pClass->postUnoCommand(doc, ".uno:Modified", "{\"Modified\":{\"type\":\"boolean\",\"value\":false}}", false);
+        QMetaObject::invokeMethod(this, [this, ok, chemin, exportation] {
+            if (ok && !exportation && chemin != m_chemin) {
+                m_chemin = chemin;
+                emit cheminChanged();
             }
             emit enregistre(ok, chemin);
         }, Qt::QueuedConnection);

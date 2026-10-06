@@ -1,0 +1,16 @@
+#!/bin/sh
+# Module QML Sama.Moteur (le moteur de LibreOffice pour Sama Sheet, puis Sama Docs) : construit dans l'image depuis
+# /usr/src/sama-moteur (copie de suite/moteur, faite par scripts/construire-iso.sh), puis les outils de construction
+# sont retirés. Les en-têtes de LibreOfficeKit sont ceux de la version de LibreOffice installée.
+set -e
+SOURCE=/usr/src/sama-moteur
+[ -d "$SOURCE" ] || exit 0
+VERSION=$(dpkg-query -W -f '${Version}' libreoffice-core)
+apt-get install -y --no-install-recommends g++ make qt6-base-dev qt6-declarative-dev "libreofficekit-dev=$VERSION"
+cd "$SOURCE"
+qmake6
+make -j"$(nproc)"
+make install
+cd /
+rm -rf "$SOURCE"
+apt-get purge -y --auto-remove g++ make qt6-base-dev qt6-declarative-dev libreofficekit-dev

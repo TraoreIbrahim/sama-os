@@ -12,5 +12,6 @@ LIBS += -ldl
 DESTDIR = Sama/Moteur
 cible.path = /usr/lib/samaos/qml/Sama/Moteur
 cible.files = Sama/Moteur/libsamamoteur.so qmldir
+cible.CONFIG += no_check_exist      # (la bibliothèque n'existe qu'après la construction)
 INSTALLS += cible
 QMAKE_POST_LINK = cp $$PWD/qmldir Sama/Moteur/qmldir
