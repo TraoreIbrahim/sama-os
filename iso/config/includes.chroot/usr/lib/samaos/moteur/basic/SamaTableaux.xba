@@ -93,10 +93,27 @@ Erreur:
 	Decrire = "!" & Error$
 End Function
 
+' Un tableau sur la plage a, nommé sNom (aussi pour les modèles de SamaModeles) : titres en gras, sur le vert pâle
+' de Sama Sheet, un trait vert dessous ; filtres
+Sub Nouveau(oFeuille As Object, a As Object, sNom As String)
+	Dim oPlage As Object, oEntete As Object, oTrait As New com.sun.star.table.BorderLine2
+	ThisComponent.DatabaseRanges.addNewByName(sNom, a)
+	oPlage = ThisComponent.DatabaseRanges.getByName(sNom)
+	oPlage.ContainsHeader = True
+	oPlage.AutoFilter = True
+	oEntete = oFeuille.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.StartRow)
+	oEntete.CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oEntete.CharColor = RGB(31, 85, 68)
+	oEntete.CellBackColor = RGB(221, 235, 227)
+	oTrait.Color = RGB(47, 107, 87)
+	oTrait.OuterLineWidth = 35
+	oEntete.BottomBorder = oTrait
+End Sub
+
 ' Met en tableau la plage choisie, ou la zone de données autour de la case choisie. Rend le nom du tableau.
 Function Creer() As String
 	Dim oDoc As Object, oSel As Object, oFeuille As Object, oCurseur As Object, a As Object, b As Object
-	Dim oPlage As Object, oEntete As Object, oCase As Object, oTrait As New com.sun.star.table.BorderLine2
+	Dim oCase As Object
 	Dim n As Long, i As Long, sNom As String, bAnnuler As Boolean
 	On Error GoTo Erreur
 	oDoc = ThisComponent
@@ -148,18 +165,7 @@ Function Creer() As String
 		oCase = oFeuille.getCellByPosition(i, a.StartRow)
 		If Trim(oCase.String) = "" Then oCase.String = "Colonne " & (i - a.StartColumn + 1)
 	Next i
-	oDoc.DatabaseRanges.addNewByName(sNom, a)
-	oPlage = oDoc.DatabaseRanges.getByName(sNom)
-	oPlage.ContainsHeader = True
-	oPlage.AutoFilter = True
-	' La ligne des titres : en gras, sur le vert pâle de Sama Sheet, un trait vert dessous
-	oEntete = oFeuille.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.StartRow)
-	oEntete.CharWeight = com.sun.star.awt.FontWeight.BOLD
-	oEntete.CharColor = RGB(31, 85, 68)
-	oEntete.CellBackColor = RGB(221, 235, 227)
-	oTrait.Color = RGB(47, 107, 87)
-	oTrait.OuterLineWidth = 35
-	oEntete.BottomBorder = oTrait
+	Nouveau(oFeuille, a, sNom)
 	oDoc.UndoManager.leaveUndoContext()
 	Creer = sNom
 	Exit Function

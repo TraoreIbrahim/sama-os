@@ -71,6 +71,10 @@ QtObject {
     }
     readonly property var catalogue: [
         c("nouveau", "Nouveau classeur", "Fichier", "créer vierge", "Ctrl+N", function () { fenetre.nouvelleFenetre() }),
+        c("modeles", "Nouveau à partir d'un modèle…", "Fichier", "modèle accueil cotisations stock facture budget notes", "", function () {
+            if (!doc.chemin && !doc.modifie) fenetre.accueilOuvert = true
+            else fenetre.nouvelleFenetre()
+        }),
         c("ouvrir", "Ouvrir…", "Fichier", "fichier excel", "Ctrl+O", function () { fenetre.ouvrirDialogue("ouvrir") }),
         c("enregistrer", "Enregistrer", "Fichier", "sauver sauvegarder", "Ctrl+S", function () { fenetre.enregistrer() }),
         c("enregistrerSous", "Enregistrer sous…", "Fichier", "copie autre nom format ods csv", "Ctrl+Maj+S", function () { fenetre.ouvrirDialogue("enregistrer") }),

@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaModeles" script:language="StarBasic"><![CDATA[REM Sama Sheet : les modèles de l'écran d'accueil. Sama ouvre un classeur vierge, puis appelle
+REM SamaModeles.Remplir("cotisations"…). Les tableaux sont de vrais tableaux Excel (voir SamaTableaux) ; les montants
+REM sont en francs CFA ; les colonnes calculées sont prêtes. Rend la case où commencer à écrire (« A4 »), ou
+REM « !message ». (La macro ne choisit pas la case elle-même : après une sélection faite par une macro, le moteur
+REM annule la saisie suivante au lieu de la valider ; Sama y va par une commande ordinaire.)
+Option Explicit
+
+Private oF As Object
+Private sDepart As String
+
+' Les formats sont ceux du français de Côte d'Ivoire (franc CFA, espaces entre les milliers), comme le bouton F CFA
+Function Lieu() As Object
+	Dim aLoc As New com.sun.star.lang.Locale
+	aLoc.Language = "fr"
+	aLoc.Country = "CI"
+	Lieu = aLoc
+End Function
+
+' Un format, et sa variante qui n'affiche pas les zéros (lignes encore vides d'une colonne calculée)
+Function SansZero(n As Long) As Long
+	Dim oFormats As Object, s As String, k As Long
+	oFormats = ThisComponent.NumberFormats
+	s = oFormats.getByKey(n).FormatString
+	If InStr(s, ";") > 0 Then s = Left(s, InStr(s, ";") - 1)
+	s = s & ";-" & s & ";"
+	k = oFormats.queryKey(s, Lieu(), False)
+	If k = -1 Then k = oFormats.addNew(s, Lieu())
+	SansZero = k
+End Function
+
+' Montants en francs CFA ; bZeroVide : un zéro ne s'affiche pas
+Function FormatMontant(bZeroVide As Boolean) As Long
+	Dim n As Long
+	n = ThisComponent.NumberFormats.getStandardFormat(com.sun.star.util.NumberFormat.CURRENCY, Lieu())
+	If bZeroVide Then n = SansZero(n)
+	FormatMontant = n
+End Function
+
+' Formats prédéfinis (com.sun.star.i18n.NumberFormatIndex : nombres, décimales…)
+Function FormatIndex(nIndex As Integer) As Long
+	FormatIndex = ThisComponent.NumberFormats.getFormatIndex(nIndex, Lieu())
+End Function
+
+Function FormatType(nType As Long) As Long
+	FormatType = ThisComponent.NumberFormats.getStandardFormat(nType, Lieu())
+End Function
+
+Sub Mettre(oC As Object, v As Variant)
+	If VarType(v) = 8 Then
+		If Left(v, 1) = "=" Then
+			oC.FormulaLocal = v
+		Else
+			oC.String = v
+		End If
+	Else
+		oC.Value = v
+	End If
+End Sub
+
+Sub Ecrire(sCase As String, v As Variant)
+	Mettre(oF.getCellRangeByName(sCase), v)
+End Sub
+
+' Une rangée de valeurs à partir de la case sDebut, vers la droite
+Sub Rangee(sDebut As String, aValeurs As Variant)
+	Dim a As Object, i As Long
+	a = oF.getCellRangeByName(sDebut).CellAddress
+	For i = LBound(aValeurs) To UBound(aValeurs)
+		Mettre(oF.getCellByPosition(a.Column + i, a.Row), aValeurs(i))
+	Next i
+End Sub
+
+' La même formule de la ligne l1 à la ligne l2 de la colonne sColonne ; « {l} » devient le numéro de la ligne
+Sub Calcul(sColonne As String, l1 As Long, l2 As Long, sFormule As String)
+	Dim l As Long
+	For l = l1 To l2
+		oF.getCellRangeByName(sColonne & l).FormulaLocal = Replace(sFormule, "{l}", CStr(l))
+	Next l
+End Sub
+
+Sub Formater(sPlage As String, nFormat As Long)
+	oF.getCellRangeByName(sPlage).NumberFormat = nFormat
+End Sub
+
+Sub Gras(sPlage As String)
+	oF.getCellRangeByName(sPlage).CharWeight = com.sun.star.awt.FontWeight.BOLD
+End Sub
+
+Sub Titre(sTitre As String, sSous As String)
+	Dim oC As Object
+	Ecrire("A1", sTitre)
+	oC = oF.getCellRangeByName("A1")
+	oC.CharHeight = 16
+	oC.CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oC.CharColor = RGB(31, 85, 68)
+	If sSous <> "" Then
+		Ecrire("A2", sSous)
+		oF.getCellRangeByName("A2").CharColor = RGB(102, 94, 84)
+	End If
+End Sub
+
+' Largeur des colonnes, en centimètres, à partir de A
+Sub Largeurs(aCm As Variant)
+	Dim i As Long
+	For i = LBound(aCm) To UBound(aCm)
+		oF.Columns.getByIndex(i).Width = aCm(i) * 1000
+	Next i
+End Sub
+
+' Ligne de titres d'une grille ordinaire (même allure que celle d'un tableau)
+Sub Entete(sPlage As String)
+	Dim oZone As Object, oTrait As New com.sun.star.table.BorderLine2
+	oZone = oF.getCellRangeByName(sPlage)
+	oZone.CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oZone.CharColor = RGB(31, 85, 68)
+	oZone.CellBackColor = RGB(221, 235, 227)
+	oTrait.Color = RGB(47, 107, 87)
+	oTrait.OuterLineWidth = 35
+	oZone.BottomBorder = oTrait
+End Sub
+
+' Traits fins autour de chaque case
+Sub Cadre(sPlage As String)
+	Dim oB As New com.sun.star.table.TableBorder2, oT As New com.sun.star.table.BorderLine2
+	oT.Color = RGB(205, 197, 186)
+	oT.OuterLineWidth = 18
+	oB.TopLine = oT
+	oB.BottomLine = oT
+	oB.LeftLine = oT
+	oB.RightLine = oT
+	oB.HorizontalLine = oT
+	oB.VerticalLine = oT
+	oB.IsTopLineValid = True
+	oB.IsBottomLineValid = True
+	oB.IsLeftLineValid = True
+	oB.IsRightLineValid = True
+	oB.IsHorizontalLineValid = True
+	oB.IsVerticalLineValid = True
+	oF.getCellRangeByName(sPlage).TableBorder2 = oB
+End Sub
+
+Sub Tableau(sPlage As String, sNom As String)
+	Nouveau(oF, oF.getCellRangeByName(sPlage).RangeAddress, sNom)
+End Sub
+
+' Somme d'une colonne dans la ligne des totaux d'un tableau
+Sub Total(sNom As String, sColonne As String, nFormat As Long)
+	Dim a As Object, c As Long, oC As Object
+	a = ThisComponent.DatabaseRanges.getByName(sNom).DataArea
+	For c = a.StartColumn To a.EndColumn
+		If oF.getCellByPosition(c, a.StartRow).String = sColonne Then
+			oC = oF.getCellByPosition(c, a.EndRow)
+			oC.FormulaLocal = "=SOUS.TOTAL(109;" & sNom & "[" & NomColonne(sColonne) & "])"
+			oC.NumberFormat = nFormat
+		End If
+	Next c
+End Sub
+
+Sub Choisir(sCase As String)
+	sDepart = sCase
+End Sub
+
+Function Remplir(sModele As String) As String
+	Dim m As Long, mz As Long, d As Long
+	On Error GoTo Erreur
+	oF = ThisComponent.Sheets.getByIndex(0)
+	sDepart = "A1"
+	m = FormatMontant(False)
+	mz = FormatMontant(True)
+	d = FormatType(com.sun.star.util.NumberFormat.DATE)
+	Select Case sModele
+	Case "tableau"
+		Rangee("A1", Array("Colonne 1", "Colonne 2", "Colonne 3"))
+		Tableau("A1:C6", "Tableau1")
+		Largeurs(Array(4, 4, 4))
+		Choisir("A1")
+
+	Case "cotisations"
+		oF.Name = "Cotisations"
+		Titre("Cotisations", "Ce que chaque membre doit, ce qu'il a versé, ce qui reste.")
+		Rangee("A3", Array("Membre", "Part", "Versé", "Reste", "Date", "Moyen"))
+		Tableau("A3:F13", "Cotisations")
+		Calcul("D", 4, 13, "=Cotisations[[#Cette ligne];[Part]]-Cotisations[[#Cette ligne];[Versé]]")
+		Formater("B4:C14", m)
+		Formater("D4:D14", mz)
+		Formater("E4:E13", d)
+		Totaux("Cotisations", "1")
+		Total("Cotisations", "Part", m)
+		Total("Cotisations", "Versé", m)
+		Largeurs(Array(5.5, 3, 3, 3, 3, 3.5))
+		Choisir("A4")
+
+	Case "stock"
+		oF.Name = "Stock"
+		Titre("Ventes et stock", "Ce qui entre, ce qui sort, ce qui reste en boutique.")
+		Rangee("A3", Array("Article", "Prix", "Entrées", "Sorties", "Stock", "Valeur du stock"))
+		Tableau("A3:F23", "Stock")
+		Calcul("E", 4, 23, "=Stock[[#Cette ligne];[Entrées]]-Stock[[#Cette ligne];[Sorties]]")
+		Calcul("F", 4, 23, "=Stock[[#Cette ligne];[Stock]]*Stock[[#Cette ligne];[Prix]]")
+		Formater("B4:B23", m)
+		Formater("E4:E24", SansZero(FormatIndex(com.sun.star.i18n.NumberFormatIndex.NUMBER_1000INT)))
+		Formater("F4:F24", mz)
+		Totaux("Stock", "1")
+		Largeurs(Array(6, 3, 2.6, 2.6, 2.6, 3.6))
+		Choisir("A4")
+
+	Case "budget"
+		oF.Name = "Budget"
+		Titre("Budget du mois", "Entrées et dépenses ; le solde se calcule tout seul.")
+		Rangee("A3", Array("Date", "Libellé", "Catégorie", "Entrée", "Dépense"))
+		Tableau("A3:E23", "Budget")
+		Formater("A4:A23", d)
+		Formater("D4:E24", m)
+		Totaux("Budget", "1")
+		Total("Budget", "Entrée", m)
+		Total("Budget", "Dépense", m)
+		Ecrire("C26", "Solde du mois")
+		Ecrire("D26", "=SOMME(Budget[Entrée])-SOMME(Budget[Dépense])")
+		Formater("D26", m)
+		Gras("C26:D26")
+		Largeurs(Array(3, 7, 4, 3.4, 3.4))
+		Choisir("A4")
+
+	Case "notes"
+		oF.Name = "Notes"
+		Titre("Notes de classe", "Classe :            Trimestre :")
+		Rangee("A3", Array("Élève", "Devoir 1", "Devoir 2", "Composition", "Moyenne", "Rang"))
+		Tableau("A3:F33", "Notes")
+		Calcul("E", 4, 33, "=SIERREUR(MOYENNE(B{l}:D{l});"""")")
+		Calcul("F", 4, 33, "=SI(E{l}="""";"""";RANG(E{l};$E$4:$E$33))")
+		Formater("B4:E33", FormatIndex(com.sun.star.i18n.NumberFormatIndex.NUMBER_DEC2))
+		Ecrire("D35", "Moyenne de la classe")
+		Ecrire("E35", "=SIERREUR(MOYENNE(E4:E33);"""")")
+		Formater("E35", FormatIndex(com.sun.star.i18n.NumberFormatIndex.NUMBER_DEC2))
+		Gras("D35:E35")
+		Largeurs(Array(6, 2.6, 2.6, 3.2, 2.6, 2))
+		Choisir("A4")
+
+	Case "personnes"
+		oF.Name = "Personnes"
+		Titre("Liste de personnes", "Noms, téléphones, quartiers : un annuaire qui se trie.")
+		Rangee("A3", Array("Nom", "Téléphone", "Quartier", "Rôle", "Remarque"))
+		Tableau("A3:E33", "Personnes")
+		' (un numéro garde son zéro de tête : 07…)
+		Formater("B4:B33", FormatType(com.sun.star.util.NumberFormat.TEXT))
+		Largeurs(Array(6, 3.6, 4, 3.6, 6))
+		Choisir("A4")
+
+	Case "facture"
+		oF.Name = "Facture"
+		Ecrire("A1", "FACTURE")
+		oF.getCellRangeByName("A1").CharHeight = 20
+		oF.getCellRangeByName("A1").CharWeight = com.sun.star.awt.FontWeight.BOLD
+		oF.getCellRangeByName("A1").CharColor = RGB(31, 85, 68)
+		Ecrire("A2", "N° …        Date : …")
+		oF.getCellRangeByName("A2").CharColor = RGB(102, 94, 84)
+		Ecrire("A4", "Vendeur")
+		Ecrire("A5", "[Votre nom ou votre commerce]")
+		Ecrire("A6", "[Adresse, téléphone]")
+		Ecrire("C4", "Client")
+		Ecrire("C5", "[Nom du client]")
+		Ecrire("C6", "[Adresse]")
+		Gras("A4:C4")
+		Rangee("A8", Array("Désignation", "Quantité", "Prix unitaire", "Montant"))
+		Entete("A8:D8")
+		Calcul("D", 9, 20, "=SI(B{l}*C{l}=0;"""";B{l}*C{l})")
+		Cadre("A9:D20")
+		Formater("C9:D20", m)
+		Ecrire("C22", "Total")
+		Ecrire("D22", "=SOMME(D9:D20)")
+		Ecrire("C23", "Remise")
+		Ecrire("C24", "Net à payer")
+		Ecrire("D24", "=D22-D23")
+		Formater("D22:D24", m)
+		Gras("C24:D24")
+		oF.getCellRangeByName("C24:D24").CellBackColor = RGB(221, 235, 227)
+		Ecrire("A26", "Arrêtée la présente facture à la somme de : …")
+		Largeurs(Array(8, 2.6, 3.4, 3.6))
+		Choisir("A9")
+
+	Case "revient"
+		oF.Name = "Prix de revient"
+		Titre("Prix de revient", "Ce que coûte ce que vous fabriquez, et le prix à demander.")
+		Rangee("A3", Array("Poste", "Quantité", "Prix unitaire", "Montant"))
+		Entete("A3:D3")
+		Calcul("D", 4, 10, "=SI(B{l}*C{l}=0;"""";B{l}*C{l})")
+		Cadre("A4:D10")
+		Formater("C4:D10", m)
+		Ecrire("A12", "Coût total")
+		Ecrire("D12", "=SOMME(D4:D10)")
+		Ecrire("A13", "Marge")
+		Ecrire("B13", 0.3)
+		Formater("B13", FormatType(com.sun.star.util.NumberFormat.PERCENT))
+		Ecrire("A14", "Prix de vente conseillé")
+		Ecrire("D14", "=D12*(1+B13)")
+		Formater("D12:D14", m)
+		Gras("A14:D14")
+		oF.getCellRangeByName("D14").CellBackColor = RGB(252, 239, 199)
+		Largeurs(Array(7, 2.6, 3.4, 3.6))
+		Choisir("A4")
+
+	Case "planning"
+		oF.Name = "Planning"
+		Titre("Planning de la semaine", "Qui fait quoi, jour par jour.")
+		Rangee("B3", Array("Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"))
+		Entete("A3:H3")
+		Ecrire("A4", "Matin")
+		Ecrire("A5", "Midi")
+		Ecrire("A6", "Après-midi")
+		Ecrire("A7", "Soir")
+		Gras("A4:A7")
+		Cadre("A4:H7")
+		oF.getCellRangeByName("A4:H7").IsTextWrapped = True
+		oF.getCellRangeByName("A4:H7").VertJustify = com.sun.star.table.CellVertJustify.TOP
+		oF.Rows.getByIndex(3).Height = 1500
+		oF.Rows.getByIndex(4).Height = 1500
+		oF.Rows.getByIndex(5).Height = 1500
+		oF.Rows.getByIndex(6).Height = 1500
+		Largeurs(Array(3, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4))
+		Choisir("B4")
+	End Select
+	Remplir = sDepart
+	Exit Function
+Erreur:
+	Remplir = "!" & Error$ & " (ligne " & Erl & ")"
+End Function
+]]></script:module>

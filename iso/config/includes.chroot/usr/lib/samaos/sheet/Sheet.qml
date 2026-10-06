@@ -20,7 +20,7 @@ Window {
     minimumWidth: 760
     minimumHeight: 480
     visible: false
-    title: (doc.modifie ? "• " : "") + nomFichier + " — Sama Sheet"
+    title: accueilOuvert ? "Sama Sheet" : (doc.modifie ? "• " : "") + nomFichier + " — Sama Sheet"
     color: Couleurs.fond
 
     // Identité de Sama Sheet : le vert des tableaux
@@ -29,7 +29,11 @@ Window {
     readonly property color vertFond: Qt.rgba(47 / 255, 107 / 255, 87 / 255, Couleurs.sombre ? 0.25 : 0.12)
 
     readonly property var doc: grille.doc
-    readonly property string nomFichier: doc.chemin ? doc.chemin.split("/").pop() : "Nouveau classeur"
+    readonly property string nomFichier: doc.chemin ? doc.chemin.split("/").pop() : (nomPropose || "Nouveau classeur")
+    // Accueil (au lancement sans fichier) ; nom proposé à l'enregistrement d'un classeur fait d'un modèle
+    property bool accueilOuvert: false
+    property string nomPropose: ""
+    property var modeleEnAttente: null
     readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
     property bool fermetureDemandee: false
     readonly property alias actions: lesActions
@@ -50,10 +54,23 @@ Window {
     }
     // Ouvrir dans cette fenêtre si elle est vide et intacte, sinon dans une nouvelle
     function ouvrirFichier(c) {
-        if (!doc.chemin && !doc.modifie) doc.ouvrir(c)
+        if (!doc.chemin && !doc.modifie) { accueilOuvert = false; doc.ouvrir(c) }
         else commande.lancer("systemd-run --user --quiet --collect --slice=app.slice "
                              + commande.q("--unit=app-samaos\\x2dsheet@" + Date.now() + ".service") + " sama-sheet " + commande.q(c))
     }
+    // Un modèle de l'accueil, rempli par le moteur dans le classeur vierge (dès qu'il est prêt)
+    function appliquerModele(cle, nom) {
+        if (doc.etat !== DocumentLO.Pret) { modeleEnAttente = [cle, nom]; return }
+        tableaux.appeler("SamaModeles.Remplir", [cle], function (ok, v) {
+            if (!tableaux.verifier(ok, v)) return
+            accueilOuvert = false
+            nomPropose = nom
+            doc.allerA(v || "A1")
+            tableaux.rafraichir()
+            doc.forceActiveFocus()
+        })
+    }
+    function fermerAccueil() { accueilOuvert = false; doc.forceActiveFocus() }
     function nouvelleFenetre() {
         commande.lancer("systemd-run --user --quiet --collect --slice=app.slice "
                         + commande.q("--unit=app-samaos\\x2dsheet@" + Date.now() + ".service") + " sama-sheet")
@@ -96,7 +113,7 @@ Window {
         fileMode: FileDialog.SaveFile
         nameFilters: ["Classeur Excel (*.xlsx)", "Classeur OpenDocument (*.ods)", "Texte CSV (*.csv)", "PDF (*.pdf)"]
         currentFile: doc.chemin ? "file://" + doc.chemin
-                     : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/Nouveau classeur.xlsx"
+                     : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/" + fenetre.nomFichier + ".xlsx"
         onAccepted: {
             var c = fenetre.chemin(selectedFile)
             var formats = ["xlsx", "ods", "csv", "pdf"]
@@ -113,7 +130,7 @@ Window {
         fileMode: FileDialog.SaveFile
         nameFilters: ["PDF (*.pdf)"]
         currentFile: (doc.chemin ? "file://" + doc.chemin.replace(/\.[^.\/]*$/, "")
-                      : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/Nouveau classeur") + ".pdf"
+                      : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/" + fenetre.nomFichier) + ".pdf"
         onAccepted: {
             var c = fenetre.chemin(selectedFile)
             if (!c.toLowerCase().endsWith(".pdf")) c += ".pdf"
@@ -131,7 +148,12 @@ Window {
         }
         function onEtatChanged() {
             if (fenetre.doc.etat === DocumentLO.Erreur) message.montrer(fenetre.doc.erreur || "Ce fichier n'a pas pu être ouvert")
-            if (fenetre.doc.etat === DocumentLO.Pret) fenetre.doc.forceActiveFocus()
+            if (fenetre.doc.etat === DocumentLO.Pret && !fenetre.accueilOuvert) fenetre.doc.forceActiveFocus()
+            if (fenetre.doc.etat === DocumentLO.Pret && fenetre.modeleEnAttente) {
+                var m = fenetre.modeleEnAttente
+                fenetre.modeleEnAttente = null
+                fenetre.appliquerModele(m[0], m[1])
+            }
         }
     }
 
@@ -140,7 +162,7 @@ Window {
         var dernier = a.length > 0 ? String(a[a.length - 1]) : ""
         if (dernier.indexOf("file://") === 0) dernier = chemin(dernier)
         if (dernier && dernier.indexOf(".qml") < 0 && dernier.indexOf("/") === 0) doc.ouvrir(dernier)
-        else doc.nouveau("calc")
+        else { doc.nouveau("calc"); accueilOuvert = true }
         Qt.application.domain = ""
         Qt.application.name = "samaos-sheet"
         visible = true
@@ -400,6 +422,17 @@ Window {
                 Outil { Layout.preferredHeight: 22; Layout.preferredWidth: 22; picto: "M12 5v14 M5 12h14"; aide: "Agrandir"; onClicked: fenetre.doc.zoom = fenetre.doc.zoom * 1.1 }
             }
         }
+    }
+
+    // ——— Accueil : nouveau classeur, modèles, récents ———
+    Accueil {
+        anchors.fill: parent
+        z: 50
+        visible: fenetre.accueilOuvert
+        onVisibleChanged: if (visible) forceActiveFocus()
+        onGrilleVierge: fenetre.fermerAccueil()
+        onModele: (cle, nom) => fenetre.appliquerModele(cle, nom)
+        onOuvrir: chemin => fenetre.ouvrirFichier(chemin)
     }
 
     // ——— Aide des fonctions pendant la saisie d'une formule (barre de formule ou case) ———

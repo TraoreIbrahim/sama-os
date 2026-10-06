@@ -41,6 +41,7 @@ Rectangle {
             MenuSama {
                 title: "Fichier"
                 ElementMenu { cle: "nouveau" }
+                ElementMenu { cle: "modeles" }
                 ElementMenu { cle: "ouvrir" }
                 QQC2.MenuSeparator {}
                 ElementMenu { cle: "enregistrer" }

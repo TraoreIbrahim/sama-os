@@ -34,7 +34,8 @@ Item {
     // ——— Appels au moteur ———
     property var attentes: ({})
     function appeler(fonction, args, suite) {
-        var j = doc.script("SamaTableaux." + fonction, args || [])
+        // (« Creer » : une fonction de SamaTableaux ; « SamaModeles.Remplir » : d'un autre module)
+        var j = doc.script(fonction.indexOf(".") >= 0 ? fonction : "SamaTableaux." + fonction, args || [])
         if (j >= 0) attentes[j] = suite
     }
     // (« !… » : un message pour la personne)

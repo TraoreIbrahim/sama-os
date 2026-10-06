@@ -280,9 +280,9 @@ Rectangle {
             // Mettre en tableau (hors d'un tableau ; dedans, sa barre apparaît sous la formule)
             Outil {
                 visible: fenetre.tableaux.courant === null
-                text: "Mettre en tableau"
+                text: "Tableau"
                 picto: "M4 5h16v14H4z M4 10h16 M10 5v14"
-                aide: "Titres, filtres et ligne des totaux ; enregistré comme un tableau Excel (Ctrl+T)"
+                aide: "Mettre en tableau : titres, filtres et ligne des totaux ; enregistré comme un tableau Excel (Ctrl+T)"
                 background: Rectangle { radius: 8; color: Couleurs.champ; border.width: 0.5; border.color: parent.hovered ? fenetre.vert : Couleurs.bord }
                 onClicked: actions.lancer("tableau")
             }
