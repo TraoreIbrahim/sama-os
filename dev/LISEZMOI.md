@@ -97,3 +97,14 @@ scripts/mode-direct.sh commande 'cp /usr/share/kwin/scripts/samaos-dispositions/
 
 Dans ces scripts, une fenêtre s'ouvre avec `PlasmaCore.Dialog` (une `Window` de QtQuick ne s'affiche pas), montrée
 après sa création ; `Workspace.windows` est une propriété ; les énumérations de KWin ne sont pas offertes (nombres).
+
+Autres pièges vus avec la poignée des fenêtres côte à côte :
+
+- un `PlasmaCore.Dialog` créé déjà visible ne se dessine pas : le créer caché, puis le montrer ;
+- ne pas recréer ces fenêtres (Instantiator sur un modèle qui change) : les anciennes restent à l'écran. Garder
+  quelques fenêtres fixes et les montrer ou les cacher ;
+- un script déchargé laisse ses fenêtres et ses connexions : pour un essai propre, redémarrer la machine virtuelle ;
+- une fenêtre de script est une fenêtre « normale » pour KWin (le `type` du Dialog ne compte pas) : lui donner un
+  titre et lui poser `skipTaskbar`, `skipSwitcher`, `skipPager` depuis le script ;
+- une fonction de l'élément racine ne doit pas porter le nom d'une propriété d'`Item` (`visible`…) ;
+- une fenêtre fermée reste dans `Workspace.stackingOrder` le temps de son animation.
