@@ -30,6 +30,11 @@ class Vitrine(
         if (horsLigne) "1" else "0", if (sansTraceur) "1" else "0", icone, droits.joinToString("|"), editeur,
     ).joinToString("\n").toByteArray(Charsets.UTF_8)
 
+    fun json(): JSONObject = JSONObject()
+        .put("paquet", paquet).put("version", version).put("editeurNom", editeurNom).put("resume", resume).put("description", description)
+        .put("categorie", categorie).put("horsLigne", horsLigne).put("sansTraceur", sansTraceur).put("icone", icone)
+        .put("droits", JSONArray(droits)).put("editeur", editeur).put("signature", signature)
+
     companion object {
         fun depuis(o: JSONObject): Vitrine? = try {
             val d = o.optJSONArray("droits") ?: JSONArray()

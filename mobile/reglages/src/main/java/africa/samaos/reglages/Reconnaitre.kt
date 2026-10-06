@@ -88,7 +88,15 @@ object MoteurReconnus {
     fun reconnaitre(c: Context, nom: String, cle: ByteArray) =
         garder(c, liste(c).filter { !it.cle.contentEquals(cle) } + ProcheReconnu(nom.trim().ifBlank { "Un proche" }, cle, System.currentTimeMillis()))
 
-    fun oublier(c: Context, p: ProcheReconnu) = garder(c, liste(c).filter { !it.cle.contentEquals(p.cle) })
+    fun oublier(c: Context, p: ProcheReconnu) {
+        garder(c, liste(c).filter { !it.cle.contentEquals(p.cle) })
+        secrets.remove(p.id)
+    }
+
+    /** Les secrets partagés, calculés une fois (accord ECDH dans la puce de sécurité), gardés en mémoire seulement. */
+    private val secrets = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
+
+    fun secret(p: ProcheReconnu): ByteArray = secrets.getOrPut(p.id) { africa.samaos.proches.Identite.secretAvec(p.cle) }
 
     fun connu(c: Context, cle: ByteArray) = liste(c).firstOrNull { it.cle.contentEquals(cle) }
 
@@ -189,7 +197,10 @@ fun PageConfirmerProche(texte: String, nav: Nav) {
         }
         return
     }
-    var nom by remember { mutableStateOf(code.nom) }
+    // Un code sans prénom (« Mon téléphone ») : on parle de « ce téléphone », et on demande le prénom.
+    val anonyme = code.nom == "Mon téléphone" || code.nom == "Un proche"
+    val leTelephone = if (anonyme) "ce téléphone" else "le téléphone ${MoteurReconnus.de(code.nom)}"
+    var nom by remember { mutableStateOf(if (anonyme) "" else code.nom) }
     val verification = remember(texte) { codeVerification(moi, code.cle) }
     val deja = remember(texte) { MoteurReconnus.connu(c, code.cle) }
     when {
@@ -199,14 +210,14 @@ fun PageConfirmerProche(texte: String, nav: Nav) {
         deja != null -> PageReglages(titre = "Déjà parmi vos proches", sousTitre = "${deja.nom} · depuis le ${MoteurReconnus.date(deja.quand)}", retour = nav.retour) {
             section(cle = "x") { Explication("Ce téléphone est déjà parmi vos proches reconnus. Code de vérification : $verification.") }
         }
-        else -> PageReglages(titre = "Reconnaître le téléphone ${MoteurReconnus.de(code.nom)} ?", retour = nav.retour) {
+        else -> PageReglages(titre = "Reconnaître $leTelephone ?", retour = nav.retour) {
             section("Code à comparer", cle = "verif") {
                 BasicText(
                     verification,
                     modifier = Modifier.semantics { contentDescription = "Code de vérification ${verification.replace(" ", "")}" },
                     style = TextStyle(fontFamily = Polices.monument, fontSize = 44.sp, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp), color = b.encre),
                 )
-                Explication("Le téléphone ${MoteurReconnus.de(code.nom)} affichera les mêmes chiffres quand il aura scanné le vôtre. S'ils sont différents, ce n'est pas son téléphone : annulez.")
+                Explication("${leTelephone.replaceFirstChar { it.uppercase() }} affichera les mêmes chiffres quand il aura scanné le vôtre. S'ils sont différents, ce n'est pas son téléphone : annulez.")
             }
             section("Son prénom chez vous", cle = "nom") {
                 Champ(nom, "Prénom", { nom = it.take(30) })

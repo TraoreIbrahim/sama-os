@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +80,7 @@ import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
 import africa.samaos.banco.appli.couleurDe
 import africa.samaos.proches.Categories
+import africa.samaos.proches.Cercle
 import africa.samaos.proches.Editeurs
 import africa.samaos.proches.Installations
 import africa.samaos.proches.Offre
@@ -93,6 +96,7 @@ import java.util.Locale
 private sealed interface Vue {
     data class Onglet(val i: Int) : Vue
     data class Fiche(val paquet: String) : Vue
+    data class Envoyer(val paquet: String) : Vue
 }
 
 private const val DECOUVRIR = 0
@@ -107,6 +111,8 @@ class Sugu : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Une fenêtre restée « ouverte » après l'arrêt de Sugu ne l'est plus.
+        if (!Echange.ouvert() && Partage.ouvertJusqua(this) != 0L) Partage.reglerOuvert(this, 0L)
         lire(intent)
         setContent {
             val id = if (isSystemInDarkTheme()) Identites.SuguNuit else Identites.Sugu
@@ -125,12 +131,17 @@ class Sugu : ComponentActivity() {
         lire(intent)
     }
 
-    /** Ouvert depuis les Réglages sur un point Sama, ou sur la fiche d'une appli. */
+    /** Ouvert depuis les Réglages (un point Sama, les proches), une notification, ou sur la fiche d'une appli. */
     private fun lire(i: Intent?) {
         when (i?.action) {
             "africa.samaos.action.SUGU_AUTOUR" -> {
                 val hote = i.getStringExtra("hote")
                 if (hote != null) Partage.ajouterPoint(this, Point(i.getStringExtra("nom") ?: "Point Sama", hote, i.getIntExtra("port", africa.samaos.proches.Protocole.PORT)))
+                pile.clear()
+                pile.add(Vue.Onglet(AUTOUR))
+            }
+            "africa.samaos.action.SUGU_PROCHES" -> {
+                if (i.getBooleanExtra("ouvrir", false) && !Echange.ouvert()) Echange.ouvrir(this)
                 pile.clear()
                 pile.add(Vue.Onglet(AUTOUR))
             }
@@ -157,6 +168,13 @@ private fun Racine(pile: MutableList<Vue>) {
         Catalogue.ecouter(c) { portee.launch(Dispatchers.IO) { Catalogue.actualiser(c) } }
         onDispose { Catalogue.arreterEcoute() }
     }
+    // Chez les proches, plus souvent : ils ne restent ouverts que 10 minutes.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(20_000)
+            if (Echange.voisins.isNotEmpty()) withContext(Dispatchers.IO) { Echange.actualiserTous(c) }
+        }
+    }
     val aller: (Vue) -> Unit = { pile.add(it) }
     val retour: () -> Unit = { if (pile.size > 1) pile.removeAt(pile.lastIndex) }
     BackHandler(enabled = pile.size > 1) { retour() }
@@ -182,9 +200,11 @@ private fun Racine(pile: MutableList<Vue>) {
                     v.i,
                 ) { i -> pile.clear(); pile.add(Vue.Onglet(i)) }
             }
-            is Vue.Fiche -> PageFiche(v.paquet, retour)
+            is Vue.Fiche -> PageFiche(v.paquet, aller, retour)
+            is Vue.Envoyer -> PageEnvoyer(v.paquet, retour)
         }
         Refus()
+        PropositionRecue(aller)
     }
 }
 
@@ -201,16 +221,17 @@ fun taille(o: Long): String = when {
 @Composable
 private fun IconeAppli(o: Offre?, paquet: String, nom: String, taille: Dp) {
     val c = LocalContext.current
+    // L'image de l'icône est faite une fois, pas à chaque dessin.
     val installee = remember(paquet, Installations.fins) {
         try {
-            c.packageManager.getApplicationIcon(paquet)
+            c.packageManager.getApplicationIcon(paquet).toBitmap(144, 144).asImageBitmap()
         } catch (_: Exception) {
             null
         }
     }
     val forme = RoundedCornerShape(taille * 0.28f)
     when {
-        installee != null -> Image(installee.toBitmap(144, 144).asImageBitmap(), contentDescription = null, modifier = Modifier.size(taille).clip(forme))
+        installee != null -> Image(installee, contentDescription = null, modifier = Modifier.size(taille).clip(forme))
         o != null && Catalogue.icone(c, o) != null -> Image(Catalogue.icone(c, o)!!, contentDescription = null, modifier = Modifier.size(taille).clip(forme))
         else -> Box(Modifier.size(taille).clip(forme).background(couleurDe(nom)), contentAlignment = Alignment.Center) {
             BasicText(nom.take(1).uppercase(), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = (taille.value * 0.42f).sp, color = Color.White))
@@ -344,18 +365,23 @@ private fun PageDecouvrir(aller: (Vue) -> Unit, autour: () -> Unit) {
 
 // ——— La fiche d'une appli (maquette l2-sug-fiche) ———
 
+/** L'offre d'une appli que ce téléphone a déjà, et peut donner. */
+private val ICI = Point("Ce téléphone", "", 0)
+
 @Composable
-private fun PageFiche(paquet: String, retour: () -> Unit) {
+private fun PageFiche(paquet: String, aller: (Vue) -> Unit, retour: () -> Unit) {
     val c = LocalContext.current
     val a = LocalIdentite.current
-    val o = Catalogue.offre(paquet)
-    var bientot by remember { mutableStateOf(false) }
+    // Ce téléphone peut-il la donner ? Oui si son fichier installé est exactement celui d'une fiche signée.
+    var donnable by remember { mutableStateOf<Gardees.Donnable?>(null) }
+    LaunchedEffect(paquet, Installations.fins) { donnable = withContext(Dispatchers.IO) { Gardees.donnable(c, paquet) } }
+    val o = Catalogue.offre(paquet) ?: donnable?.let { Offre(it.fiche, it.vitrine, ICI) }
     EcranAppli {
         Tete("", retour = retour, petit = true) {
-            if (o != null) BoutonAppli(Icones.PARTAGER, "Envoyer à un proche") { bientot = true }
+            if (donnable != null) BoutonAppli(Icones.PARTAGER, "Envoyer à un proche") { aller(Vue.Envoyer(paquet)) }
         }
         if (o == null) {
-            BasicText("Cette appli n'est plus proposée par les points à portée.", modifier = Modifier.padding(20.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2))
+            BasicText("Cette appli n'est plus proposée à portée.", modifier = Modifier.padding(20.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2))
             return@EcranAppli
         }
         val v = o.vitrine
@@ -409,9 +435,9 @@ private fun PageFiche(paquet: String, retour: () -> Unit) {
                 BasicText(it, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, lineHeight = 20.sp, color = a.accentTexte))
             }
             Spacer(Modifier.height(10.dp))
-            Box(Modifier.padding(horizontal = 20.dp)) {
+            if (donnable != null) Box(Modifier.padding(horizontal = 20.dp)) {
                 Row(
-                    Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(a.voile).clickable(role = Role.Button) { bientot = true },
+                    Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(a.voile).clickable(role = Role.Button) { aller(Vue.Envoyer(paquet)) },
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconeTrait(Icones.PROXIMITE, 18.dp, a.accentTexte)
@@ -428,7 +454,11 @@ private fun PageFiche(paquet: String, retour: () -> Unit) {
             droits.forEach { d -> LigneAppli(d, debut = { IconeTrait(Icones.CADENAS, 20.dp, a.encre2) }) }
             if (v?.sansTraceur == true) LigneAppli("Aucun traceur publicitaire", debut = { IconeTrait(Icones.BOUCLIER, 20.dp, a.encre2) })
             Rub("D'où elle vient")
-            LigneAppli(o.point.nom, second = "Point Sama · ${o.point.adresse} · sans data", debut = { IconeTrait(Icones.PROXIMITE, 20.dp, a.encre2) })
+            when {
+                o.point === ICI -> LigneAppli("Ce téléphone", second = "Installée depuis un fichier vérifié", debut = { IconeTrait(Icones.TELEPHONE, 20.dp, a.encre2) })
+                o.point.proche != null -> LigneAppli("Chez ${o.point.nom}", second = "Téléphone d'un proche reconnu · sans data", debut = { IconeTrait(Icones.PERSONNE, 20.dp, a.encre2) })
+                else -> LigneAppli(o.point.nom, second = "Point Sama · ${o.point.adresse} · sans data", debut = { IconeTrait(Icones.PROXIMITE, 20.dp, a.encre2) })
+            }
             BasicText(
                 "Avant d'installer, Sugu vérifie que le fichier est exactement celui que ${Editeurs.nomCourt(o.fiche.editeur)} a publié. Sinon, rien n'est installé.",
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -437,10 +467,6 @@ private fun PageFiche(paquet: String, retour: () -> Unit) {
             Spacer(Modifier.height(24.dp))
         }
     }
-    if (bientot) DialogueAppli(
-        "Bientôt", "L'envoi à un proche, sans data, arrive avec l'échange entre téléphones. Reconnaissez déjà vos proches dans Réglages › Proche en proche.",
-        fermer = { bientot = false },
-    ) { BoutonTexteAppli("Compris") { bientot = false } }
 }
 
 @Composable
@@ -462,12 +488,21 @@ private fun PageAutour(aller: (Vue) -> Unit, actualiser: () -> Unit) {
     var v by remember { mutableIntStateOf(0) }
     val points = remember(v, Catalogue.points.size, Catalogue.trouves.size) { Catalogue.connus(c) }
     val bloques = remember(v) { Partage.bloques(c).sorted() }
+    var reconnus by remember { mutableStateOf<List<Cercle.Reconnu>?>(null) }
+    LaunchedEffect(Unit) { reconnus = withContext(Dispatchers.IO) { Cercle.reconnus(c) } }
+    var maintenant by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(15_000)
+            maintenant = System.currentTimeMillis()
+        }
+    }
     EcranAppli {
         Tete("Autour de vous")
         LazyColumn(Modifier.fillMaxSize()) {
             item {
                 BasicText(
-                    "Ces applis sont à portée, sans data : sur les points Sama du quartier, et bientôt chez vos proches. Sugu vérifie que c'est exactement le même fichier.",
+                    "Ces applis sont à portée, sans data : sur les points Sama du quartier et chez vos proches. Sugu vérifie que c'est exactement le même fichier.",
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                     style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 21.sp, color = a.encre2),
                 )
@@ -493,7 +528,26 @@ private fun PageAutour(aller: (Vue) -> Unit, actualiser: () -> Unit) {
                 }
             }
             item { Rub("Chez vos proches") }
-            item { Note("Bientôt : les applis de vos proches reconnus, de téléphone à téléphone. Reconnaissez-les dans Réglages › Proche en proche.") }
+            item { CarteProches(reconnus, maintenant) }
+            if (Echange.ouvert() && !reconnus.isNullOrEmpty()) {
+                val voisins = Echange.voisins.values.sortedBy { it.nom.lowercase() }
+                if (voisins.isEmpty()) item {
+                    Note("Personne pour l'instant. Vos proches doivent ouvrir aussi Sugu › Autour, près de vous, sur le même Wi-Fi.")
+                }
+                voisins.forEach { vo ->
+                    val cat = vo.catalogue
+                    item(key = "v-" + vo.id) { Rub("Chez ${vo.nom}") }
+                    when {
+                        cat == null -> item(key = "va-" + vo.id) { Note("Recherche de ce qu'il partage…") }
+                        cat.offres.isEmpty() -> item(key = "va-" + vo.id) { Note("${vo.nom} est là, mais ne partage rien pour l'instant.") }
+                        else -> items(cat.offres, key = { "vo-" + vo.id + it.fiche.paquet }) { o ->
+                            LigneAppli(o.nom, second = "${taille(o.fiche.taille)} · version ${o.fiche.versionNom}", debut = { IconeAppli(o, o.fiche.paquet, o.nom, 48.dp) }, fin = { Action(o) }) {
+                                aller(Vue.Fiche(o.fiche.paquet))
+                            }
+                        }
+                    }
+                }
+            }
             item { Rub("Ajouter un point par son adresse") }
             item {
                 Row(Modifier.fillMaxWidth().padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -538,6 +592,53 @@ private fun PageAutour(aller: (Vue) -> Unit, actualiser: () -> Unit) {
     }
 }
 
+/** Ouvrir le téléphone à ses proches, 10 minutes (ou d'abord les reconnaître). */
+@Composable
+private fun CarteProches(reconnus: List<Cercle.Reconnu>?, maintenant: Long) {
+    val c = LocalContext.current
+    val a = LocalIdentite.current
+    val titre = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = a.encre)
+    val texte = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, lineHeight = 20.sp, color = a.encre2)
+    if (reconnus == null) return
+    Column(
+        Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(a.surface).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        when {
+            reconnus.isEmpty() -> {
+                BasicText("Reconnaissez d'abord vos proches", style = titre)
+                BasicText("Chacun scanne le code de l'autre, téléphones côte à côte. Ensuite, vous pourrez vous envoyer des applis sans data.", style = texte)
+                BoutonTexteAppli("Reconnaître un proche", style = 's') {
+                    try {
+                        c.startActivity(Intent("africa.samaos.action.PROCHES").setPackage("africa.samaos.reglages").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            !Echange.ouvert() -> {
+                BasicText("Ouvrir à mes proches", style = titre)
+                BasicText(
+                    "Pendant 10 minutes, vos proches reconnus voient votre téléphone et ce que vous pouvez leur donner ; vous voyez les leurs s'ils sont ouverts aussi. Personne d'autre.",
+                    style = texte,
+                )
+                BoutonTexteAppli("Ouvrir · 10 min") { Echange.ouvrir(c) }
+            }
+            else -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    BasicText("Ouvert à vos proches", style = titre)
+                    val minutes = ((Echange.jusqua - maintenant) / 60_000 + 1).coerceAtLeast(1)
+                    BasicText("Encore $minutes min · ${reconnus.size} proche${if (reconnus.size > 1) "s" else ""} reconnu${if (reconnus.size > 1) "s" else ""}", style = texte)
+                }
+                BoutonTexteAppli("Fermer", style = 's') { Echange.fermer(c) }
+            }
+        }
+        if (Echange.ouvert() && reconnus.isNotEmpty()) {
+            val raison = remember(maintenant) { Don.pourquoiPas(c) }
+            if (raison != null) BasicText(raison, style = texte)
+        }
+    }
+}
+
 @Composable
 private fun Note(texte: String) {
     BasicText(texte, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, lineHeight = 20.sp, color = LocalIdentite.current.encre2))
@@ -578,7 +679,7 @@ private fun PageMisesAJour(aller: (Vue) -> Unit) {
                     Row(Modifier.fillMaxWidth().clickable(role = Role.Switch) { wifi = !wifi; prefs.edit().putBoolean("wifi", wifi).apply() }, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             BasicText("Attendre le Wi-Fi", style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = a.encre))
-                            BasicText("Les points Sama ne coûtent rien. Pour le catalogue en ligne, sur data, Sugu demandera avant de dépasser 20 Mo.", style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, lineHeight = 18.sp, color = a.encre2))
+                            BasicText("Les points Sama et vos proches ne coûtent rien. Pour le catalogue en ligne, sur data, Sugu demandera avant de dépasser 20 Mo.", style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, lineHeight = 18.sp, color = a.encre2))
                         }
                         Spacer(Modifier.width(12.dp))
                         InterAppli(wifi)
@@ -592,6 +693,137 @@ private fun PageMisesAJour(aller: (Vue) -> Unit) {
                 ) { aller(Vue.Fiche(o.fiche.paquet)) }
             }
             item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+// ——— Envoyer à un proche (maquettes i6-envoyer-appli, i6-emetteur) ———
+
+@Composable
+private fun PageEnvoyer(paquet: String, retour: () -> Unit) {
+    val c = LocalContext.current
+    val a = LocalIdentite.current
+    var donnable by remember { mutableStateOf<Gardees.Donnable?>(null) }
+    var reconnus by remember { mutableStateOf<List<Cercle.Reconnu>?>(null) }
+    LaunchedEffect(paquet) {
+        donnable = withContext(Dispatchers.IO) { Gardees.donnable(c, paquet) }
+        val l = withContext(Dispatchers.IO) { Cercle.reconnus(c) }
+        reconnus = l
+        // Pour envoyer, on s'ouvre aussi : le proche viendra prendre le fichier ici.
+        if (!Echange.ouvert() && l.isNotEmpty() && donnable != null) Echange.ouvrir(c)
+    }
+    var maintenant by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5_000)
+            maintenant = System.currentTimeMillis()
+        }
+    }
+    val d = donnable
+    EcranAppli {
+        Tete("Envoyer à un proche", retour = retour)
+        val l = reconnus ?: return@EcranAppli
+        if (d == null) {
+            Note("Cette appli ne peut pas être envoyée : son fichier n'est pas celui d'une fiche signée par Sama ou Sugu.")
+            return@EcranAppli
+        }
+        LazyColumn(Modifier.fillMaxSize()) {
+            item {
+                Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconeAppli(Offre(d.fiche, d.vitrine, ICI), paquet, d.fiche.nom, 56.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        BasicText(d.fiche.nom, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = a.encre))
+                        BasicText(
+                            "${taille(d.fiche.taille)} · version ${d.fiche.versionNom} · vérifiée par ${Editeurs.nomCourt(d.fiche.editeur)}",
+                            style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2),
+                        )
+                    }
+                }
+            }
+            if (l.isEmpty()) {
+                item { Note("Vous n'avez pas encore de proche reconnu. Reconnaissez-vous d'abord, téléphones côte à côte : Réglages › Proche en proche.") }
+                return@LazyColumn
+            }
+            item { Rub("Vos proches") }
+            val tries = l.sortedWith(compareBy({ Echange.voisins[it.id] == null }, { it.nom.lowercase() }))
+            items(tries, key = { it.id }) { r ->
+                val vo = Echange.voisins[r.id]
+                val e = Echange.envoi(r.id, d.fiche.sha256)
+                LigneAppli(
+                    r.nom,
+                    second = when (e?.etat) {
+                        Echange.EtatEnvoi.PROPOSEE -> "Proposée · ${r.nom} doit accepter"
+                        Echange.EtatEnvoi.ENVOI -> "Envoi · ${(e.envoye * 100 / d.fiche.taille.coerceAtLeast(1)).toInt()} %"
+                        Echange.EtatEnvoi.ENVOYEE -> "Envoyée, sans data"
+                        Echange.EtatEnvoi.REFUSEE -> "${r.nom} n'en veut pas pour l'instant"
+                        Echange.EtatEnvoi.DEJA -> "${r.nom} l'a déjà"
+                        Echange.EtatEnvoi.ECHEC -> "Pas de réponse · réessayez"
+                        null -> if (vo != null) "À portée, sans data" else "Pas à portée"
+                    },
+                    couleurSecond = if (vo != null && e == null) a.accentTexte else null,
+                    debut = { Initiales(r.nom) },
+                    fin = {
+                        when {
+                            vo != null && (e == null || e.etat == Echange.EtatEnvoi.REFUSEE || e.etat == Echange.EtatEnvoi.ECHEC) ->
+                                BoutonTexteAppli(if (e == null) "Envoyer" else "Réessayer", style = 's') { Echange.proposer(vo, d.fiche) }
+                            // Pas de réponse au bout de 20 secondes : le proche a pu la manquer.
+                            vo != null && e?.etat == Echange.EtatEnvoi.PROPOSEE && maintenant - e.quand > 20_000 ->
+                                BoutonTexteAppli("Renvoyer", style = 's') { Echange.proposer(vo, d.fiche) }
+                            e?.etat == Echange.EtatEnvoi.ENVOYEE -> IconeTrait(Icones.COCHE, 22.dp, a.accentTexte)
+                        }
+                    },
+                )
+            }
+            item {
+                val minutes = ((Echange.jusqua - maintenant) / 60_000 + 1).coerceAtLeast(1)
+                Note(
+                    (if (Echange.ouvert()) "Votre téléphone est ouvert à vos proches encore $minutes min. " else "") +
+                        "Pour apparaître ici, votre proche ouvre Sugu › Autour › « Ouvrir à mes proches », près de vous. " +
+                        "Il choisit de recevoir, et son téléphone vérifie le fichier avant d'installer.",
+                )
+            }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun Initiales(nom: String) {
+    Box(Modifier.size(44.dp).clip(CircleShape).background(couleurDe(nom)), contentAlignment = Alignment.Center) {
+        BasicText(nom.take(1).uppercase(), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White))
+    }
+}
+
+/** Une appli qu'un proche nous envoie (maquette i6-maj-voisin) : on choisit de la recevoir ; Sugu vérifie avant d'installer. */
+@Composable
+private fun PropositionRecue(aller: (Vue) -> Unit) {
+    val c = LocalContext.current
+    val a = LocalIdentite.current
+    val p = Echange.propositions.firstOrNull() ?: return
+    val o = p.offre
+    val maj = Verification.versionInstallee(c, o.fiche.paquet) != null
+    DialogueAppli(
+        "${p.de.nom} vous envoie ${o.nom}",
+        "${if (maj) "Une mise à jour" else "Une appli"} vérifiée par ${Editeurs.nomCourt(o.fiche.editeur)}, de téléphone à téléphone : rien ne passe par Internet. " +
+            "Sugu vérifie le fichier avant d'installer.",
+        fermer = { Echange.refuser(c, p) },
+        contenu = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconeAppli(o, o.fiche.paquet, o.nom, 48.dp)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    BasicText(o.nom, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = a.encre))
+                    BasicText("${taille(o.fiche.taille)} · version ${o.fiche.versionNom}", style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2))
+                }
+            }
+        },
+    ) {
+        BoutonTexteAppli("Non merci", style = 's') { Echange.refuser(c, p) }
+        Spacer(Modifier.width(8.dp))
+        BoutonTexteAppli("Recevoir") {
+            Echange.accepter(c, p)
+            aller(Vue.Fiche(o.fiche.paquet))
         }
     }
 }
@@ -618,7 +850,7 @@ private fun PageMesApplis(aller: (Vue) -> Unit) {
                 LigneAppli(
                     i.nom, second = "Version ${i.versionNom}" + if (o != null && o.fiche.version > i.version) " · mise à jour possible" else "",
                     debut = { IconeAppli(o, i.paquet, i.nom, 44.dp) },
-                ) { if (o != null) aller(Vue.Fiche(i.paquet)) else infos(c, i.paquet) }
+                ) { aller(Vue.Fiche(i.paquet)) }
             }
             if (ailleurs.isNotEmpty()) {
                 item { Rub("Venues d'ailleurs") }
@@ -651,8 +883,9 @@ private fun Refus() {
         e.intact == false -> "n'est pas celui que ${Editeurs.nomCourt(e.fiche.editeur)} a publié"
         else -> "n'est pas plus récent que celui du téléphone"
     }
+    val proche = e.point.proche != null
     fun fermer() {
-        if (bloquer) {
+        if (bloquer && !proche) {
             Partage.reglerBloque(c, e.point.adresse, true)
             Catalogue.points.remove(e.point.adresse)
         }
@@ -660,10 +893,10 @@ private fun Refus() {
     }
     DialogueAppli(
         "Fichier refusé",
-        "${e.fiche.nom} reçu de ${e.point.nom} $raison. Sugu l'a supprimé : rien n'a été installé.",
+        "${e.fiche.nom} reçu ${if (proche) "du téléphone ${Cercle.de(e.point.nom)}" else "de ${e.point.nom}"} $raison. Sugu l'a supprimé : rien n'a été installé.",
         fermer = { fermer() },
         contenu = {
-            Row(Modifier.fillMaxWidth().clickable(role = Role.Switch) { bloquer = !bloquer }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (!proche) Row(Modifier.fillMaxWidth().clickable(role = Role.Switch) { bloquer = !bloquer }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     BasicText("Ne plus rien recevoir de ce point", style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = a.encre))
                     BasicText(e.point.nom, style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2))

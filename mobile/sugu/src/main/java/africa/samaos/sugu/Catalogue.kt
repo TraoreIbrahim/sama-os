@@ -1,6 +1,8 @@
 package africa.samaos.sugu
 
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
@@ -21,8 +23,17 @@ import africa.samaos.proches.RecepteurInstallation
 import africa.samaos.proches.Verification
 import java.io.File
 
-/** Le résultat d'une installation lancée par Sugu. */
-class ResultatInstallation : RecepteurInstallation()
+/** Le résultat d'une installation lancée par Sugu : réussie, sa fiche est gardée pour pouvoir la redonner. */
+class ResultatInstallation : RecepteurInstallation() {
+    override fun onReceive(c: Context, i: Intent) {
+        super.onReceive(c, i)
+        val sha = i.getStringExtra("sha") ?: return
+        if (i.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE) != PackageInstaller.STATUS_SUCCESS) return
+        val o = Installations.etats[sha]?.offre ?: return
+        val app = c.applicationContext
+        Thread { Gardees.garder(app, o) }.start()
+    }
+}
 
 /**
  * Une appli installée, telle que « Mes applis » la montre. [sama] : signée comme le système (les applis de Sama) ;
@@ -31,8 +42,9 @@ class ResultatInstallation : RecepteurInstallation()
 class Installee(val paquet: String, val nom: String, val version: Long, val versionNom: String, val parSugu: Boolean, val systeme: Boolean, val sama: Boolean)
 
 /**
- * Le catalogue de Sugu : ce que proposent les points Sama à portée (et, bientôt, les proches et le catalogue en
- * ligne). Tout ce qui est montré a une fiche signée ; la vitrine (description, catégorie…) aussi.
+ * Le catalogue de Sugu : ce que proposent les points Sama à portée et les téléphones des proches ouverts (et,
+ * bientôt, le catalogue en ligne). Tout ce qui est montré a une fiche signée ; la vitrine (description,
+ * catégorie…) aussi.
  */
 object Catalogue {
     /** Les points interrogés et ce qu'ils ont répondu (null : pas de réponse). */
@@ -59,6 +71,8 @@ object Catalogue {
             if (nom != null && nom != p.nom) Partage.ajouterPoint(c, Point(nom, p.hote, p.port))
         }
         charge = true
+        // Les applis déjà installées depuis un fichier conforme à une fiche peuvent être redonnées aux proches.
+        Gardees.adopter(c, offres())
     }
 
     fun ecouter(c: Context, nouveau: (Point) -> Unit) {
@@ -76,8 +90,8 @@ object Catalogue {
         decouverte = null
     }
 
-    /** Toutes les offres, une par appli : la version la plus récente, depuis le premier point qui l'a. */
-    fun offres(): List<Offre> = points.values.filterNotNull().flatMap { it.offres }
+    /** Toutes les offres, une par appli : la version la plus récente, d'abord depuis les points Sama, puis chez les proches. */
+    fun offres(): List<Offre> = (points.values.filterNotNull() + Echange.voisins.values.mapNotNull { it.catalogue }).flatMap { it.offres }
         .groupBy { it.fiche.paquet }.values.map { l -> l.maxBy { it.fiche.version } }
         .sortedBy { it.nom.lowercase() }
 
@@ -96,7 +110,8 @@ object Catalogue {
         icones[sha] = null
         Thread {
             val f = File(File(c.cacheDir, "icones").apply { mkdirs() }, sha)
-            val octets = if (f.exists() && Verification.empreinte(f) == sha) f.readBytes() else Protocole.image(o.point, sha)?.also { f.writeBytes(it) }
+            val octets = if (f.exists() && Verification.empreinte(f) == sha) f.readBytes()
+            else Gardees.icone(c, sha)?.readBytes() ?: Protocole.image(o.point, sha)?.also { f.writeBytes(it) }
             icones[sha] = octets?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
         }.start()
         return null

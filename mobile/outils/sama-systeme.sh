@@ -110,6 +110,8 @@ $ADB shell appops set "$PAQUET" MANAGE_EXTERNAL_STORAGE allow
 for droit in READ_PHONE_STATE ACCESS_FINE_LOCATION BLUETOOTH_CONNECT BLUETOOTH_SCAN SEND_SMS POST_NOTIFICATIONS READ_SMS CALL_PHONE; do
     $ADB shell pm grant africa.samaos.reglages android.permission.$droit
 done
+# Sugu : la notification « Ouvert à vos proches » et les applis que les proches envoient.
+$ADB shell pm grant africa.samaos.sugu android.permission.POST_NOTIFICATIONS
 
 echo "• Applis de Sama : Téléphone, Contacts, Messages, Horloge, Calculatrice, Notes"
 # Signées avec la clé de la plateforme, installées comme des applis ordinaires ; Android leur confie

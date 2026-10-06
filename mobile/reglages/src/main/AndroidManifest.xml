@@ -379,5 +379,11 @@
             android:exported="false"
             android:directBootAware="true"
             android:foregroundServiceType="location" />
+        <!-- Proche en proche : les proches reconnus et leurs secrets restent ici ; Sugu demande des étiquettes et des
+             preuves. Exporté, mais chaque appel vérifie que l'appli est signée comme le système. -->
+        <provider
+            android:name=".ProchesFournisseur"
+            android:authorities="africa.samaos.reglages.proches"
+            android:exported="true" />
     </application>
 </manifest>

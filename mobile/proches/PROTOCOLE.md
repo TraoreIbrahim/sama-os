@@ -1,7 +1,7 @@
 # Proche en proche — protocole, version 1
 
 Recevoir sans data les applis et mises à jour de Sama et de Sugu, depuis un **point Sama** (ordinateur Sama
-d'une école, d'une mairie, d'un cybercafé) et, bientôt, depuis le téléphone d'un contact.
+d'une école, d'une mairie, d'un cybercafé) ou depuis le téléphone d'un proche reconnu.
 
 ## Le principe de sécurité
 
@@ -85,12 +85,41 @@ QR de l'autre (Réglages › Proche en proche › « Reconnaître un proche », 
   code : on annule.
 - **Prudence** : un code reçu en photo ou par message ne se scanne jamais ; les écrans le disent.
 
+## Entre téléphones de proches
+
+Un téléphone ne se montre à ses proches que quand la personne l'ouvre (Sugu › Autour › « Ouvrir à mes proches »,
+ou en envoyant une appli), pour **10 minutes**, avec une notification qui permet de fermer. Seuls les proches
+reconnus **des deux côtés** se voient. Les secrets ne quittent jamais les Réglages : Sugu leur demande les
+étiquettes et les preuves (fournisseur `africa.samaos.reglages.proches`, réservé aux applis signées comme le
+système).
+
+- **L'annonce** : mDNS `_samaproche._tcp`, sous un nom de service au hasard (`sama-xxxxxxxx`) et un port au
+  hasard. `GET /proches/v1/annonce`, la seule requête publique, répond `{"v": 1, "n": "<nombre>", "e": [étiquettes]}` :
+  un nombre au hasard de 128 bits, neuf à chaque ouverture, et une étiquette par proche, dans le désordre :
+  `HMAC-SHA256(secret, "sama-proches-1|annonce|" + n)`, 16 octets en base64url. Celui qui n'est pas un proche ne
+  voit qu'un nombre au hasard et des étiquettes qu'il ne peut ni comprendre ni relier d'une ouverture à l'autre.
+- **Se trouver** : le téléphone qui voit l'annonce calcule, pour ce nombre, l'étiquette de chacun de ses proches ;
+  s'il en retrouve une, c'est ce proche.
+- **La preuve** : toutes les autres requêtes portent `Sama-Proche: <m>.<preuve>`, où `m` est un nombre neuf et
+  `preuve = HMAC-SHA256(secret, "sama-proches-1|acces|" + n + "|" + m + "|" + "<MÉTHODE> <chemin>")`, 16 octets.
+  Le téléphone qui répond retrouve le proche dont le secret donne cette preuve ; il refuse une preuve absente,
+  fausse ou déjà servie (`403`).
+- **Catalogue et fichiers** : les mêmes que ceux d'un point Sama. Un téléphone ne donne que les applis dont le
+  fichier installé est exactement celui d'une fiche signée qu'il a reçue (d'un point ou d'un proche) : il garde
+  la fiche et la vitrine à l'installation. Les réglages « Donner » s'appliquent (partage permis, seulement
+  branché avec la batterie au-dessus de 50 %, limite par jour), sauf pour ce qu'on envoie soi-même à un proche.
+- **La proposition** : `POST /proches/v1/proposition` `{"sha256": …, "port": …}` (« je t'envoie ce fichier »).
+  Le téléphone qui la reçoit, seulement s'il est ouvert, va lire la fiche chez l'envoyeur (son adresse, le port
+  donné) avec sa propre preuve ; il ne la montre que si elle est signée et plus récente que ce qu'il a, et la
+  personne choisit. S'il l'a déjà, ou si la personne refuse : `POST /proches/v1/reponse`
+  `{"sha256": …, "reponse": "deja" | "non"}`.
+- **Ce qui n'est pas caché** : sur un Wi-Fi partagé, le contenu n'est pas chiffré ; un autre appareil du réseau
+  peut voir quelles applis passent (jamais un nom ni un numéro). Le chiffrement par le secret partagé viendra avec
+  Wi-Fi Direct.
+
 ## Pas encore fait
 
-- **Entre téléphones** (maquettes i6-envoyer-appli, i6-emetteur, i6-maj-voisin, i6-sugu-proches) : Wi-Fi Direct,
-  le même protocole une fois le groupe formé. La réception s'ouvre 10 minutes à la demande de la personne ; seuls
-  les proches reconnus des deux côtés se voient : le téléphone qui reçoit annonce un nombre au hasard et, pour
-  chacun de ses proches, une empreinte HMAC de ce nombre par leur secret partagé ; seul un proche reconnu y
-  retrouve la sienne. Aucun nom ni numéro ne circule.
+- **Wi-Fi Direct** (sans routeur) : le même protocole une fois le groupe formé ; à essayer sur deux vrais
+  téléphones.
 - **Mises à jour du système** : elles viendront avec Sama compilé (paquets OTA d'AOSP, mêmes vérifications).
 - **Le point Sama du bureau** : servir ce protocole depuis un ordinateur Sama (annonce mDNS comprise).

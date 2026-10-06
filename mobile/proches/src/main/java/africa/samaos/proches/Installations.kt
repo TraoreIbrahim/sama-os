@@ -59,6 +59,7 @@ object Installations {
             val f = fichier(app, m)
             try {
                 if (!Verification.signature(app, m) || !Verification.plusRecente(app, m)) {
+                    android.util.Log.w("SamaProches", "Fiche de ${m.paquet} refusée (signature ou version)")
                     e.etape = Etape.REFUSEE
                     return@Thread
                 }
@@ -77,7 +78,8 @@ object Installations {
                 }
                 e.etape = Etape.INSTALLATION
                 installer(app, f, m, recepteur)
-            } catch (_: Exception) {
+            } catch (x: Exception) {
+                android.util.Log.w("SamaProches", "Réception de ${m.paquet} depuis ${o.point.adresse} : $x")
                 e.message = "La connexion s'est coupée. Rapprochez-vous du point : la réception reprendra où elle s'est arrêtée."
                 e.etape = Etape.ECHEC
             }

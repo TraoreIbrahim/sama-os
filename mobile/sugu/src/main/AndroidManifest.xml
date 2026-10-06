@@ -9,6 +9,11 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
     <!-- Installer les applis vérifiées sans seconde question : Sugu est le magasin du système (priv-app). -->
     <uses-permission android:name="android.permission.INSTALL_PACKAGES" tools:ignore="ProtectedPermissions" />
+    <!-- Ouvert à ses proches, 10 minutes : un service au premier plan, avec sa notification (« Fermer »). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Les points Sama et le bilan, partagés avec les Réglages (réglages globaux). -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
 
@@ -19,13 +24,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.APP_MARKET" />
             </intent-filter>
-            <!-- Depuis les Réglages : un point Sama ; depuis les autres applis : la fiche d'une appli. -->
+            <!-- Depuis les Réglages : un point Sama, les proches ; depuis les autres applis : la fiche d'une appli. -->
             <intent-filter>
                 <action android:name="africa.samaos.action.SUGU_AUTOUR" />
+                <action android:name="africa.samaos.action.SUGU_PROCHES" />
                 <action android:name="africa.samaos.action.SUGU_FICHE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         <receiver android:name=".ResultatInstallation" android:exported="false" />
+        <service android:name=".ServiceEchange" android:exported="false" android:foregroundServiceType="connectedDevice" />
     </application>
 </manifest>

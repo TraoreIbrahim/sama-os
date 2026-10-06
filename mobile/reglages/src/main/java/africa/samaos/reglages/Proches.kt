@@ -65,35 +65,27 @@ import java.io.File
  * éditeur connu, que la version soit plus récente et que le fichier soit exactement celui de la fiche.
  */
 object MoteurProches {
-    private fun prefs(c: Context) = c.getSharedPreferences("proches", Context.MODE_PRIVATE)
-    const val FENETRE = 10 * 60_000L
+    // ——— La fenêtre ouverte aux proches : c'est Sugu qui l'ouvre, 10 minutes, à la demande ———
+    fun ouvertJusqua(c: Context) = Partage.ouvertJusqua(c)
+    fun ouvert(c: Context) = System.currentTimeMillis() < ouvertJusqua(c)
+    fun minutes(c: Context) = (ouvertJusqua(c) - System.currentTimeMillis()) / 60_000 + 1
 
-    // ——— La réception : éteinte, sauf quand la personne l'ouvre, 10 minutes ———
-    fun receptionJusqua(c: Context) = prefs(c).getLong("reception", 0L)
-    fun receptionOuverte(c: Context) = System.currentTimeMillis() < receptionJusqua(c)
-    fun ouvrir(c: Context) = prefs(c).edit().putLong("reception", System.currentTimeMillis() + FENETRE).apply()
-    fun fermer(c: Context) = prefs(c).edit().putLong("reception", 0L).apply()
-
-    /** « contacts » : contacts et points Sama ; « points » : seulement les points Sama. */
-    fun depuis(c: Context) = prefs(c).getString("depuis", "contacts").orEmpty()
-    fun reglerDepuis(c: Context, v: String) = prefs(c).edit().putString("depuis", v).apply()
-
-    // ——— Donner ———
-    fun donner(c: Context) = prefs(c).getBoolean("donner", true)
-    fun reglerDonner(c: Context, oui: Boolean) = prefs(c).edit().putBoolean("donner", oui).apply()
-    fun brancheSeulement(c: Context) = prefs(c).getBoolean("branche", true)
-    fun reglerBranche(c: Context, oui: Boolean) = prefs(c).edit().putBoolean("branche", oui).apply()
+    // ——— Donner (lu par Sugu, qui sert les applis aux proches) ———
+    fun donner(c: Context) = Partage.donner(c)
+    fun reglerDonner(c: Context, oui: Boolean) = Partage.reglerDon(c, donner = oui)
+    fun brancheSeulement(c: Context) = Partage.brancheSeulement(c)
+    fun reglerBranche(c: Context, oui: Boolean) = Partage.reglerDon(c, branche = oui)
     val LIMITES = listOf(500_000_000L, 1_000_000_000L, 2_000_000_000L, 0L)
-    fun limite(c: Context) = prefs(c).getLong("limite", 2_000_000_000L)
-    fun limiteSuivante(c: Context) = prefs(c).edit().putLong("limite", LIMITES[(LIMITES.indexOf(limite(c)) + 1) % LIMITES.size]).apply()
+    fun limite(c: Context) = Partage.limite(c)
+    fun limiteSuivante(c: Context) = Partage.reglerDon(c, limite = LIMITES[(LIMITES.indexOf(limite(c)) + 1) % LIMITES.size])
 
-    // ——— Le bilan (le reçu est compté par Sugu, dans les réglages partagés) ———
+    // ——— Le bilan (compté par Sugu, dans les réglages partagés) ———
     fun economise(c: Context) = Partage.economise(c)
-    fun donne(c: Context) = prefs(c).getLong("donne", 0L)
-    fun personnes(c: Context) = prefs(c).getInt("personnes", 0)
+    fun donne(c: Context) = Partage.donne(c)
+    fun personnes(c: Context) = Partage.personnes(c)
 
     fun resume(c: Context): String = when {
-        receptionOuverte(c) -> "Réception ouverte · encore ${((receptionJusqua(c) - System.currentTimeMillis()) / 60_000 + 1)} min"
+        ouvert(c) -> "Ouvert à vos proches · encore ${minutes(c)} min"
         economise(c) > 0 -> taille(economise(c)) + " économisés grâce à vos proches"
         else -> "Recevoir sans data, entre proches"
     }
@@ -104,6 +96,14 @@ object MoteurProches {
             val i = Intent("africa.samaos.action.SUGU_AUTOUR").setPackage("africa.samaos.sugu").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             if (p != null) i.putExtra("nom", p.nom).putExtra("hote", p.hote).putExtra("port", p.port)
             c.startActivity(i)
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Ouvrir Sugu sur « Chez vos proches », en ouvrant le téléphone à ses proches pour 10 minutes. */
+    fun ouvrirAuxProches(c: Context) {
+        try {
+            c.startActivity(Intent("africa.samaos.action.SUGU_PROCHES").setPackage("africa.samaos.sugu").putExtra("ouvrir", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: Exception) {
         }
     }
@@ -130,7 +130,7 @@ fun PageProches(nav: Nav) {
     var ajout by remember { mutableStateOf(false) }
     var oublier by remember { mutableStateOf<ProcheReconnu?>(null) }
     var saisie by remember { mutableStateOf("") }
-    val ouverte = remember(v) { MoteurProches.receptionOuverte(c) }
+    val ouvert = remember(v) { MoteurProches.ouvert(c) }
     PageReglages(titre = "Proche en proche", sousTitre = "Recevoir et donner sans data, entre proches", retour = nav.retour) {
         section("Recevoir d'un point Sama", cle = "points") {
             val connus = remember(v) { Partage.points(c) }
@@ -156,20 +156,15 @@ fun PageProches(nav: Nav) {
                 Ligne("Ajouter un point par son adresse", detail = "Quand le réseau de l'école ne l'annonce pas", icone = Icones.PLUS, fin = Fin.Rien) { ajout = true }
             }
         }
-        section("Depuis vos contacts", cle = "recevoir") {
-            Ligne(
-                if (ouverte) "Réception ouverte" else "Ouvrir la réception",
-                detail = if (ouverte) "Encore ${((MoteurProches.receptionJusqua(c) - System.currentTimeMillis()) / 60_000 + 1)} min · vos contacts proches peuvent vous voir"
-                else "Éteinte · 10 minutes, à votre demande seulement",
-                icone = Icones.PROXIMITE,
-                fin = Fin.Bouton(if (ouverte) "Fermer" else "Ouvrir", plein = !ouverte),
-            ) {
-                if (ouverte) MoteurProches.fermer(c) else MoteurProches.ouvrir(c)
-                v++
-            }
-            Explication("L'échange entre téléphones arrive bientôt : pour l'instant, on reçoit des points Sama.")
-            Ligne("Reconnaître un proche", detail = "Chacun scanne le code de l'autre, téléphones côte à côte", icone = Icones.QR) { nav.aller(Page.Reconnaitre()) }
+        section("Entre proches", cle = "recevoir") {
             val reconnus = remember(v) { MoteurReconnus.liste(c) }
+            if (reconnus.isNotEmpty()) Ligne(
+                if (ouvert) "Ouvert à vos proches" else "Ouvrir à mes proches",
+                detail = if (ouvert) "Encore ${MoteurProches.minutes(c)} min · dans Sugu" else "Éteint · 10 minutes, à votre demande, dans Sugu",
+                icone = Icones.PROXIMITE,
+                fin = Fin.Bouton(if (ouvert) "Voir" else "Ouvrir", plein = !ouvert),
+            ) { MoteurProches.ouvrirAuxProches(c) }
+            Ligne("Reconnaître un proche", detail = "Chacun scanne le code de l'autre, téléphones côte à côte", icone = Icones.QR) { nav.aller(Page.Reconnaitre()) }
             reconnus.forEach { p ->
                 Ligne(p.nom, detail = "Proche depuis le ${MoteurReconnus.date(p.quand)}", icone = Icones.PERSONNE, fin = Fin.Valeur("Oublier")) { oublier = p }
             }
@@ -180,15 +175,11 @@ fun PageProches(nav: Nav) {
                     v++
                 }
             }
-            val depuis = remember(v) { MoteurProches.depuis(c) }
-            Ligne("Depuis", detail = if (depuis == "points") "Seulement les points Sama" else "Vos contacts et les points Sama", icone = Icones.PERSONNE) {
-                MoteurProches.reglerDepuis(c, if (depuis == "points") "contacts" else "points")
-                v++
-            }
+            Explication("Seuls vos proches reconnus des deux côtés peuvent voir votre téléphone, et seulement quand vous l'ouvrez. Rien n'est diffusé : ni nom, ni numéro.")
         }
         section("Donner", cle = "donner") {
             val donner = remember(v) { MoteurProches.donner(c) }
-            Ligne("Partager avec mes contacts", detail = "Les applis et mises à jour de Sugu que vous avez déjà", fin = Fin.Inter(donner)) {
+            Ligne("Partager avec mes proches", detail = "Les applis et mises à jour de Sugu que vous avez déjà", fin = Fin.Inter(donner)) {
                 MoteurProches.reglerDonner(c, !donner)
                 v++
             }
@@ -202,10 +193,10 @@ fun PageProches(nav: Nav) {
                 MoteurProches.limiteSuivante(c)
                 v++
             }
-            Explication("Ces réglages serviront dès que l'échange entre téléphones sera là.")
+            Explication("Quand vous envoyez vous-même une appli à un proche, elle part même si le partage est coupé.")
         }
         section("Bilan", cle = "bilan") {
-            Ligne("Économisé grâce à vos proches", icone = Icones.DONNEES, fin = Fin.Valeur(MoteurProches.economise(c).let { if (it == 0L) "Rien encore" else taille(it) }))
+            Ligne("Économisé sans data", icone = Icones.DONNEES, fin = Fin.Valeur(MoteurProches.economise(c).let { if (it == 0L) "Rien encore" else taille(it) }))
             val n = MoteurProches.personnes(c)
             Ligne(if (n == 0) "Donné" else "Donné à $n personne${if (n > 1) "s" else ""}", icone = Icones.PARTAGER, fin = Fin.Valeur(MoteurProches.donne(c).let { if (it == 0L) "Rien encore" else taille(it) }))
         }

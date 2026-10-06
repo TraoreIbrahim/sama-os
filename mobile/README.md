@@ -258,9 +258,12 @@ une appli pour une autre en changeant sa description.
 - **Fichier refusé** : un fichier qui ne correspond pas à sa fiche est supprimé sans rien installer ; on peut
   ne plus rien recevoir de ce point.
 
+- **Entre proches** : « Ouvrir à mes proches » (10 minutes, notification avec « Fermer ») ; « Chez Koffi »
+  montre ce qu'un proche ouvert peut donner, mises à jour comprises ; « Envoyer à un proche » sur la fiche d'une
+  appli qu'on a : le proche reçoit « Koffi vous envoie Dictaphone » et choisit de recevoir.
+
 Sugu est une appli système (`/system/priv-app/SamaSugu`) : il installe sans seconde question ce qu'il a vérifié
-(droit INSTALL_PACKAGES), et Android le reconnaît comme magasin (`APP_MARKET`). « Envoyer à un proche » et
-« Chez vos proches » attendent l'échange entre téléphones.
+(droit INSTALL_PACKAGES), et Android le reconnaît comme magasin (`APP_MARKET`).
 
 ## Proche en proche (innovation 6, premier pas)
 
@@ -271,7 +274,8 @@ installer (« Fichier refusé »). C'est Sugu qui reçoit et installe. Le protoc
 [proches/PROTOCOLE.md](proches/PROTOCOLE.md).
 
 - **Réglages › Proche en proche** : les points Sama connus (« ouvrir dans Sugu »), l'ajout d'un point par son
-  adresse, la reconnaissance des proches, le don, le bilan.
+  adresse, la fenêtre ouverte aux proches, la reconnaissance des proches (« Oublier »), ce qu'on accepte de
+  donner, le bilan. Les proches et leurs secrets restent dans les Réglages (`ProchesFournisseur`).
 - **Fichiers** : une appli reçue qui se dit « mise à jour » ou qui porte le nom d'une appli de Sama ouvre
   « Ce n'est pas une mise à jour » ; « Supprimer » la met à la corbeille.
 
@@ -290,8 +294,25 @@ signer une version plus récente : `./gradlew :calculatrice:assembleRelease -Pve
 **Se reconnaître entre proches** : Réglages › Proche en proche › « Reconnaître un proche » montre le code QR du
 téléphone (clé créée dans la puce de sécurité, ni numéro ni compte) ; on scanne celui du proche, on compare à voix
 haute le code de vérification à 8 chiffres, puis il fait de même. Un code « proche » scanné avec l'Appareil photo
-propose aussi « Reconnaître ». L'échange entre téléphones (Wi-Fi Direct, entre proches reconnus) et le point
-Sama du bureau restent à faire.
+propose aussi « Reconnaître ».
+
+**Entre téléphones**, sur deux émulateurs reliés au même Wi-Fi (le second, `Sama2`, est une copie de la
+configuration de `Sama`, préparée par `outils/sama-systeme.sh` avec `ANDROID_SERIAL=emulator-5556`) :
+
+```bash
+~/Library/Android/sdk/emulator/emulator -avd Sama -writable-system -no-snapshot-load -wifi-server-port 9999
+```
+
+```bash
+~/Library/Android/sdk/emulator/emulator -avd Sama2 -port 5556 -writable-system -no-snapshot-load -wifi-client-port 9999
+```
+
+Pour se reconnaître sans caméra, chaque émulateur ouvre le code de l'autre, comme après un scan : le code se lit
+avec `adb shell content call --uri content://africa.samaos.reglages.proches --method code`, puis
+`adb -s <l'autre> shell "am start -a android.intent.action.VIEW -d '<code>'"`. Ensuite, Sugu › Autour ›
+« Ouvrir à mes proches » des deux côtés. Les émulateurs sont débranchés : `adb shell dumpsys battery set ac 1`
+pour que les applis soient montrées aux proches. Le Wi-Fi Direct (sans routeur) et le point Sama du bureau
+restent à faire.
 
 ## Contenu
 

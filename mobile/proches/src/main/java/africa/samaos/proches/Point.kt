@@ -11,8 +11,12 @@ import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 
-/** Un point Sama (ordinateur Sama d'une école, d'une mairie, d'un cybercafé) ou un téléphone qui donne. */
-class Point(val nom: String, val hote: String, val port: Int) {
+/**
+ * Un point Sama (ordinateur Sama d'une école, d'une mairie, d'un cybercafé) ou le téléphone d'un proche.
+ * [proche] : l'identifiant du proche reconnu dont c'est le téléphone ; [preuve] : de quoi prouver, à chaque
+ * requête, qu'on est l'un de ses proches (un téléphone ne répond qu'à eux).
+ */
+class Point(val nom: String, val hote: String, val port: Int, val proche: String? = null, val preuve: ((String) -> String?)? = null) {
     val adresse get() = "$hote:$port"
 }
 
@@ -22,25 +26,35 @@ class Point(val nom: String, val hote: String, val port: Int) {
  * garantissent qu'on reçoit ce que l'éditeur a publié.
  *   GET /proches/v1/catalogue        → {"point": {"nom": …}, "paquets": [fiches signées]}
  *   GET /proches/v1/fichier/<sha256> → le fichier ; « Range: bytes=N- » pour reprendre où l'on s'était arrêté
+ * Entre téléphones de proches (PROTOCOLE.md), en plus : l'annonce, la proposition et la réponse, et l'en-tête
+ * « Sama-Proche » sur chaque requête.
  */
 object Protocole {
     const val SERVICE = "_samapoint._tcp."
     const val PORT = 8765
+    /** Les téléphones ouverts à leurs proches. */
+    const val SERVICE_PROCHE = "_samaproche._tcp."
     private const val DELAI = 15_000
 
     private class Reponse(val code: Int, val entetes: Map<String, String>, val corps: InputStream, val socket: Socket)
 
-    private fun demander(p: Point, chemin: String, debut: Long = 0): Reponse {
+    private fun demander(p: Point, chemin: String, debut: Long = 0, corps: ByteArray? = null): Reponse {
+        val methode = if (corps != null) "POST" else "GET"
+        // La preuve se calcule avant d'ouvrir la connexion : chez un proche, pas de preuve, pas de requête.
+        val preuve = p.preuve?.let { it("$methode $chemin") ?: error("Pas de preuve pour ce proche") }
         val s = Socket()
         s.connect(InetSocketAddress(p.hote, p.port), DELAI)
         s.soTimeout = DELAI
         val requete = buildString {
-            append("GET $chemin HTTP/1.1\r\nHost: ${p.hote}\r\nConnection: close\r\nUser-Agent: SamaProches/1\r\n")
+            append("$methode $chemin HTTP/1.1\r\nHost: ${p.hote}\r\nConnection: close\r\nUser-Agent: SamaProches/1\r\n")
+            if (preuve != null) append("Sama-Proche: $preuve\r\n")
             if (debut > 0) append("Range: bytes=$debut-\r\n")
+            if (corps != null) append("Content-Type: application/json\r\nContent-Length: ${corps.size}\r\n")
             append("\r\n")
         }
         s.getOutputStream().apply {
             write(requete.toByteArray(Charsets.US_ASCII))
+            if (corps != null) write(corps)
             flush()
         }
         val e = BufferedInputStream(s.getInputStream())
@@ -79,7 +93,8 @@ object Protocole {
         val texte = r.socket.use { if (r.code == 200) r.corps.readBytes().decodeToString() else error("Le point a répondu ${r.code}") }
         val o = JSONObject(texte)
         val nom = o.optJSONObject("point")?.optString("nom")?.ifBlank { null }
-        val ici = Point(nom ?: p.nom, p.hote, p.port)
+        // Le point garde ce qui le rattache à un proche (sa preuve) : les fichiers se demandent avec.
+        val ici = if (nom == null || nom == p.nom) p else Point(nom, p.hote, p.port, p.proche, p.preuve)
         val bruts = o.optJSONArray("paquets")
         var ecartes = 0
         val offres = (0 until (bruts?.length() ?: 0)).mapNotNull { i ->
@@ -94,6 +109,41 @@ object Protocole {
             Offre(m, v, ici)
         }
         return Catalogue(nom, offres, ecartes)
+    }
+
+    /** L'annonce d'un téléphone ouvert à ses proches : un nombre au hasard et une étiquette par proche. */
+    class Annonce(val nombre: String, val etiquettes: List<String>)
+
+    fun annonce(p: Point): Annonce? = try {
+        val r = demander(p, "/proches/v1/annonce")
+        r.socket.use {
+            if (r.code != 200) return null
+            val o = JSONObject(lireLimite(r.corps, 64 * 1024).decodeToString())
+            val e = o.optJSONArray("e")
+            Annonce(o.getString("n"), (0 until (e?.length() ?: 0)).map { e!!.getString(it) }).takeIf { o.optInt("v") == 1 }
+        }
+    } catch (_: Exception) {
+        null
+    }
+
+    /** Envoyer une demande (proposition, réponse) ; renvoie le code de la réponse, ou -1 si personne n'a répondu. */
+    fun poster(p: Point, chemin: String, o: JSONObject): Int = try {
+        val r = demander(p, chemin, corps = o.toString().toByteArray(Charsets.UTF_8))
+        r.socket.use { r.code }
+    } catch (_: Exception) {
+        -1
+    }
+
+    private fun lireLimite(e: InputStream, maximum: Int): ByteArray {
+        val b = java.io.ByteArrayOutputStream()
+        val t = ByteArray(8 * 1024)
+        while (true) {
+            val n = e.read(t)
+            if (n < 0) break
+            b.write(t, 0, n)
+            if (b.size() > maximum) error("Réponse trop longue")
+        }
+        return b.toByteArray()
     }
 
     /** Une petite image (icône) servie par son empreinte : refusée si elle ne correspond pas, ou si elle est trop grosse. */
@@ -159,10 +209,21 @@ object Protocole {
     }
 }
 
-/** Trouver les points Sama du réseau local (mDNS). Ne tourne que pendant qu'on regarde. */
-class Decouverte(private val c: Context, private val trouve: (Point) -> Unit) {
+/**
+ * Trouver les points Sama du réseau local (mDNS), ou les téléphones ouverts à leurs proches ([service]).
+ * Ne tourne que pendant qu'on regarde. [perdu] : un service qui a disparu (son nom mDNS).
+ */
+class Decouverte(
+    private val c: Context,
+    private val service: String = Protocole.SERVICE,
+    private val perdu: (String) -> Unit = {},
+    private val trouve: (Point) -> Unit,
+) {
     private val nsd = c.getSystemService(NsdManager::class.java)
     private var ecoute: NsdManager.DiscoveryListener? = null
+
+    /** Le nom mDNS de chaque adresse trouvée. */
+    val noms = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     fun commencer() {
         if (ecoute != null) return
@@ -173,21 +234,21 @@ class Decouverte(private val c: Context, private val trouve: (Point) -> Unit) {
                     override fun onServiceResolved(r: NsdServiceInfo) {
                         val hote = r.host?.hostAddress ?: return
                         val nom = r.attributes["nom"]?.decodeToString() ?: r.serviceName
-                        trouve(Point(nom, hote, r.port))
+                        trouve(Point(nom, hote, r.port).also { noms[it.adresse] = s.serviceName })
                     }
 
                     override fun onResolveFailed(s: NsdServiceInfo, e: Int) {}
                 })
             }
 
-            override fun onServiceLost(s: NsdServiceInfo) {}
+            override fun onServiceLost(s: NsdServiceInfo) = perdu(s.serviceName)
             override fun onDiscoveryStarted(t: String) {}
             override fun onDiscoveryStopped(t: String) {}
             override fun onStartDiscoveryFailed(t: String, e: Int) {}
             override fun onStopDiscoveryFailed(t: String, e: Int) {}
         }
         try {
-            nsd.discoverServices(Protocole.SERVICE, NsdManager.PROTOCOL_DNS_SD, l)
+            nsd.discoverServices(service, NsdManager.PROTOCOL_DNS_SD, l)
             ecoute = l
         } catch (_: Exception) {
         }

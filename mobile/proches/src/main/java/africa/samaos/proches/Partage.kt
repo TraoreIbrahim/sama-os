@@ -7,12 +7,17 @@ import org.json.JSONObject
 
 /**
  * Ce que Sugu et les Réglages partagent (réglages globaux du système, comme le bouclier) : les points Sama
- * connus, ceux dont on ne veut plus rien, et ce que Proche en proche a fait économiser. Rien de secret.
+ * connus, ceux dont on ne veut plus rien, la fenêtre ouverte aux proches, ce qu'on accepte de leur donner, et le
+ * bilan. Rien de secret : les proches eux-mêmes et leurs secrets restent dans les Réglages.
  */
 object Partage {
     private const val CLE_POINTS = "sama_points"
     private const val CLE_BLOQUES = "sama_points_bloques"
     private const val CLE_ECONOMISE = "sama_proches_economise"
+    private const val CLE_OUVERT = "sama_proches_ouvert"
+    private const val CLE_DON = "sama_proches_don"
+    private const val CLE_DONNE = "sama_proches_donne"
+    private const val CLE_AIDES = "sama_proches_aides"
 
     private fun lire(c: Context, cle: String) = Settings.Global.getString(c.contentResolver, cle)
 
@@ -67,4 +72,47 @@ object Partage {
     fun economise(c: Context): Long = lire(c, CLE_ECONOMISE)?.toLongOrNull() ?: 0L
 
     fun noterEconomise(c: Context, octets: Long) = ecrire(c, CLE_ECONOMISE, (economise(c) + octets).toString())
+
+    // ——— Entre proches : la fenêtre ouverte (Sugu), ce qu'on accepte de donner (Réglages), le bilan ———
+
+    /** La fin de la fenêtre ouverte aux proches (0 : fermée). */
+    fun ouvertJusqua(c: Context): Long = lire(c, CLE_OUVERT)?.toLongOrNull() ?: 0L
+
+    fun reglerOuvert(c: Context, jusqua: Long) = ecrire(c, CLE_OUVERT, jusqua.toString())
+
+    private fun don(c: Context): JSONObject = try {
+        JSONObject(lire(c, CLE_DON) ?: "{}")
+    } catch (_: Exception) {
+        JSONObject()
+    }
+
+    /** Partager avec ses proches les applis qu'on a déjà (sinon, seulement celles qu'on leur envoie soi-même). */
+    fun donner(c: Context) = don(c).optBoolean("donner", true)
+
+    /** Seulement branché, batterie au-dessus de 50 %. */
+    fun brancheSeulement(c: Context) = don(c).optBoolean("branche", true)
+
+    /** Limite par jour, en octets (0 : sans limite). */
+    fun limite(c: Context) = don(c).optLong("limite", 2_000_000_000L)
+
+    fun reglerDon(c: Context, donner: Boolean = donner(c), branche: Boolean = brancheSeulement(c), limite: Long = limite(c)) =
+        ecrire(c, CLE_DON, JSONObject().put("donner", donner).put("branche", branche).put("limite", limite).toString())
+
+    fun donne(c: Context): Long = lire(c, CLE_DONNE)?.toLongOrNull() ?: 0L
+
+    private fun aides(c: Context): Set<String> = try {
+        val a = JSONArray(lire(c, CLE_AIDES) ?: "[]")
+        (0 until a.length()).map { a.getString(it) }.toSet()
+    } catch (_: Exception) {
+        emptySet()
+    }
+
+    /** Le nombre de proches à qui ce téléphone a donné quelque chose. */
+    fun personnes(c: Context) = aides(c).size
+
+    fun noterDonne(c: Context, octets: Long, proche: String) {
+        ecrire(c, CLE_DONNE, (donne(c) + octets).toString())
+        val a = aides(c)
+        if (proche !in a) ecrire(c, CLE_AIDES, JSONArray((a + proche).toList()).toString())
+    }
 }
