@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Fichiers
+Comment=Choisir un fichier à ouvrir ou l'endroit où enregistrer
+Exec=false
+Icon=/usr/share/samaos/icones/fichiers.svg
+StartupWMClass=samaos-selecteur
+NoDisplay=true

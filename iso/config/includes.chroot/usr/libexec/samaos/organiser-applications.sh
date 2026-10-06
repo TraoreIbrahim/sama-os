@@ -66,6 +66,12 @@ fi
 [ -f /usr/share/applications/samaos-moniteur.desktop ] && mkdir -p /usr/share/kglobalaccel &&
 	ln -sf /usr/share/applications/samaos-moniteur.desktop /usr/share/kglobalaccel/samaos-moniteur.desktop
 
+# LibreOffice garde la fenêtre « Enregistrer sous » de KDE : avec le portail (donc le sélecteur de Sama), il envoie
+# chaque demande deux fois et rouvre la fenêtre après l'avoir validée (même avec le sélecteur de KDE)
+for f in "$CIBLE"/libreoffice-*.desktop; do
+	[ -f "$f" ] && sed -i 's/^Exec=libreoffice /Exec=env PLASMA_INTEGRATION_USE_PORTAL=0 libreoffice /' "$f"
+done
+
 # Outils techniques, doublons et utilitaires réservés aux experts
 masquer org.kde.drkonqi org.kde.drkonqi.coredump.gui org.kde.kmenuedit org.kde.kwalletmanager \
 	org.kde.konqueror konqbrowser org.kde.kfind org.kde.kate org.kde.kinfocenter \

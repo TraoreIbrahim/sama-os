@@ -2,7 +2,7 @@
 Type=Application
 Name=Sama Docs
 Comment=Traitement de texte de Sama (préversion)
-Exec=libreoffice --writer %U
+Exec=env PLASMA_INTEGRATION_USE_PORTAL=0 libreoffice --writer %U
 Icon=/usr/share/samaos/icones/docs.svg
 StartupWMClass=libreoffice-writer
 Categories=Office;WordProcessor;

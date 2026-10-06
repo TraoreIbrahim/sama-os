@@ -68,7 +68,7 @@ envoyer)
 		powerdevil.notifyrc $(cd "$inclus/etc/xdg" && ls autostart/samaos-*.desktop) | vm 'sudo tar -xzf - -C /etc/xdg --no-same-owner'
 	# Applications Sama (Réglages…) : fichiers, lanceurs, raccourcis, exécutables propres
 	tar --no-xattrs -C "$inclus" -czf - usr/lib/samaos $(cd "$inclus" && ls usr/bin/sama-* usr/share/applications/samaos-*.desktop) \
-		| vm 'sudo tar -xzf - -C / --no-same-owner && sudo mkdir -p /usr/lib/samaos/bin && for a in samaos-reglages samaos-fichiers samaos-moniteur samaos-aide; do
+		| vm 'sudo tar -xzf - -C / --no-same-owner && sudo mkdir -p /usr/lib/samaos/bin && for a in samaos-reglages samaos-fichiers samaos-moniteur samaos-aide samaos-selecteur; do
 			sudo cp /usr/lib/qt6/bin/qml /usr/lib/samaos/bin/$a.nouveau && sudo mv -f /usr/lib/samaos/bin/$a.nouveau /usr/lib/samaos/bin/$a; done'
 	# Scripts Sama (organisation du menu…) et application du tri des applications
 	tar --no-xattrs -C "$inclus/usr/libexec" -czf - samaos | vm 'sudo tar -xzf - -C /usr/libexec --no-same-owner && sudo sh /usr/libexec/samaos/organiser-applications.sh && kbuildsycoca6 >/dev/null 2>&1'

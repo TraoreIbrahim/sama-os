@@ -2,7 +2,7 @@
 Type=Application
 Name=Sama Sheet
 Comment=Tableur de Sama (préversion)
-Exec=libreoffice --calc %U
+Exec=env PLASMA_INTEGRATION_USE_PORTAL=0 libreoffice --calc %U
 Icon=/usr/share/samaos/icones/sheet.svg
 StartupWMClass=libreoffice-calc
 Categories=Office;Spreadsheet;

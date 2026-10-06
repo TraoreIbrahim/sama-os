@@ -1,0 +1,246 @@
+#!/usr/bin/python3
+"""Sélecteur de fichiers de Sama (maquette fic-03), servi par le portail de bureau (xdg-desktop-portal) : toutes les
+applications qui passent par le portail (Sama Docs et les applications de KDE avec PLASMA_INTEGRATION_USE_PORTAL=1,
+Griot…) ont la même fenêtre « Enregistrer sous » ou « Ouvrir » (/usr/lib/samaos/selecteur/Selecteur.qml).
+
+Interface org.freedesktop.impl.portal.FileChooser (OpenFile, SaveFile, SaveFiles), nom de bus
+org.freedesktop.impl.portal.desktop.samaos (activé par D-Bus). Si la fenêtre de Sama ne peut pas s'ouvrir, la demande
+est confiée au sélecteur de KDE : une application n'est jamais privée de fenêtre d'enregistrement.
+Certaines applications (Qt dans LibreOffice) envoient deux fois la même demande d'affilée et écoutent les deux
+réponses : une seule fenêtre s'ouvre, seule la première demande reçoit la réponse ; le doublon attend que
+l'application le ferme (une seconde réponse rouvrirait la fenêtre, ou annulerait l'enregistrement).
+"""
+import json
+import mimetypes
+import os
+import re
+import subprocess
+import sys
+import threading
+import time
+import urllib.parse
+
+from gi.repository import Gio, GLib
+
+NOM_BUS = "org.freedesktop.impl.portal.desktop.samaos"
+CHEMIN = "/org/freedesktop/portal/desktop"
+QML = "/usr/lib/samaos/selecteur/Selecteur.qml"
+LANCEUR = "/usr/lib/samaos/bin/samaos-selecteur"      # (copie du lanceur QML : l'identité de la fenêtre en découle)
+KDE = "org.freedesktop.impl.portal.desktop.kde"
+DOSSIERS_APPLIS = [os.path.expanduser("~/.local/share/applications"), "/usr/local/share/applications", "/usr/share/applications"]
+
+INTROSPECTION = """
+<node>
+  <interface name="org.freedesktop.impl.portal.FileChooser">
+    <method name="OpenFile">
+      <arg type="o" name="handle" direction="in"/><arg type="s" name="app_id" direction="in"/>
+      <arg type="s" name="parent_window" direction="in"/><arg type="s" name="title" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="u" name="response" direction="out"/><arg type="a{sv}" name="results" direction="out"/>
+    </method>
+    <method name="SaveFile">
+      <arg type="o" name="handle" direction="in"/><arg type="s" name="app_id" direction="in"/>
+      <arg type="s" name="parent_window" direction="in"/><arg type="s" name="title" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="u" name="response" direction="out"/><arg type="a{sv}" name="results" direction="out"/>
+    </method>
+    <method name="SaveFiles">
+      <arg type="o" name="handle" direction="in"/><arg type="s" name="app_id" direction="in"/>
+      <arg type="s" name="parent_window" direction="in"/><arg type="s" name="title" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="u" name="response" direction="out"/><arg type="a{sv}" name="results" direction="out"/>
+    </method>
+  </interface>
+</node>
+"""
+REQUETE = """
+<node>
+  <interface name="org.freedesktop.impl.portal.Request">
+    <method name="Close"/>
+  </interface>
+</node>
+"""
+
+
+def octets_en_chemin(v):
+    """Chemin passé en « ay » (terminé par un zéro)."""
+    if v is None:
+        return ""
+    b = bytes(v)
+    return b.rstrip(b"\0").decode("utf-8", "replace")
+
+
+def nom_application(app_id):
+    """« samaos-docs » → « Sama Docs » (nom de son fichier .desktop)."""
+    for d in DOSSIERS_APPLIS:
+        chemin = os.path.join(d, app_id + ".desktop") if app_id else ""
+        if chemin and os.path.isfile(chemin):
+            nom = ""
+            for ligne in open(chemin, encoding="utf-8", errors="replace"):
+                if ligne.startswith("Name[fr]="):
+                    return ligne.split("=", 1)[1].strip()
+                if ligne.startswith("Name=") and not nom:
+                    nom = ligne.split("=", 1)[1].strip()
+            if nom:
+                return nom
+    return ""
+
+
+def filtres_lisibles(filtres):
+    """a(sa(us)) → [{ nom, extensions }] (types MIME traduits en extensions ; « * » : tout)."""
+    res = []
+    for nom, motifs in filtres or []:
+        extensions, tout = [], False
+        for genre, motif in motifs:
+            if genre == 0:
+                if motif in ("*", "*.*"):
+                    tout = True
+                elif motif.startswith("*."):
+                    # (« *.[tT][xX][tT] », motif insensible à la casse de Chromium → « txt »)
+                    e = re.sub(r"\[(\w)(\w)\]", lambda m: m.group(1) if m.group(1).lower() == m.group(2).lower() else m.group(0), motif[2:])
+                    extensions.append(e.lower())
+            else:
+                extensions += [e.lstrip(".").lower() for e in mimetypes.guess_all_extensions(motif)]
+        res.append({"nom": nom.strip(), "extensions": [] if tout else sorted(set(extensions), key=extensions.index)})
+    return res
+
+
+class Demande:
+    """Une fenêtre ouverte et l'appel qui attend sa réponse."""
+
+    def __init__(self, cle, methode, options, invocation):
+        self.cle, self.methode, self.options, self.invocation = cle, methode, options, invocation
+        self.debut, self.processus, self.ferme = time.monotonic(), None, False
+        self.bus, self.objet = None, 0
+
+    def repondre(self, code, resultats):
+        if self.invocation:
+            self.invocation.return_value(GLib.Variant("(ua{sv})", (code, resultats)))
+            self.invocation = None
+        if self.objet:
+            self.bus.unregister_object(self.objet)
+            self.objet = 0
+
+
+class Portail:
+    def __init__(self, bus):
+        self.bus = bus
+        self.en_cours = {}
+        noeud = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION)
+        bus.register_object(CHEMIN, noeud.interfaces[0], self.appel, None, None)
+        self.requete = Gio.DBusNodeInfo.new_for_xml(REQUETE).interfaces[0]
+
+    def appel(self, connexion, envoyeur, chemin, interface, methode, parametres, invocation):
+        handle, app_id, parent, titre, options = parametres.unpack()
+        opts = {k: options[k] for k in options}
+        cle = json.dumps([methode, app_id, titre, sorted((k, repr(v)) for k, v in opts.items())])
+        precedente = self.en_cours.get(cle)
+        d = Demande(cle, methode, parametres.get_child_value(4), invocation)
+        try:
+            d.bus, d.objet = self.bus, self.bus.register_object(handle, self.requete, lambda *a: self.fermer(d, a[-1]), None, None)
+        except GLib.Error:
+            pass
+        if precedente and time.monotonic() - precedente.debut < 3:
+            return                                  # (doublon : attend que l'application le ferme)
+        self.en_cours[cle] = d
+        donnees = self.preparer(methode, app_id, titre, opts)
+        if not os.path.exists(QML):
+            self.vers_kde(d, parametres)
+            return
+        threading.Thread(target=self.fenetre, args=(d, donnees, parametres), daemon=True).start()
+
+    def preparer(self, methode, app_id, titre, o):
+        courant = octets_en_chemin(o.get("current_file"))
+        dossier = octets_en_chemin(o.get("current_folder")) or (os.path.dirname(courant) if courant else "")
+        if not dossier or not os.path.isdir(dossier):
+            dossier = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS) or os.path.expanduser("~")
+        filtres = o.get("filters") or []
+        filtre_courant = -1
+        if o.get("current_filter"):
+            for i, f in enumerate(filtres):
+                if f[0] == o["current_filter"][0]:
+                    filtre_courant = i
+        nom = o.get("current_name") or (os.path.basename(courant) if courant else "")
+        if methode == "SaveFiles":
+            nom = ""
+        return {"mode": "ouvrir" if methode == "OpenFile" else "dossier-enregistrer" if methode == "SaveFiles" else "enregistrer",
+                "titre": titre, "app": nom_application(app_id), "nom": nom, "dossier": dossier,
+                "filtres": filtres_lisibles(filtres), "filtre": filtre_courant,
+                "multiple": bool(o.get("multiple")), "repertoire": bool(o.get("directory")),
+                "bouton": o.get("accept_label", "").replace("_", ""),
+                "choix": [{"id": c[0], "nom": c[1], "options": [list(x) for x in c[2]], "valeur": c[3]} for c in o.get("choices", [])],
+                "fichiers": [os.path.basename(octets_en_chemin(f)) for f in o.get("files", [])]}
+
+    def fenetre(self, d, donnees, parametres):
+        try:
+            lanceur = LANCEUR if os.access(LANCEUR, os.X_OK) else "qml6"
+            d.processus = subprocess.Popen([lanceur, QML, "--", json.dumps(donnees, ensure_ascii=False)],
+                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            choix = None
+            for ligne in d.processus.stdout:
+                if "SAMA_SELECTEUR=" in ligne:
+                    choix = json.loads(ligne.split("SAMA_SELECTEUR=", 1)[1])
+            code = d.processus.wait()
+        except (OSError, ValueError):
+            choix, code = None, -1
+        if d.ferme:
+            GLib.idle_add(self.terminer, d, {})
+            return
+        if choix is None and code != 0:
+            GLib.idle_add(self.vers_kde, d, parametres)      # (la fenêtre de Sama n'a pas pu s'ouvrir)
+            return
+        GLib.idle_add(self.terminer, d, choix or {})
+
+    def terminer(self, d, choix):
+        self.en_cours.pop(d.cle, None)
+        if not choix.get("chemins"):
+            d.repondre(1, {})
+            return False
+        resultats = {"uris": GLib.Variant("as", ["file://" + urllib.parse.quote(c) for c in choix["chemins"]])}
+        filtres = d.options.lookup_value("filters", None)
+        if filtres is not None and 0 <= choix.get("filtre", -1) < filtres.n_children():
+            resultats["current_filter"] = filtres.get_child_value(choix["filtre"])
+        if choix.get("choix"):
+            resultats["choices"] = GLib.Variant("a(ss)", [(k, v) for k, v in choix["choix"].items()])
+        if d.methode == "OpenFile":
+            resultats["writable"] = GLib.Variant("b", True)
+        d.repondre(0, resultats)
+        return False
+
+    def fermer(self, d, invocation):
+        """L'application annule sa demande (ou ferme le doublon) : la fenêtre se ferme."""
+        d.ferme = True
+        if d.processus and d.processus.poll() is None:
+            d.processus.terminate()
+        elif not d.processus:
+            d.repondre(1, {})
+        invocation.return_value(None)
+
+    def vers_kde(self, d, parametres):
+        """Le sélecteur de KDE prend la demande ; sa réponse est rendue telle quelle."""
+        self.bus.call(KDE, CHEMIN, "org.freedesktop.impl.portal.FileChooser", d.methode, parametres,
+                      GLib.VariantType("(ua{sv})"), Gio.DBusCallFlags.NONE, GLib.MAXINT32, None, self.relayer, d)
+        return False
+
+    def relayer(self, bus, resultat, d):
+        self.en_cours.pop(d.cle, None)
+        try:
+            v = bus.call_finish(resultat)
+            code = v.get_child_value(0).get_uint32()
+            dico = v.get_child_value(1)
+            res = {dico.get_child_value(i).get_child_value(0).get_string(): dico.get_child_value(i).get_child_value(1).get_variant()
+                   for i in range(dico.n_children())}
+            d.repondre(code, res)
+        except GLib.Error:
+            d.repondre(2, {})
+
+
+def main():
+    boucle, portail = GLib.MainLoop(), {}
+    Gio.bus_own_name(Gio.BusType.SESSION, NOM_BUS, Gio.BusNameOwnerFlags.NONE,
+                     lambda bus, nom: portail.update(p=Portail(bus)), None, lambda bus, nom: boucle.quit())
+    boucle.run()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
