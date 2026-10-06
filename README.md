@@ -17,7 +17,7 @@ Ce dépôt construit **l'ISO live 0.1 (prototype)** : une Debian 13 avec KDE Pla
 | La Natte : la Cour (applications et recherche), les Espaces, le Pouls (centre de contrôle et notifications) | fait |
 | Bureau : cartes Heure, Data, Météo, Agenda ; vue des Espaces (Méta+Tab), transition entre Espaces | fait |
 | Méthode de saisie : d'un clic sur FR dans le Pouls, ou Méta+Espace ; julakan (ɛ ɔ ɲ ŋ avec AltGr), wolof, kiswahili, codes DYU, WO, SW | fait (accents à l'appui long d'une touche : à venir, il faut une vraie méthode de saisie) |
-| Fenêtres côte à côte : en déplaçant une fenêtre, dispositions moitiés, tiers, deux tiers, quarts (script KWin) | fait (poignée commune entre deux fenêtres : à venir) |
+| Fenêtres côte à côte : en déplaçant une fenêtre, dispositions moitiés, tiers, deux tiers, quarts, à 12 px l'une de l'autre ; poignée commune qui redimensionne deux fenêtres voisines ensemble (script KWin) | fait (poignée entre fenêtres du haut et du bas, en quarts : à venir) |
 | Réglages Sama : réseau, Bluetooth, affichage, Bureau et Natte, notifications, son, langue et clavier, comptes, confidentialité, data et mises à jour, énergie, imprimantes, sauvegarde, accessibilité, à propos | fait (Organisation : la page dit ce qu'une école ou une entreprise pourrait faire ; l'inscription, avec Sama Parc, à venir) |
 | Fenêtre « Autorisation requise » de Sama (à la place de celle de KDE) | fait |
 | Installateur aux couleurs de Sama (Calamares, pages en QML d'après la maquette) | fait |

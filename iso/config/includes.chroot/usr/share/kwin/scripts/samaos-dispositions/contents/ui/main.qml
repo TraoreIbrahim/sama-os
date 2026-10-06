@@ -1,6 +1,7 @@
 // Fenêtres côte à côte (maquette bur-05) : pendant qu'on déplace une fenêtre, Sama montre en haut de l'écran
 // « Glissez une fenêtre vers un bord pour la ranger » et les dispositions (moitiés, tiers, deux tiers, quarts) ; la
-// fenêtre lâchée sur une case prend cette place. Les bords de l'écran gardent le rangement de KWin (Super + ← →).
+// fenêtre lâchée sur une case prend cette place, à 12 px de ses voisines. Les bords de l'écran gardent le rangement de
+// KWin (Super + ← →). Entre deux fenêtres côte à côte, une poignée commune les redimensionne ensemble.
 import QtQuick
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kwin
@@ -22,23 +23,138 @@ Item {
     function zoneUtile() {
         return Workspace.clientArea(2, Workspace.activeScreen, Workspace.currentDesktop)
     }
+    // Rectangle d'une case : 12 px au bord de l'écran, 12 px entre deux fenêtres (6 de chaque côté)
+    readonly property int ecart: 12
     function rectangleDe(c) {
         var z = zoneUtile()
-        return Qt.rect(Math.round(z.x + c[0] * z.width), Math.round(z.y + c[1] * z.height),
-                       Math.round(c[2] * z.width), Math.round(c[3] * z.height))
+        var g = Math.round(z.x + c[0] * z.width), d = Math.round(z.x + (c[0] + c[2]) * z.width)
+        var h = Math.round(z.y + c[1] * z.height), b = Math.round(z.y + (c[1] + c[3]) * z.height)
+        g += c[0] === 0 ? ecart : ecart / 2
+        d -= c[0] + c[2] >= 0.999 ? ecart : ecart / 2
+        h += c[1] === 0 ? ecart : ecart / 2
+        b -= c[1] + c[3] >= 0.999 ? ecart : ecart / 2
+        return Qt.rect(g, h, d - g, b - h)
     }
 
     // Chaque fenêtre : début, avancée et fin d'un déplacement à la souris
     function brancher(w) {
+        // (les poignées sont des fenêtres de KWin ordinaires : ni barre des tâches, ni Alt+Tab, ni Espaces)
+        if (w.caption === "samaos-poignee") {
+            w.skipTaskbar = true; w.skipSwitcher = true; w.skipPager = true
+            return
+        }
         w.interactiveMoveResizeStarted.connect(function () { racine.debut(w) })
         w.interactiveMoveResizeStepped.connect(function () { if (racine.fenetreDeplacee === w) racine.suivre(Workspace.cursorPos) })
         w.interactiveMoveResizeFinished.connect(function () { if (racine.fenetreDeplacee === w) racine.fin() })
+        w.frameGeometryChanged.connect(function () { racine.revoir() })
+        w.minimizedChanged.connect(function () { racine.revoir(); attenteFin.restart() })
     }
     Component.onCompleted: {
         var l = Workspace.windows
         for (var i = 0; i < l.length; i++) brancher(l[i])
-        Workspace.windowAdded.connect(brancher)
+        Workspace.windowAdded.connect(function (w) { racine.brancher(w); racine.revoir() })
+        Workspace.windowRemoved.connect(function () { racine.revoir(); attenteFin.restart() })
+        Workspace.windowActivated.connect(function () { racine.revoir() })
+        Workspace.currentDesktopChanged.connect(function () { racine.revoir() })
+        Workspace.currentActivityChanged.connect(function () { racine.revoir() })
+        revoir()
     }
+
+    // ——— Poignée commune entre deux fenêtres côte à côte ———
+    // Deux fenêtres de l'Espace et du bureau courants, à 12 px l'une de l'autre (à 4 px près), qui se font face sur
+    // au moins les trois quarts de leur hauteur. La poignée se cache si une autre fenêtre passe par-dessus.
+    property var frontieres: []           // [{ gauche, droite, x, y }]
+    property var glissement: null         // frontière en cours de glissement
+    function revoir() { if (!glissement) attenteRevoir.restart() }
+    Timer { id: attenteRevoir; interval: 60; onTriggered: racine.chercherFrontieres() }
+    // (une fenêtre fermée ou réduite reste dans la pile le temps de son animation : on regarde de nouveau après)
+    Timer { id: attenteFin; interval: 600; onTriggered: racine.revoir() }
+    function montree(w) {
+        if (!w.normalWindow || w.minimized || w.fullScreen || !w.resizeable || w.skipSwitcher || w.caption === "samaos-poignee") return false
+        if (!w.onAllDesktops && w.desktops.indexOf(Workspace.currentDesktop) < 0) return false
+        return w.activities.length === 0 || w.activities.indexOf(Workspace.currentActivity) >= 0
+    }
+    function chercherFrontieres() {
+        var pile = Workspace.stackingOrder, liste = [], res = []
+        for (var i = 0; i < pile.length; i++) if (montree(pile[i])) liste.push({ w: pile[i], rang: i })
+        for (var a = 0; a < liste.length; a++) {
+            for (var b = 0; b < liste.length; b++) {
+                var A = liste[a].w.frameGeometry, B = liste[b].w.frameGeometry
+                if (a === b || Math.abs(B.x - (A.x + A.width) - ecart) > 4) continue
+                var haut = Math.max(A.y, B.y), bas = Math.min(A.y + A.height, B.y + B.height)
+                if (bas - haut < 0.75 * Math.min(A.height, B.height)) continue
+                var x = A.x + A.width + (B.x - A.x - A.width) / 2, y = (haut + bas) / 2
+                // (une autre fenêtre, au-dessus des deux, recouvre l'endroit de la poignée ?)
+                var cachee = false, dessus = Math.max(liste[a].rang, liste[b].rang)
+                for (var k = dessus + 1; k < pile.length && !cachee; k++) {
+                    var w = pile[k], r = w.frameGeometry
+                    if (w.minimized || w.dock || r.width <= 20 && r.height <= 90) continue    // (la Natte, les poignées elles-mêmes)
+                    cachee = x >= r.x && x <= r.x + r.width && y - 40 <= r.y + r.height && y + 40 >= r.y
+                }
+                if (!cachee) res.push({ gauche: liste[a].w, droite: liste[b].w, x: x, y: y })
+            }
+        }
+        frontieres = res
+    }
+
+    // Glisser la poignée : la frontière suit la souris, chaque fenêtre garde au moins sa largeur minimale
+    function glisser(f, xSouris) {
+        var A = f.gauche.frameGeometry, B = f.droite.frameGeometry
+        var mini = A.x + Math.max(f.gauche.minSize.width, 200) + ecart / 2
+        var maxi = B.x + B.width - Math.max(f.droite.minSize.width, 200) - ecart / 2
+        var x = Math.round(Math.max(mini, Math.min(maxi, xSouris)))
+        f.gauche.frameGeometry = Qt.rect(A.x, A.y, x - ecart / 2 - A.x, A.height)
+        f.droite.frameGeometry = Qt.rect(x + ecart / 2, B.y, B.x + B.width - x - ecart / 2, B.height)
+        return x
+    }
+    // Trois poignées au plus (tiers), créées une fois pour toutes, cachées : une fenêtre de KWin créée visible ne se
+    // dessine pas, et la recréer à chaque changement en laisserait d'anciennes à l'écran
+    component Poignee: PlasmaCore.Dialog {
+        id: poignee
+        property int numero
+        readonly property var frontiere: racine.frontieres.length > numero ? racine.frontieres[numero] : null
+        property real centre: frontiere ? frontiere.x : 0
+        onFrontiereChanged: if (frontiere && !racine.glissement) centre = frontiere.x
+        x: Math.round(centre - 8)
+        y: frontiere ? Math.round(frontiere.y - 40) : 0
+        visible: false
+        title: "samaos-poignee"
+        flags: Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus
+        backgroundHints: PlasmaCore.Types.NoBackground
+        mainItem: MouseArea {
+            width: 16
+            height: 80
+            hoverEnabled: true
+            cursorShape: Qt.SplitHCursor
+            onPressed: racine.glissement = poignee.frontiere
+            onPositionChanged: if (pressed && racine.glissement) poignee.centre = racine.glisser(racine.glissement, Workspace.cursorPos.x)
+            onReleased: { racine.glissement = null; racine.revoir() }
+            Rectangle {
+                anchors.centerIn: parent
+                width: 6
+                height: 56
+                radius: 3
+                color: "#FFFFFF"
+                border.width: 0.5
+                border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, parent.containsMouse || parent.pressed ? 0.35 : 0.16)
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 4
+                    Repeater { model: 3; Rectangle { width: 2; height: 2; radius: 1; color: "#8A8277" } }
+                }
+            }
+        }
+    }
+    Poignee { id: poignee0; numero: 0 }
+    Poignee { id: poignee1; numero: 1 }
+    Poignee { id: poignee2; numero: 2 }
+    function montrerPoignees() {
+        var p = [poignee0, poignee1, poignee2]
+        for (var i = 0; i < p.length; i++) p[i].visible = i < frontieres.length && fenetreDeplacee === null
+    }
+    onFrontieresChanged: montrerPoignees()
+    onFenetreDeplaceeChanged: montrerPoignees()
+
     function debut(w) {
         if (!w.move || !w.normalWindow || !w.resizeable || w.fullScreen) return
         fenetreDeplacee = w
@@ -80,8 +196,8 @@ Item {
             return
         }
         var r = rectangleDe(trouve.zone)
-        apercu.x = r.x + 8; apercu.y = r.y + 8
-        zoneApercu.width = r.width - 16; zoneApercu.height = r.height - 16
+        apercu.x = r.x; apercu.y = r.y
+        zoneApercu.width = r.width; zoneApercu.height = r.height
         apercu.visible = true
     }
 
