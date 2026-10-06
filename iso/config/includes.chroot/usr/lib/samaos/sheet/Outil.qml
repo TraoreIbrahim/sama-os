@@ -39,6 +39,7 @@ QQC2.AbstractButton {
                 font.bold: outil.police.bold
                 font.italic: outil.police.italic
                 font.underline: outil.police.underline
+                font.strikeout: outil.police.strikeout
                 color: outil.actif ? fenetre.vertEncre : outil.encre
             }
         }

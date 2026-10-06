@@ -19,9 +19,11 @@ QByteArray dossierLibreOffice()
 }
 
 // Réglages du moteur, écrits dans son profil avant le démarrage : monnaie par défaut, le franc CFA (XOF) — le bouton
-// « FCFA » de Sama Sheet applique la monnaie par défaut ; couleurs des graphiques (forêt, ocre, bleu, latérite…)
+// « FCFA » de Sama Sheet applique la monnaie par défaut ; barre d'état de la sélection ; couleurs des graphiques
+// (forêt, ocre, bleu, latérite…)
 const char *const REGLAGES[][3] = {
     {"/org.openoffice.Setup/L10N", "ooSetupCurrency", "XOF-fr-CI"},
+    {"/org.openoffice.Office.Calc/Layout/Other", "StatusbarMultiFunction", "522"},   // somme, moyenne, nombre de valeurs
     {"/org.openoffice.Office.Chart/DefaultColor", "Series",
      "3107671 14259770 4091550 11883311 9286778 8085132 14926443 5151386 10251086 13208219 7244968 9077367"},
 };

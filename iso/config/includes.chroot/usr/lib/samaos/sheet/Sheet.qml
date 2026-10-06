@@ -1,5 +1,6 @@
-// Sama Sheet, le tableur de Sama (maquette app-05) : interface de Sama, moteur de LibreOffice (module Sama.Moteur).
-// Onglets Accueil, Insertion, Formules, Données ; barre de formule ; grille ; feuilles ; barre d'état.
+// Sama Sheet, le tableur de Sama : interface de Sama, moteur de LibreOffice (module Sama.Moteur).
+// Menus et « Que voulez-vous faire ? » (Ctrl+K) ; barre d'outils sur une ligne ; barre de formule avec l'aide des
+// fonctions ; grille ; feuilles ; barre d'état (somme, moyenne, nombre de la sélection).
 // Lancement : sama-sheet [fichier]  (sans fichier : un classeur vide)
 
 import QtQuick
@@ -29,8 +30,9 @@ Window {
     readonly property var doc: grille.doc
     readonly property string nomFichier: doc.chemin ? doc.chemin.split("/").pop() : "Nouveau classeur"
     readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
-    property string onglet: "accueil"
     property bool fermetureDemandee: false
+    readonly property alias actions: lesActions
+    Actions { id: lesActions; doc: fenetre.doc; fenetre: fenetre }
 
     function etat(c) { return doc.etats[c] }
     function actif(c) { return doc.etats[c] === "true" }
@@ -54,6 +56,23 @@ Window {
                         + commande.q("--unit=app-samaos\\x2dsheet@" + Date.now() + ".service") + " sama-sheet")
     }
     Commande { id: commande }
+    function ouvrirDialogue(genre) {
+        if (genre === "ouvrir") dialogueOuvrir.open()
+        else if (genre === "pdf") dialoguePdf.open()
+        else dialogueEnregistrer.open()
+    }
+    function ouvrirVolet(nom) { barreOutils.ouvrirVolet(nom) }
+    function ouvrirAide() {
+        commande.lancer("systemd-run --user --quiet --collect --slice=app.slice "
+                        + commande.q("--unit=app-samaos\\x2daide@" + Date.now() + ".service") + " sama-aide")
+    }
+    function ajouterFeuille() {
+        var n = doc.nomsParties.length + 1
+        while (doc.nomsParties.indexOf("Feuille " + n) >= 0) n++
+        var a = chaine("Name", "Feuille " + n)
+        a.Index = { type: "long", value: doc.nomsParties.length + 1 }
+        doc.commande(".uno:Insert", a)
+    }
     // Commencer une formule dans la barre de formule (« =MOYENNE() », le curseur entre les parenthèses)
     function commencerFormule(t) {
         champFormule.text = t
@@ -82,6 +101,20 @@ Window {
             if (formats.indexOf(f) < 0) f = "xlsx"
             if (!c.toLowerCase().endsWith("." + f)) c += "." + f
             doc.enregistrerSous(c, f)
+        }
+    }
+
+    FileDialog {
+        id: dialoguePdf
+        title: "Exporter en PDF"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["PDF (*.pdf)"]
+        currentFile: (doc.chemin ? "file://" + doc.chemin.replace(/\.[^.\/]*$/, "")
+                      : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/Nouveau classeur") + ".pdf"
+        onAccepted: {
+            var c = fenetre.chemin(selectedFile)
+            if (!c.toLowerCase().endsWith(".pdf")) c += ".pdf"
+            doc.enregistrerSous(c, "pdf")
         }
     }
 
@@ -126,17 +159,27 @@ Window {
     Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: fenetre.doc.zoom = fenetre.doc.zoom * 1.1 }
     Shortcut { sequence: "Ctrl+-"; onActivated: fenetre.doc.zoom = fenetre.doc.zoom / 1.1 }
     Shortcut { sequence: "Ctrl+0"; onActivated: fenetre.doc.zoom = 1 }
+    // (Alt+/ comme Google Sheets ; sur un clavier AZERTY, « / » demande Maj : Ctrl+K est plus simple)
+    Shortcut { sequences: ["Ctrl+K", "Alt+/", "Alt+Shift+/"]; onActivated: barreMenus.recherche.ouvrir() }
+    Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide() }
+    Shortcut { sequence: "Ctrl+W"; onActivated: fenetre.close() }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-        Ruban {
+        BarreMenus {
+            id: barreMenus
+            Layout.fillWidth: true
+        }
+        BarreOutils {
+            id: barreOutils
             Layout.fillWidth: true
         }
 
         // ——— Barre de formule : adresse, fx, contenu de la cellule ———
         Rectangle {
+            id: barreFormule
             Layout.fillWidth: true
             Layout.preferredHeight: 36
             color: Couleurs.sombre ? "#1B1F2E" : "#FFFFFF"
@@ -175,12 +218,24 @@ Window {
                     id: champFormule
                     Layout.fillWidth: true
                     verticalAlignment: TextInput.AlignVCenter
-                    text: fenetre.doc.formule
+                    // (suit la case courante, sauf pendant qu'on y écrit ; pas de liaison, que la saisie romprait)
+                    Connections {
+                        target: fenetre.doc
+                        function onFormuleChanged() { if (!champFormule.activeFocus) champFormule.text = fenetre.doc.formule }
+                    }
+                    onActiveFocusChanged: if (!activeFocus) text = fenetre.doc.formule
                     font.pixelSize: 13
                     font.features: { "tnum": 1 }
                     color: Couleurs.texte
                     clip: true
                     selectByMouse: true
+                    // (propositions de fonctions : flèches pour choisir, Tab ou Entrée pour prendre)
+                    Keys.onPressed: e => {
+                        if (!aideFonction.proposer) return
+                        if (e.key === Qt.Key_Down) { aideFonction.suivante(); e.accepted = true }
+                        else if (e.key === Qt.Key_Up) { aideFonction.precedente(); e.accepted = true }
+                        else if (e.key === Qt.Key_Tab || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { aideFonction.accepter(); e.accepted = true }
+                    }
                     onAccepted: { fenetre.doc.saisir(text); fenetre.doc.forceActiveFocus() }
                     Keys.onEscapePressed: { text = fenetre.doc.formule; fenetre.doc.forceActiveFocus() }
                 }
@@ -210,13 +265,7 @@ Window {
                     Layout.preferredHeight: 24
                     picto: "M12 5v14 M5 12h14"
                     aide: "Ajouter une feuille"
-                    onClicked: {
-                        var n = fenetre.doc.nomsParties.length + 1
-                        while (fenetre.doc.nomsParties.indexOf("Feuille " + n) >= 0) n++
-                        var a = fenetre.chaine("Name", "Feuille " + n)
-                        a.Index = { type: "long", value: fenetre.doc.nomsParties.length + 1 }
-                        fenetre.doc.commande(".uno:Insert", a)
-                    }
+                    onClicked: fenetre.ajouterFeuille()
                 }
                 Repeater {
                     model: fenetre.doc.nomsParties
@@ -296,8 +345,9 @@ Window {
                     id: statistiques
                     // (somme et moyenne d'une plage, données par le moteur : « Moyenne: 1 200 F; Somme: 3 600 F »)
                     visible: fenetre.doc.adresse.indexOf(":") > 0 && text !== ""
-                    text: String(fenetre.etat(".uno:StateTableCell") || "").split(";").map(function (s) { return s.trim().replace(/\s*:\s*/, " : ") })
-                          .filter(function (s) { return /\d/.test(s) }).join("   ·   ")
+                    text: String(fenetre.etat(".uno:StateTableCell") || "").split(";").map(function (s) {
+                              return s.trim().replace(/\s*:\s*/, " : ").replace(/^NbVal/i, "Nombre").replace(/^Nb\b/, "Nombre")
+                          }).filter(function (s) { return /\d/.test(s) }).join("   ·   ")
                     font.pixelSize: 11
                     color: Couleurs.texte2
                 }
@@ -306,6 +356,23 @@ Window {
                 Text { text: Math.round(fenetre.doc.zoom * 100) + " %"; font.pixelSize: 11; color: Couleurs.texte2 }
                 Outil { Layout.preferredHeight: 22; Layout.preferredWidth: 22; picto: "M12 5v14 M5 12h14"; aide: "Agrandir"; onClicked: fenetre.doc.zoom = fenetre.doc.zoom * 1.1 }
             }
+        }
+    }
+
+    // ——— Aide des fonctions pendant la saisie d'une formule (barre de formule ou case) ———
+    AideFonction {
+        id: aideFonction
+        x: 104
+        y: barreFormule.y + barreFormule.height + 6
+        z: 10
+        texte: champFormule.activeFocus ? champFormule.text.slice(0, champFormule.cursorPosition)
+               : fenetre.doc.curseurTexteVisible ? fenetre.doc.formule : ""
+        completer: champFormule.activeFocus
+        onProposition: (nom, prefixe) => {
+            var avant = champFormule.text.slice(0, champFormule.cursorPosition - prefixe.length)
+            var apres = champFormule.text.slice(champFormule.cursorPosition)
+            champFormule.text = avant + nom + "(" + apres
+            champFormule.cursorPosition = avant.length + nom.length + 1
         }
     }
 

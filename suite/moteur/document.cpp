@@ -791,7 +791,7 @@ void DocumentLO::copier(bool couper)
     });
 }
 
-void DocumentLO::coller()
+void DocumentLO::coller(bool valeursSeules)
 {
     if (!m_doc) return;
     const QMimeData *mime = QGuiApplication::clipboard()->mimeData();
@@ -820,7 +820,7 @@ void DocumentLO::coller()
             });
         }
     }
-    commande(QStringLiteral(".uno:Paste"));
+    commande(valeursSeules ? QStringLiteral(".uno:PasteOnlyValue") : QStringLiteral(".uno:Paste"));
 }
 
 // ——— Clavier et souris ———
@@ -846,12 +846,14 @@ void DocumentLO::keyPressEvent(QKeyEvent *e)
     if (ctrl && !(e->modifiers() & Qt::AltModifier)) {
         if (e->key() == Qt::Key_C) { copier(false); return; }
         if (e->key() == Qt::Key_X) { copier(true); return; }
-        if (e->key() == Qt::Key_V) { coller(); return; }
+        if (e->key() == Qt::Key_V) { coller(e->modifiers() & Qt::ShiftModifier); return; }
     }
     const QString texte = e->text();
     const int code = codeTouche(e->key());
-    // Texte (lettres, chiffres, ɛ ɔ ɲ ŋ…) : caractère par caractère
+    // Texte (lettres, chiffres, ɛ ɔ ɲ ŋ…) : caractère par caractère. Pas sur un graphique choisi (le moteur y
+    // ajouterait un texte sans qu'on le veuille), comme dans Excel
     if (!texte.isEmpty() && texte.at(0).isPrint() && !(ctrl && !(e->modifiers() & Qt::AltModifier))) {
+        if (!m_objetTwips.isNull() && !m_objetActif) return;
         auto *doc = m_doc;
         const QList<uint> points = texte.toUcs4();
         Moteur::instance()->executer([doc, points] {

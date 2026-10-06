@@ -110,7 +110,7 @@ public:
     Q_INVOKABLE void touche(int code, int caractere = 0);
     // Presse-papiers : contenu du moteur vers celui du système, et l'inverse avant de coller
     Q_INVOKABLE void copier(bool couper = false);
-    Q_INVOKABLE void coller();
+    Q_INVOKABLE void coller(bool valeursSeules = false);   // (valeurs seules : sans formules ni mise en forme)
     // Graphique de la sélection, du type demandé (rang dans la liste de l'assistant du moteur : 0 colonnes, 1 barres,
     // 2 secteurs, 4 aires, 5 lignes) ; l'assistant n'est pas montré, Sama le remplit
     Q_INVOKABLE void insererGraphique(int type);
