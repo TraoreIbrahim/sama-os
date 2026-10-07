@@ -38,7 +38,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -72,6 +71,7 @@ import africa.samaos.banco.appli.EcranAppli
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -157,7 +157,7 @@ class LirePdf : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) { PageLirePdf(uri) { finish() } }
+            AvecIdentite(id) { PageLirePdf(uri) { finish() } }
         }
     }
 }
@@ -277,7 +277,7 @@ private fun Loupe(pdf: Pdf, i: Int, fermer: () -> Unit) {
             )
         }
         Box(Modifier.align(Alignment.TopStart).padding(top = 40.dp, start = 8.dp)) {
-            CompositionLocalProvider(LocalIdentite provides Identites.FichiersNuit) { BoutonAppli("M6 6l12 12 M18 6L6 18", "Fermer", onClick = fermer) }
+            AvecIdentite(Identites.FichiersNuit) { BoutonAppli("M6 6l12 12 M18 6L6 18", "Fermer", onClick = fermer) }
         }
     }
 }

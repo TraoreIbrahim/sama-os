@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La barre Couper / Copier / Coller et son menu, comme à l'origine, à 28dp fixes (voir dialog_background_material). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@*android:color/materialColorSurfaceContainerHighest" />
+    <corners android:radius="28dp" />
+</shape>

@@ -39,7 +39,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -164,7 +163,7 @@ fun ModifierAccueil(
 /** L'Accueil en petit : son paysage, l'heure, la place des widgets, les applis et la Natte. */
 @Composable
 private fun MiniAccueil(espace: Espace, widgets: Int, elements: List<Element>, applis: Map<String, Appli>, natte: List<Appli>, fermer: () -> Unit) {
-    CompositionLocalProvider(LocalBanco provides palette(espace.paysage, LocalNuit.current)) {
+    AvecBanco(palette(espace.paysage, LocalNuit.current)) {
         val b = LocalBanco.current
         val maintenant = rememberMaintenant()
         BoxWithConstraints(

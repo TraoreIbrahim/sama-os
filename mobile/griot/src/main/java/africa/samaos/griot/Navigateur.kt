@@ -51,6 +51,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -94,6 +95,7 @@ import africa.samaos.banco.IconeTrait
 import africa.samaos.bouclier.Verdict
 import africa.samaos.banco.Icones
 import africa.samaos.banco.Polices
+import africa.samaos.banco.selectionTexte
 import africa.samaos.banco.appli.ActionFeuille
 import africa.samaos.banco.appli.BoutonAppli
 import africa.samaos.banco.appli.BoutonTexteAppli
@@ -106,6 +108,7 @@ import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -159,7 +162,7 @@ class Navigateur : ComponentActivity(), Hote {
         lire(intent)
         setContent {
             val id = if (isSystemInDarkTheme()) Identites.GriotNuit else Identites.Griot
-            CompositionLocalProvider(LocalIdentite provides id) { Ecran(this, carnet) }
+            AvecIdentite(id) { Ecran(this, carnet) }
         }
     }
 
@@ -839,12 +842,15 @@ private fun TrouverDansLaPage(o: Onglet, fermer: () -> Unit) {
         fermer()
     }
     Row(Modifier.fillMaxWidth().background(NUIT).padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        BasicTextField(
-            texte, { texte = it }, singleLine = true,
-            textStyle = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = BLANC), cursorBrush = SolidColor(OR),
-            modifier = Modifier.weight(1f).padding(horizontal = 10.dp).focusRequester(focus).semantics { contentDescription = "Mot à trouver" },
-            decorationBox = { f -> Box { if (texte.isEmpty()) BasicText("Trouver dans la page", style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = Color(0x80FFFFFF))); f() } },
-        )
+        // Sur la barre de nuit, la sélection prend l'or du curseur (l'accent de Griot ne s'y verrait pas).
+        CompositionLocalProvider(LocalTextSelectionColors provides selectionTexte(OR)) {
+            BasicTextField(
+                texte, { texte = it }, singleLine = true,
+                textStyle = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = BLANC), cursorBrush = SolidColor(OR),
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp).focusRequester(focus).semantics { contentDescription = "Mot à trouver" },
+                decorationBox = { f -> Box { if (texte.isEmpty()) BasicText("Trouver dans la page", style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = Color(0x80FFFFFF))); f() } },
+            )
+        }
         if (texte.isNotEmpty()) BasicText("${resultat.first}/${resultat.second}", style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = Color(0xB3FFFFFF)))
         Bouton("M6 15l6-6l6 6", "Précédent", taille = 44) { o.web.findNext(false) }
         Bouton("M6 9l6 6l6-6", "Suivant", taille = 44) { o.web.findNext(true) }

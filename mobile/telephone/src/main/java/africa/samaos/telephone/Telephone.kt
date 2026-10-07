@@ -39,7 +39,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -80,6 +79,7 @@ import africa.samaos.banco.appli.PuceSim
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
 import africa.samaos.banco.appli.couleursOperateur
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -110,7 +110,7 @@ class Telephone : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) {
+            AvecIdentite(id) {
                 BackHandler(enabled = page != null) { page = null }
                 when (page) {
                     "filtrage" -> PageFiltrage(reprise) { page = null }

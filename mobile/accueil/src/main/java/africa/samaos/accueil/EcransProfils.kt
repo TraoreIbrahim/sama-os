@@ -34,7 +34,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -101,7 +100,7 @@ fun EcranNouvelEspace(espaces: Espaces, applis: List<Appli>) {
     }
 
     // L'écran prend en direct les couleurs du paysage choisi, à l'heure qu'il est.
-    CompositionLocalProvider(LocalBanco provides palette(paysage, LocalNuit.current)) {
+    AvecBanco(palette(paysage, LocalNuit.current)) {
         val b = LocalBanco.current
         Box(
             Modifier
@@ -230,7 +229,7 @@ fun EcranPassage(espaces: Espaces, espace: Espace) {
         animate(0f, 1f, animationSpec = tween(460, easing = FastOutSlowInEasing)) { v, _ -> montee = v }
         espaces.basculer(espace)
     }
-    CompositionLocalProvider(LocalBanco provides palette(espace.paysage, nuit)) {
+    AvecBanco(palette(espace.paysage, nuit)) {
         val b = LocalBanco.current
         Box(
             Modifier

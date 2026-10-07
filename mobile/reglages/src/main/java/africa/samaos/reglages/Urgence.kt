@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import africa.samaos.banco.Icones
 import africa.samaos.banco.LocalBanco
 import africa.samaos.banco.Polices
+import africa.samaos.banco.AvecBanco
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -281,7 +281,7 @@ class UrgenceVerrouillee : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val nuit = androidx.compose.foundation.isSystemInDarkTheme()
-            CompositionLocalProvider(LocalBanco provides africa.samaos.banco.palette(africa.samaos.banco.PaysageEspace.LAGUNE, nuit), africa.samaos.banco.LocalNuit provides nuit) {
+            AvecBanco(africa.samaos.banco.palette(africa.samaos.banco.PaysageEspace.LAGUNE, nuit), africa.samaos.banco.LocalNuit provides nuit) {
                 PageUrgenceVerrouillee { finish() }
             }
         }

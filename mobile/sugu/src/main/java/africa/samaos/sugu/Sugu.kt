@@ -35,7 +35,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -79,6 +78,7 @@ import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
 import africa.samaos.banco.appli.couleurDe
+import africa.samaos.banco.appli.AvecIdentite
 import africa.samaos.proches.Categories
 import africa.samaos.proches.Cercle
 import africa.samaos.proches.Editeurs
@@ -122,7 +122,7 @@ class Sugu : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) { Racine(pile) }
+            AvecIdentite(id) { Racine(pile) }
         }
     }
 

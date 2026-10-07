@@ -73,6 +73,7 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.Rub
+import africa.samaos.banco.appli.AvecIdentite
 import africa.samaos.bouclier.Bouclier
 import africa.samaos.bouclier.Verdict
 import kotlinx.coroutines.Dispatchers
@@ -131,7 +132,7 @@ class Mail : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) {
+            AvecIdentite(id) {
                 val c = LocalContext.current
                 val aller: (Vue) -> Unit = { pile = pile + it }
                 val retour: () -> Unit = { if (pile.size > 1) pile = pile.dropLast(1) else finish() }
@@ -140,7 +141,7 @@ class Mail : ComponentActivity() {
                 val sansCompte = remember(Courrier.version, pile) { Comptes.liste(c).isEmpty() }
                 if (sansCompte && pile.last() !is Vue.Ajouter) {
                     PageAjouter(premiere = true, retour = null) { pile = pile.toList() }
-                    return@CompositionLocalProvider
+                    return@AvecIdentite
                 }
                 when (val v = pile.last()) {
                     Vue.Liste -> PageListe(aller)

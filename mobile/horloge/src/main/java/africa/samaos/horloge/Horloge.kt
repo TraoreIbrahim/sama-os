@@ -37,7 +37,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,6 +73,7 @@ import africa.samaos.banco.appli.NavAppli
 import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.ZoneId
@@ -101,7 +101,7 @@ class Horloge : ComponentActivity() {
         Alarmes.canal(this)
         lire(intent)
         setContent {
-            CompositionLocalProvider(LocalIdentite provides Identites.Horloge) {
+            AvecIdentite(Identites.Horloge) {
                 Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) {
                         when (onglet) {
@@ -527,7 +527,7 @@ class Sonnerie : ComponentActivity() {
         val minuteur = intent.getBooleanExtra("minuteur", false)
         sonner()
         setContent {
-            CompositionLocalProvider(LocalIdentite provides Identites.Horloge) {
+            AvecIdentite(Identites.Horloge) {
                 val a = LocalIdentite.current
                 val maintenant = rememberMaintenant()
                 DisposableEffect(Unit) { onDispose { arreterSon() } }

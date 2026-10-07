@@ -27,7 +27,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,6 +54,7 @@ import africa.samaos.banco.appli.Avatar
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.PuceSim
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.delay
 
 private val ROUGE = Color(0xFFC2412D)
@@ -66,7 +66,7 @@ class EcranAppel : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            CompositionLocalProvider(LocalIdentite provides Identites.Appel) {
+            AvecIdentite(Identites.Appel) {
                 val appels by Appels.liste.collectAsState()
                 val version by Appels.version.collectAsState()
                 LaunchedEffect(appels.isEmpty()) {

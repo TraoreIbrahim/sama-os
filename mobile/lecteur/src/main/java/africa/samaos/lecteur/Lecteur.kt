@@ -43,7 +43,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -92,6 +91,7 @@ import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.NavAppli
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -132,7 +132,7 @@ class Lecteur : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) { Racine(pile) }
+            AvecIdentite(id) { Racine(pile) }
         }
     }
 

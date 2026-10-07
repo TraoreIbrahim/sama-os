@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +46,7 @@ import africa.samaos.banco.LocalNuit
 import africa.samaos.banco.PaysageEspace
 import africa.samaos.banco.Polices
 import africa.samaos.banco.palette
+import africa.samaos.banco.AvecBanco
 import africa.samaos.proches.Decouverte
 import africa.samaos.proches.Partage
 import africa.samaos.proches.Editeurs
@@ -221,7 +221,7 @@ class FauxFichier : ComponentActivity() {
         val origine = intent.getStringExtra("origine")
         setContent {
             val nuit = androidx.compose.foundation.isSystemInDarkTheme()
-            CompositionLocalProvider(LocalBanco provides palette(PaysageEspace.LAGUNE, nuit), LocalNuit provides nuit) {
+            AvecBanco(palette(PaysageEspace.LAGUNE, nuit), LocalNuit provides nuit) {
                 PageFauxFichier(nom, origine, fermer = { finish() }) {
                     setResult(Activity.RESULT_OK)
                     finish()

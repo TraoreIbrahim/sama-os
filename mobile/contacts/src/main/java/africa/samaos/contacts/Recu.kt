@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +45,7 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.charset.Charset
@@ -169,7 +169,7 @@ class ContactRecu : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) { PageRecu(uri) { finish() } }
+            AvecIdentite(id) { PageRecu(uri) { finish() } }
         }
     }
 }

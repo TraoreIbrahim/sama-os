@@ -1,6 +1,11 @@
 package africa.samaos.banco
 
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ProvidedValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
@@ -147,6 +152,20 @@ fun palette(paysage: PaysageEspace, nuit: Boolean, pleinSoleil: Boolean = false)
 val LocalNuit = staticCompositionLocalOf { false }
 
 val LocalBanco = staticCompositionLocalOf { Aube }
+
+/**
+ * Les gouttes du curseur et de la sélection, et le surlignage du texte choisi, à la couleur du curseur [c] (Compose
+ * les ferait bleus).
+ */
+fun selectionTexte(c: Color) = TextSelectionColors(handleColor = c, backgroundColor = c.copy(alpha = 0.35f))
+
+/**
+ * La palette [b] pour ce qui est dedans, la sélection du texte à la couleur de sa latérite, comme le curseur des champs.
+ * [autres] : ce qu'on pose en même temps (l'heure du soir…).
+ */
+@Composable
+fun AvecBanco(b: Banco, vararg autres: ProvidedValue<*>, contenu: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalBanco provides b, LocalTextSelectionColors provides selectionTexte(b.laterite), *autres, content = contenu)
 
 /**
  * Noto Sans variable, jouée en largeur : l'heure fine et étroite (62,5 %),

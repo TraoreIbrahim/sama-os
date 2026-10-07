@@ -7,4 +7,9 @@
     <string name="config_defaultListenerAccessPackages" translatable="false">africa.samaos.accueil</string>
     <!-- La tuile Ne pas déranger du Pouls. -->
     <string name="config_defaultDndAccessPackages" translatable="false">africa.samaos.accueil</string>
+
+    <!-- Le rayon que la loupe du texte prend pour ses coins : 45dp pour un cercle de 90dp (styles.xml). C'est aussi
+         celui des dialogues d'Android ; les fonds de dialogue d'Android (drawable/) gardent 28dp, comme ceux de Sama.
+         Ne pas passer par le thème Theme.DeviceDefault : le remplacer en surcouche casse le mode nuit de SystemUI. -->
+    <dimen name="config_dialogCornerRadius">45dp</dimen>
 </resources>

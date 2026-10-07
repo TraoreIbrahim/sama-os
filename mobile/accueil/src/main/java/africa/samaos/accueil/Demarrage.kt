@@ -43,7 +43,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,7 +92,7 @@ class DemarrageActivity : ComponentActivity() {
                     isAppearanceLightNavigationBars = !banco.sombre
                 }
             }
-            CompositionLocalProvider(LocalBanco provides banco, LocalNuit provides nuit) {
+            AvecBanco(banco, LocalNuit provides nuit) {
                 Demarrage(terminer = ::terminer)
             }
         }

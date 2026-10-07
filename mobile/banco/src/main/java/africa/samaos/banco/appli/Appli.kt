@@ -25,7 +25,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -47,6 +49,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Polices
+import africa.samaos.banco.selectionTexte
 
 /**
  * Les applis natives de Sama : une ossature commune, une identité par appli (maquettes du lot 2).
@@ -202,6 +205,11 @@ object Identites {
 }
 
 val LocalIdentite = staticCompositionLocalOf { Identites.Telephone }
+
+/** L'identité [id] pour l'appli, la sélection du texte à la couleur de son accent, comme le curseur des champs. */
+@Composable
+fun AvecIdentite(id: Identite, contenu: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalIdentite provides id, LocalTextSelectionColors provides selectionTexte(id.accent), content = contenu)
 
 private val titre = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.02).em)
 

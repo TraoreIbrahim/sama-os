@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -234,7 +233,7 @@ private fun CarteEspace(e: Espace, actif: Boolean, ouvrir: () -> Unit) {
  */
 @Composable
 fun ApercuEspace(e: Espace, ouvert: Boolean, echelle: Float, modifier: Modifier = Modifier) {
-    CompositionLocalProvider(LocalBanco provides palette(e.paysage, LocalNuit.current)) {
+    AvecBanco(palette(e.paysage, LocalNuit.current)) {
         val b = LocalBanco.current
         val maintenant = rememberMaintenant()
         Box(modifier.fillMaxSize()) {

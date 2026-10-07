@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,6 +44,7 @@ import africa.samaos.banco.Polices
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.PuceFiltre
+import africa.samaos.banco.appli.AvecIdentite
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
@@ -70,7 +70,7 @@ class Calculatrice : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) { Ecran() }
+            AvecIdentite(id) { Ecran() }
         }
     }
 }

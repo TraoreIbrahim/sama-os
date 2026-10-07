@@ -31,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,7 +88,7 @@ fun ListeReglagesEspaces(espaces: Espaces, retour: () -> Unit, ouvrir: (Espace) 
 @Composable
 fun ReglagesEspace(espaces: Espaces, e: Espace, retour: () -> Unit, supprimer: () -> Unit) {
     // Les réglages prennent les couleurs de l'Espace qu'on règle : chaque choix se voit aussitôt.
-    CompositionLocalProvider(LocalBanco provides palette(e.paysage, LocalNuit.current)) {
+    AvecBanco(palette(e.paysage, LocalNuit.current)) {
         val contexte = LocalContext.current
         var applisOuvertes by remember(e.id) { mutableStateOf(false) }
         var verrouOuvert by remember(e.id) { mutableStateOf(false) }

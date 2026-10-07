@@ -40,7 +40,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -66,6 +65,7 @@ import africa.samaos.banco.LocalNuit
 import africa.samaos.banco.PaysageEspace
 import africa.samaos.banco.Polices
 import africa.samaos.banco.palette
+import africa.samaos.banco.AvecBanco
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.time.Instant
@@ -282,7 +282,7 @@ class Sos : ComponentActivity() {
         val partage = intent.getBooleanExtra(PARTAGE, false) && MoteurSos.enCours(this)
         setContent {
             val nuit = androidx.compose.foundation.isSystemInDarkTheme()
-            CompositionLocalProvider(LocalBanco provides palette(PaysageEspace.LAGUNE, nuit), LocalNuit provides nuit) {
+            AvecBanco(palette(PaysageEspace.LAGUNE, nuit), LocalNuit provides nuit) {
                 EcranSos(essai, partage) { finish() }
             }
         }

@@ -56,7 +56,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -100,6 +99,7 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.InterAppli
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -160,7 +160,7 @@ open class Appareil : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         volumePourDeclencher = getSharedPreferences("appareil", MODE_PRIVATE).getBoolean("volume", true)
-        setContent { CompositionLocalProvider(LocalIdentite provides Identites.Appareil) { Ecran(this) } }
+        setContent { AvecIdentite(Identites.Appareil) { Ecran(this) } }
     }
 
     override fun onResume() {

@@ -12,7 +12,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -114,7 +113,7 @@ class MainActivity : ComponentActivity() {
                 pouls.fermerTout()
             }
 
-            CompositionLocalProvider(LocalBanco provides banco, LocalNuit provides estNuit) {
+            AvecBanco(banco, LocalNuit provides estNuit) {
                 Accueil(
                     espaces = espaces,
                     applis = applis,

@@ -101,6 +101,7 @@ import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.NavAppli
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -178,7 +179,7 @@ class Fichiers : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) { Racine(pile) }
+            AvecIdentite(id) { Racine(pile) }
         }
     }
 

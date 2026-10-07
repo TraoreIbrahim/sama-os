@@ -36,7 +36,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -80,6 +79,7 @@ import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.PuceSim
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -108,7 +108,7 @@ class Contacts : ComponentActivity() {
                     isAppearanceLightNavigationBars = !id.sombre
                 }
             }
-            CompositionLocalProvider(LocalIdentite provides id) {
+            AvecIdentite(id) {
                 val aller: (Vue) -> Unit = { pile = pile + it }
                 val retour: () -> Unit = { if (pile.size > 1) pile = pile.dropLast(1) else finish() }
                 BackHandler(enabled = pile.size > 1) { retour() }

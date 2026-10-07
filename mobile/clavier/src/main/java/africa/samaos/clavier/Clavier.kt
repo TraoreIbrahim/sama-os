@@ -8,7 +8,6 @@ import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,9 +27,9 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import africa.samaos.banco.Aube
 import africa.samaos.banco.CLE_PLEIN_SOLEIL
-import africa.samaos.banco.LocalBanco
 import africa.samaos.banco.Nuit
 import africa.samaos.banco.PleinSoleil
+import africa.samaos.banco.AvecBanco
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -130,7 +129,7 @@ class Clavier : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner, V
             v.setContent {
                 val nuit = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
                 val soleil = Settings.Secure.getInt(contentResolver, CLE_PLEIN_SOLEIL, 0) == 2
-                CompositionLocalProvider(LocalBanco provides if (soleil) PleinSoleil else if (nuit) Nuit else Aube) {
+                AvecBanco(if (soleil) PleinSoleil else if (nuit) Nuit else Aube) {
                     VueClavier(etat, this)
                 }
             }

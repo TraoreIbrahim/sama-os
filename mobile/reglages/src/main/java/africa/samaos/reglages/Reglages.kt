@@ -15,17 +15,16 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
-import africa.samaos.banco.LocalBanco
 import africa.samaos.banco.LocalNuit
 import africa.samaos.banco.PaysageEspace
 import africa.samaos.banco.palette
+import africa.samaos.banco.AvecBanco
 
 /**
  * Les Réglages de Sama. Une seule activité : les pages s'empilent comme dans les maquettes du lot 3,
@@ -61,7 +60,7 @@ class Reglages : ComponentActivity() {
                     isAppearanceLightNavigationBars = !banco.sombre
                 }
             }
-            CompositionLocalProvider(LocalBanco provides banco, LocalNuit provides nuit, LocalReprise provides reprise) {
+            AvecBanco(banco, LocalNuit provides nuit, LocalReprise provides reprise) {
                 val nav = Nav(
                     aller = { p -> if (p.faite) pile = pile + p else versAndroid(p.intentAndroid) },
                     retour = { if (pile.size > 1) pile = pile.dropLast(1) else finish() },
