@@ -302,7 +302,7 @@ QtObject {
         heureFormat: "14:30", decimalesPlus: ",00 +", decimalesMoins: ",0 −",
         couleurTexte: "Texte", remplissage: "Remplissage", bordures: "Bordures",
         feuilleGauche: "À gauche", feuilleDroite: "À droite",
-        collerValeurs: "Valeurs", effacer: "Contenu", effacerFormat: "Format", supprimerLigne: "La ligne", supprimerColonne: "La colonne",
+        collerValeurs: "Valeurs", effacer: "Vider", effacerFormat: "Format", supprimerLigne: "La ligne", supprimerColonne: "La colonne",
         annuler: "Annuler", retablir: "Rétablir", couper: "Couper", copier: "Copier", coller: "Coller"
     })
 

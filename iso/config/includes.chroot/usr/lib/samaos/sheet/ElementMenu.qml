@@ -16,6 +16,9 @@ QQC2.MenuItem {
     property string picto: cle ? (fenetre.actions.pictos[cle] || "") : ""
     // (le choix en cours, dans une liste de choix)
     property bool coche: false
+    // (une suppression : en rouge doux, qu'on la voie avant de cliquer)
+    property bool danger: false
+    readonly property color teinteDanger: Couleurs.sombre ? "#F0A49A" : "#A3322A"
     text: commande ? commande.nom : subMenu ? subMenu.title : ""
     enabled: !commande || !commande.actif || commande.actif()
     implicitHeight: detail ? 46 : 36
@@ -25,7 +28,8 @@ QQC2.MenuItem {
     onTriggered: if (cle) fenetre.actions.lancer(cle)
     background: Rectangle {
         radius: 9
-        color: element.highlighted ? Qt.rgba(31 / 255, 94 / 255, 122 / 255, Couleurs.sombre ? 0.25 : 0.08) : "transparent"
+        color: !element.highlighted ? "transparent" : element.danger ? Qt.rgba(163 / 255, 50 / 255, 42 / 255, Couleurs.sombre ? 0.25 : 0.08)
+               : Qt.rgba(31 / 255, 94 / 255, 122 / 255, Couleurs.sombre ? 0.25 : 0.08)
     }
     contentItem: RowLayout {
         spacing: 11
@@ -35,13 +39,14 @@ QQC2.MenuItem {
             Layout.preferredWidth: 28
             Layout.preferredHeight: 28
             radius: 8
-            color: element.highlighted ? Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.14) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.2 : 0.045)
+            color: element.danger ? Qt.rgba(163 / 255, 50 / 255, 42 / 255, element.highlighted ? 0.14 : 0.07)
+                   : element.highlighted ? Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.14) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.2 : 0.045)
             Picto {
                 anchors.centerIn: parent
                 width: 16
                 height: 16
                 trace: element.picto
-                encre: element.highlighted ? fenetre.accentEncre : Couleurs.texte2
+                encre: element.danger ? element.teinteDanger : element.highlighted ? fenetre.accentEncre : Couleurs.texte2
             }
         }
         ColumnLayout {
@@ -52,7 +57,7 @@ QQC2.MenuItem {
                 Layout.fillWidth: true
                 text: element.text
                 font.pixelSize: 13
-                color: element.highlighted ? fenetre.accentEncre : Couleurs.texte
+                color: element.danger ? element.teinteDanger : element.highlighted ? fenetre.accentEncre : Couleurs.texte
                 elide: Text.ElideRight
             }
             Text {

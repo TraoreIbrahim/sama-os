@@ -59,6 +59,16 @@ Item {
         return v.length > 22 ? v.slice(0, 21) + "…" : v
     }
     readonly property bool plusieurs: doc.adresse.indexOf(":") > 0
+    // Ce qu'on supprime, en mots : « la ligne 8 », « les lignes 5 à 8 », « la colonne « Test » » (dans un tableau, le
+    // nom de la colonne), « les colonnes B à D »
+    readonly property var p: grille.plage
+    function lettres(c) { return fenetre.tableaux.lettres(c - 1) }
+    function nomColonne(c) {
+        if (t && c - 1 >= t.c1 && c - 1 <= t.c2 && t.colonnes[c - 1 - t.c1]) return "« " + t.colonnes[c - 1 - t.c1] + " »"
+        return lettres(c)
+    }
+    readonly property string quellesLignes: p.l1 === p.l2 ? "la ligne " + p.l1 : "les lignes " + p.l1 + " à " + p.l2
+    readonly property string quellesColonnes: p.c1 === p.c2 ? "la colonne " + nomColonne(p.c1) : "les colonnes " + lettres(p.c1) + " à " + lettres(p.c2)
 
     // ——— Les cases ———
     MenuClic {
@@ -107,7 +117,9 @@ Item {
         Element { si: menus.t === null && menus.plusieurs; cle: "tableau" }
 
         Titre { text: "Supprimer" }
-        TuilesMenu { menu: menuCases; cles: ["effacer", "effacerFormat", "supprimerLigne", "supprimerColonne"] }
+        TuilesMenu { menu: menuCases; cles: ["effacer", "effacerFormat"] }
+        Element { cle: "supprimerLigne"; danger: true; text: "Supprimer " + menus.quellesLignes }
+        Element { cle: "supprimerColonne"; danger: true; text: "Supprimer " + menus.quellesColonnes }
     }
 
     // ——— Pendant qu'on écrit dans une case ———
@@ -123,6 +135,7 @@ Item {
         Titre { text: ""; implicitHeight: 9 }
         Element {
             text: "Supprimer le graphique"
+            danger: true
             picto: "M5 7h14 M10 7V5h4v2 M7 7l1 12h8l1-12"
             onTriggered: menus.doc.touche(1286)
         }
@@ -139,7 +152,8 @@ Item {
         Element { cle: "masquerColonne"; text: menus.plusieurs && grille.plage.c2 > grille.plage.c1 ? "Masquer les colonnes" : "Masquer la colonne" }
         Element { cle: "afficherColonnes"; si: grille.colonnesMasquees.length > 0 }
         Titre { text: "Supprimer" }
-        TuilesMenu { menu: menuColonnes; cles: ["effacer", "effacerFormat", "supprimerColonne"] }
+        TuilesMenu { menu: menuColonnes; cles: ["effacer", "effacerFormat"] }
+        Element { cle: "supprimerColonne"; danger: true; text: "Supprimer " + menus.quellesColonnes }
     }
 
     // ——— En-tête de ligne ———
@@ -153,7 +167,8 @@ Item {
         Element { cle: "masquerLigne"; text: menus.plusieurs && grille.plage.l2 > grille.plage.l1 ? "Masquer les lignes" : "Masquer la ligne" }
         Element { cle: "afficherLignes"; si: grille.lignesMasquees.length > 0 }
         Titre { text: "Supprimer" }
-        TuilesMenu { menu: menuLignes; cles: ["effacer", "effacerFormat", "supprimerLigne"] }
+        TuilesMenu { menu: menuLignes; cles: ["effacer", "effacerFormat"] }
+        Element { cle: "supprimerLigne"; danger: true; text: "Supprimer " + menus.quellesLignes }
     }
 
     // ——— Onglet d'une feuille ———
@@ -165,6 +180,6 @@ Item {
         Titre { text: "Déplacer" }
         TuilesMenu { menu: menuFeuille; cles: ["feuilleGauche", "feuilleDroite"] }
         Titre { text: ""; implicitHeight: 9 }
-        Element { cle: "supprimerFeuille" }
+        Element { cle: "supprimerFeuille"; danger: true; text: "Supprimer « " + (menus.doc.nomsParties[menus.doc.partie] || "") + " »" }
     }
 }
