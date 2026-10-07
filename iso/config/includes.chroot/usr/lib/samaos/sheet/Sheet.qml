@@ -715,6 +715,9 @@ Window {
         Timer { id: delaiMessage; interval: 2400; onTriggered: message.opacity = 0 }
     }
 
+    // ——— Les messages du moteur (une valeur refusée par la liste de la case, une question) ———
+    MessageMoteur { }
+
     // ——— Fermer sans perdre son travail ———
     Confirmation {
         id: confirmationFermer

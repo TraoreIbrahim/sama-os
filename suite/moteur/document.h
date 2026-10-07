@@ -141,6 +141,8 @@ public:
     // Macro de Sama installée dans le moteur (« SamaTableaux.Creer ») avec des arguments texte ; la réponse arrive par
     // resultatScript(jeton, reussi, valeur). Rend le jeton.
     Q_INVOKABLE int script(const QString &fonction, const QVariantList &arguments = QVariantList());
+    // Répondre à un message du moteur (messageMoteur) : le bouton choisi (« ok », « cancel », « yes »…)
+    Q_INVOKABLE void repondreMessage(qulonglong fenetre, const QString &bouton);
     // Coordonnées : pixels de l'élément → pixels du document
     Q_INVOKABLE QPointF versDocument(qreal x, qreal y) const { return QPointF(x + m_vueX, y + m_vueY); }
 
@@ -181,6 +183,10 @@ signals:
     void boutonListe(int c, int l, bool visible);
     // Un clic sur un lien (dans une case) : Sama montre où il mène avant de l'ouvrir
     void lienClique(const QString &adresse, int c, int l);
+    // Un message du moteur (une valeur refusée par la liste de la case, une question…) : Sama le montre à sa façon et
+    // répond par repondreMessage ; boutons : [{ id, texte }] ; messageFerme : le moteur l'a refermé lui-même
+    void messageMoteur(qulonglong fenetre, const QString &texte, const QString &detail, const QVariantList &boutons);
+    void messageFerme(qulonglong fenetre);
 
 protected:
     QSGNode *updatePaintNode(QSGNode *ancien, UpdatePaintNodeData *) override;

@@ -53,6 +53,16 @@ AZERTY["/"] = (e.KEY_DOT, True)
 AZERTY["*"] = (e.KEY_BACKSLASH, False)
 AZERTY['"'] = (e.KEY_3, False)
 AZERTY["%"] = (e.KEY_APOSTROPHE, True)
+AZERTY["<"] = (e.KEY_102ND, False)
+AZERTY[">"] = (e.KEY_102ND, True)
+AZERTY["&"] = (e.KEY_1, False)
+AZERTY["_"] = (e.KEY_8, False)
+AZERTY["!"] = (e.KEY_SLASH, False)
+AZERTY["?"] = (e.KEY_M, True)
+AZERTY["$"] = (e.KEY_RIGHTBRACE, False)
+# (AltGr : crochets des noms de colonnes d'un tableau, dièse de [#Cette ligne]…)
+ALTGR = {"[": e.KEY_5, "]": e.KEY_MINUS, "#": e.KEY_3, "{": e.KEY_4, "}": e.KEY_EQUAL, "@": e.KEY_0, "|": e.KEY_6,
+         "\\": e.KEY_8, "€": e.KEY_E}
 
 TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE, "suppr": e.KEY_DELETE, "f2": e.KEY_F2, "tab": e.KEY_TAB,
            "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT}
@@ -61,7 +71,7 @@ TOUCHES["impr"] = e.KEY_SYSRQ
 TOUCHES["espace"] = e.KEY_SPACE
 
 capacites = {
-    e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE] + [k for k, _ in AZERTY.values()]
+    e.EV_KEY: [e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE] + [k for k, _ in AZERTY.values()] + list(ALTGR.values())
               + list(TOUCHES.values()) + [e.KEY_LEFTSHIFT, e.KEY_LEFTMETA, e.KEY_LEFTCTRL, e.KEY_LEFTALT, e.KEY_RIGHTALT],
     e.EV_ABS: [(e.ABS_X, AbsInfo(0, 0, LARGEUR - 1, 0, 0, 0)), (e.ABS_Y, AbsInfo(0, 0, HAUTEUR - 1, 0, 0, 0))],
     e.EV_REL: [e.REL_WHEEL],
@@ -82,19 +92,21 @@ def bouton(b):
     ui.write(e.EV_KEY, b, 0); ui.syn(); time.sleep(0.1)
 
 
-def touche(k, maj=False):
-    if maj:
-        ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 1); ui.syn()
+def touche(k, maj=False, altgr=False):
+    mod = e.KEY_RIGHTALT if altgr else e.KEY_LEFTSHIFT if maj else None
+    if mod:
+        ui.write(e.EV_KEY, mod, 1); ui.syn()
     ui.write(e.EV_KEY, k, 1); ui.syn(); time.sleep(0.02)
     ui.write(e.EV_KEY, k, 0); ui.syn()
-    if maj:
-        ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 0); ui.syn()
+    if mod:
+        ui.write(e.EV_KEY, mod, 0); ui.syn()
     time.sleep(0.04)
 
 
 actions = " ".join(sys.argv[1:]).split(" -- ") if len(sys.argv) > 1 else []
 for action in actions:
-    a = action.split(None, 1)
+    # (une seule espace après le nom de l'action : « taper  Elle » garde l'espace de tête)
+    a = action.lstrip().split(" ", 1)
     nom, reste = a[0], (a[1] if len(a) > 1 else "")
     if nom in ("clic", "double", "bouger"):
         p = reste.split()
@@ -114,9 +126,14 @@ for action in actions:
         time.sleep(v[4] if len(v) > 4 else 0.3)
         ui.write(e.EV_KEY, e.BTN_LEFT, 0); ui.syn(); time.sleep(0.3)
     elif nom == "taper":
-        for c in reste.strip().strip('"'):
+        texte = reste.rstrip("\n")
+        if len(texte) >= 2 and texte[0] == texte[-1] == '"':
+            texte = texte[1:-1]
+        for c in texte:
             if c in AZERTY:
                 touche(*AZERTY[c])
+            elif c in ALTGR:
+                touche(ALTGR[c], altgr=True)
     elif nom == "raccourci":
         mods = {"meta": e.KEY_LEFTMETA, "ctrl": e.KEY_LEFTCTRL, "alt": e.KEY_LEFTALT, "maj": e.KEY_LEFTSHIFT, "altgr": e.KEY_RIGHTALT}
         parties = reste.strip().lower().split("+")

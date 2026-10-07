@@ -1,10 +1,13 @@
 #include "document.h"
 #include "moteur.h"
 
+#include <functional>
+
 #include <QClipboard>
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLineF>
@@ -804,6 +807,28 @@ void DocumentLO::fenetreMoteur(const QByteArray &charge)
 // type demandé et le termine aussitôt
 void DocumentLO::dialogue(const QByteArray &charge)
 {
+    // Les messages du moteur (valeur refusée, question) : Sama les montre (sans lui, le moteur attendrait une réponse
+    // qu'on ne voit pas)
+    const QJsonObject o = QJsonDocument::fromJson(charge).object();
+    if (o.value(QStringLiteral("jsontype")).toString() == QLatin1String("dialog") && o.value(QStringLiteral("action")).toString() == QLatin1String("close")) {
+        emit messageFerme(o.value(QStringLiteral("id")).toVariant().toULongLong());
+        return;
+    }
+    if (o.value(QStringLiteral("type")).toString() == QLatin1String("messagebox")) {
+        QStringList textes;
+        QVariantList boutons;
+        std::function<void(const QJsonObject &)> parcourir = [&](const QJsonObject &n) {
+            const QString genre = n.value(QStringLiteral("type")).toString(), id = n.value(QStringLiteral("id")).toString();
+            if (genre == QLatin1String("multilineedit") && !n.value(QStringLiteral("text")).toString().trimmed().isEmpty())
+                textes << n.value(QStringLiteral("text")).toString().trimmed();
+            if (genre.endsWith(QLatin1String("button")) && !id.isEmpty())
+                boutons << QVariantMap{{QStringLiteral("id"), id}, {QStringLiteral("texte"), n.value(QStringLiteral("text")).toString().remove(QLatin1Char('~'))}};
+            for (const QJsonValue &c : n.value(QStringLiteral("children")).toArray()) parcourir(c.toObject());
+        };
+        parcourir(o);
+        emit messageMoteur(o.value(QStringLiteral("id")).toVariant().toULongLong(), textes.value(0), textes.value(1), boutons);
+        return;
+    }
     // (une fenêtre du moteur que Sama ne montre pas : on la note, pour la retrouver)
     if (charge.contains("\"dialogid\"") && !charge.contains("CHART2_HID_SCH_WIZARD_ROADMAP"))
         qWarning("Fenêtre du moteur non affichée : %s", charge.left(400).constData());
@@ -825,6 +850,16 @@ void DocumentLO::dialogue(const QByteArray &charge)
             doc->pClass->sendDialogEvent(doc, fenetre, R"x({"id":"subtype","cmd":"click","data":"0.625;0.5","type":"drawingarea"})x");
         doc->pClass->sendDialogEvent(doc, fenetre, R"x({"id":"finish","cmd":"click","data":"","type":"pushbutton"})x");
     });
+}
+
+void DocumentLO::repondreMessage(qulonglong fenetre, const QString &bouton)
+{
+    if (!m_doc) return;
+    auto *doc = m_doc;
+    const QByteArray clic = QJsonDocument(QJsonObject{{QStringLiteral("id"), bouton}, {QStringLiteral("cmd"), QStringLiteral("click")},
+                                                      {QStringLiteral("data"), QString()}, {QStringLiteral("type"), QStringLiteral("pushbutton")}})
+                                .toJson(QJsonDocument::Compact);
+    Moteur::instance()->executer([doc, fenetre, clic] { doc->pClass->sendDialogEvent(doc, fenetre, clic.constData()); });
 }
 
 // Forme du pointeur demandée par le moteur (au-dessus d'un objet, d'une poignée, d'un texte…)
