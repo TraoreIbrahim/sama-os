@@ -57,10 +57,11 @@ Function EstTableau(oPlage As Object) As Boolean
 	EstTableau = (Left(oPlage.Name, 2) <> "__")
 End Function
 
-' [{ nom, feuille, c1, l1, c2, l2 (0 = première ligne ou colonne), totaux, colonnes: [...], filtres: [colonnes filtrées] }]
+' [{ nom, feuille, c1, l1, c2, l2 (0 = première ligne ou colonne), totaux, colonnes: [...], filtres: [colonnes filtrées],
+' calculs: [rangs des colonnes calculées], proteger : les calculs sont protégés contre la frappe }]
 Function Decrire() As String
 	Dim oDoc As Object, oPlages As Object, oPlage As Object, a As Object, oFeuille As Object, aChamps As Variant
-	Dim s As String, sCols As String, sFiltres As String, i As Long, j As Long, bLibre As Boolean
+	Dim s As String, sCols As String, sFiltres As String, i As Long, j As Long, bLibre As Boolean, sCalculs As String
 	On Error GoTo Erreur
 	oDoc = ThisComponent
 	oPlages = oDoc.DatabaseRanges
@@ -75,6 +76,16 @@ Function Decrire() As String
 				If sCols <> "" Then sCols = sCols & ","
 				sCols = sCols & Texte(oFeuille.getCellByPosition(j, a.StartRow).String)
 			Next j
+			' (les colonnes calculées : la formule de leur première ligne)
+			sCalculs = ""
+			If a.EndRow > a.StartRow Then
+				For j = a.StartColumn To a.EndColumn
+					If oFeuille.getCellByPosition(j, a.StartRow + 1).Type = com.sun.star.table.CellContentType.FORMULA Then
+						If sCalculs <> "" Then sCalculs = sCalculs & ","
+						sCalculs = sCalculs & (j - a.StartColumn)
+					End If
+				Next j
+			End If
 			sFiltres = ""
 			aChamps = oPlage.getFilterDescriptor().FilterFields3
 			For j = LBound(aChamps) To UBound(aChamps)
@@ -89,7 +100,8 @@ Function Decrire() As String
 			      & ",""ocre"":" & IIf(Reglage("ocre", oPlage.Name) = "non", "false", "true") _
 			      & ",""versements"":" & Texte(Lie(oPlage.Name)) _
 			      & ",""c2"":" & a.EndColumn & ",""l2"":" & a.EndRow & ",""totaux"":" & IIf(oPlage.TotalsRow, "true", "false") _
-			      & ",""colonnes"":[" & sCols & "],""filtres"":[" & sFiltres & "]}"
+			      & ",""colonnes"":[" & sCols & "],""filtres"":[" & sFiltres & "],""calculs"":[" & sCalculs & "]" _
+			      & ",""proteger"":" & IIf(Reglage("proteger", oPlage.Name) = "oui", "true", "false") & "}"
 		End If
 	Next i
 	Decrire = s & "]"

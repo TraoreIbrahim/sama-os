@@ -90,7 +90,7 @@ QtObject {
         c("copier", "Copier", "Édition", "dupliquer", "Ctrl+C", function () { doc.copier(false) }),
         c("coller", "Coller", "Édition", "", "Ctrl+V", function () { doc.coller(false) }),
         c("collerValeurs", "Coller les valeurs seulement", "Édition", "sans formule sans mise en forme", "Ctrl+Maj+V", function () { doc.coller(true) }),
-        c("effacer", "Effacer le contenu", "Édition", "vider supprimer", "Suppr", function () { doc.touche(1286) }),
+        c("effacer", "Effacer le contenu", "Édition", "vider supprimer", "Suppr", function () { if (fenetre.peutEcrire(true)) doc.touche(1286) }),
         c("supprimerLigne", "Supprimer la ligne", "Édition", "enlever ligne", "", function () { uno(".uno:DeleteRows") }),
         c("supprimerColonne", "Supprimer la colonne", "Édition", "enlever colonne", "", function () { uno(".uno:DeleteColumns") }),
         c("rechercher", "Rechercher", "Édition", "chercher trouver nom valeur mot case", "Ctrl+F", function () { grille.recherche.ouvrir(false) }),

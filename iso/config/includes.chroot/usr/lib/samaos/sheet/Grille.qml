@@ -386,7 +386,15 @@ Item {
             // Entrée ou Tab sur une formule qui dit « [@Article] » (comme dans Excel) : Sama l'écrit en entier pour le
             // moteur, puis passe à la case suivante comme d'habitude
             Keys.onPressed: (e) => {
-                if (!document.curseurTexteVisible || (e.key !== Qt.Key_Return && e.key !== Qt.Key_Enter && e.key !== Qt.Key_Tab)) return
+                // (les calculs protégés d'un tableau : ni frappe, ni effacement, ni collage par-dessus)
+                if (!document.curseurTexteVisible) {
+                    var ctrl = (e.modifiers & Qt.ControlModifier) && !(e.modifiers & Qt.AltModifier)
+                    var plage = e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace || (ctrl && (e.key === Qt.Key_V || e.key === Qt.Key_X))
+                    var frappe = (!ctrl && e.text.length > 0 && e.text.charCodeAt(0) >= 32 && e.text.charCodeAt(0) !== 127) || e.key === Qt.Key_F2
+                    if ((plage || frappe) && !fenetre.peutEcrire(plage)) e.accepted = true
+                    return
+                }
+                if (e.key !== Qt.Key_Return && e.key !== Qt.Key_Enter && e.key !== Qt.Key_Tab) return
                 var f = document.formule
                 var t = fenetre.tableaux.deCase(document.partie, aideFonction.colonneSaisie, aideFonction.ligneSaisie)
                 var entiere = Fonctions.lignesCourtes(f, t ? t.nom : "")

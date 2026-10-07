@@ -20,6 +20,18 @@ Item {
         }
         return null
     }
+    // Une case protégée dans une plage (feuille, colonnes, lignes : à partir de 0) : une colonne calculée d'un tableau dont
+    // les calculs sont protégés, ou sa ligne des totaux ; { t, colonne (son titre, "" pour les totaux) }, sinon null
+    function protegee(f, c1, l1, c2, l2) {
+        for (var i = 0; i < liste.length; i++) {
+            var t = liste[i]
+            if (!t.proteger || t.feuille !== f || l2 <= t.l1 || l1 > t.l2 || c2 < t.c1 || c1 > t.c2) continue
+            if (t.totaux && l1 <= t.l2 && l2 >= t.l2) return { t: t, colonne: "" }
+            for (var c = Math.max(c1, t.c1); c <= Math.min(c2, t.c2); c++)
+                if ((t.calculs || []).indexOf(c - t.c1) >= 0) return { t: t, colonne: t.colonnes[c - t.c1] }
+        }
+        return null
+    }
     // Le tableau d'une case (feuille, colonne, ligne : à partir de 0), ou null
     function deCase(f, c, l) {
         for (var i = 0; i < liste.length; i++) {

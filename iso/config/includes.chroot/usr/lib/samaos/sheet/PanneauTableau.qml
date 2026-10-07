@@ -324,6 +324,34 @@ Rectangle {
                 colonnes: panneau.colonnes
             }
 
+            // ——— Protéger les calculs (contre la frappe par erreur ; la formule se change toujours ici) ———
+            ColumnLayout {
+                visible: panneau.t !== null && ((panneau.t.calculs || []).length > 0 || panneau.t.totaux)
+                Layout.fillWidth: true
+                Layout.leftMargin: 18
+                Layout.rightMargin: 18
+                spacing: 4
+                RowLayout {
+                    Layout.fillWidth: true
+                    Section { Layout.fillWidth: true; text: "Protéger les calculs" }
+                    Interrupteur {
+                        checked: panneau.t ? panneau.t.proteger === true : false
+                        Accessible.name: "Protéger les calculs"
+                        onToggled: panneau.tableaux.regler(panneau.t, "proteger", checked ? "oui" : "non")
+                    }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: panneau.t && panneau.t.proteger ? "On ne peut plus écrire par erreur dans les colonnes calculées ni dans les totaux. Leur formule se change ici, par Modifier."
+                                                          : "Pour ne pas écrire par erreur dans les colonnes calculées et les totaux."
+                    font.pixelSize: 12
+                    lineHeight: 17
+                    lineHeightMode: Text.FixedHeight
+                    color: Couleurs.texte2
+                    wrapMode: Text.Wrap
+                }
+            }
+
             // ——— La ligne des totaux : le calcul de chaque colonne ———
             ColumnLayout {
                 Layout.fillWidth: true

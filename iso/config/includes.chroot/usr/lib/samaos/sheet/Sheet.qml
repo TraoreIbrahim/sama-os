@@ -715,7 +715,8 @@ Window {
         opacity: 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: 200 } }
-        function montrer(t) { texteMessage.text = t; opacity = 1; delaiMessage.restart() }
+        // (le temps de le lire : plus long pour une longue phrase)
+        function montrer(t) { texteMessage.text = t; opacity = 1; delaiMessage.interval = Math.min(6000, 1600 + t.length * 45); delaiMessage.restart() }
         Text { id: texteMessage; anchors.centerIn: parent; font.pixelSize: 13; color: "#F1EBE1" }
         Timer { id: delaiMessage; interval: 2400; onTriggered: message.opacity = 0 }
     }
@@ -737,6 +738,24 @@ Window {
         id: repeindre
         interval: 350
         onTriggered: { if (fenetre.doc.curseurTexteVisible) restart(); else fenetre.doc.redessiner() }
+    }
+
+    // ——— Les calculs protégés d'un tableau : on n'écrit pas dessus par erreur ———
+    // (toutePlage : effacer, coller, couper touchent toute la sélection ; taper, la case seule)
+    function plageChoisie() {
+        var m = /^\$?([A-Z]+)\$?(\d+)(?::\$?([A-Z]+)\$?(\d+))?$/.exec(doc.adresse || "")
+        if (!m) return null
+        function col(s) { var n = 0; for (var i = 0; i < s.length; i++) n = n * 26 + s.charCodeAt(i) - 64; return n - 1 }
+        return { c1: col(m[1]), l1: Number(m[2]) - 1, c2: col(m[3] || m[1]), l2: Number(m[4] || m[2]) - 1 }
+    }
+    function peutEcrire(toutePlage) {
+        var p = toutePlage ? plageChoisie() : { c1: doc.colonne, l1: doc.ligne, c2: doc.colonne, l2: doc.ligne }
+        if (!p || p.c1 < 0) return true
+        var x = tableaux.protegee(doc.partie, Math.min(p.c1, p.c2), Math.min(p.l1, p.l2), Math.max(p.c1, p.c2), Math.max(p.l1, p.l2))
+        if (!x) return true
+        message.montrer(x.colonne ? "La colonne « " + x.colonne + " » se calcule toute seule : sa formule se change dans le panneau du tableau"
+                                  : "La ligne des totaux se calcule toute seule : ses calculs se choisissent dans le panneau du tableau")
+        return false
     }
 
     // ——— Résumer un tableau (une feuille Résumé, qui suit le tableau) ———
