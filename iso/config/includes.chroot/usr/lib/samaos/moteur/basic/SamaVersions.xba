@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaVersions" script:language="StarBasic"><![CDATA[REM Sama Sheet : ce qui a changé entre une version du classeur (ou un autre fichier) et le classeur ouvert. La version
+REM est ouverte cachée, en lecture seule, sans ses macros ni ses liens ; on la compare feuille par feuille. Dans un tableau, les
+REM lignes se retrouvent par leur première colonne (le membre), même si l'ordre a changé : une ligne changée (ses cases,
+REM avant et après), ajoutée, retirée ; ailleurs, case par case. Les valeurs sont celles qu'on voit (« 30 000 F »).
+Option Explicit
+
+Const MAX_CHANGEMENTS = 150
+Const MAX_LIGNES = 3000
+Const MAX_COLONNES = 120
+
+Private mS As String, mN As Long, mTotal As Long
+
+Private Sub Noter(s As String)
+	mTotal = mTotal + 1
+	If mN >= MAX_CHANGEMENTS Then Exit Sub
+	If mS <> "" Then mS = mS & ","
+	mS = mS & s
+	mN = mN + 1
+End Sub
+
+' {"total": n, "changements": [{"g": "ligne" | "ajout" | "retrait" | "case" | "feuille+" | "feuille-" | "renommee" |
+' "tableau+" | "tableau-" | "colonne+" | "colonne-", "f": feuille, "tab": son rang, "t": tableau, "cle", "l", "c",
+' "cases": [{"col", "avant", "apres", "calcul"}], "texte", "avant", "apres", "adresse"}]}
+Function Comparer(sChemin As String) As String
+	Dim oDoc As Object, oAncien As Object, aP(3) As New com.sun.star.beans.PropertyValue
+	Dim i As Long, j As Long, oF As Object, sNom As String, aSeulsN() As String, aSeulsA() As String, nN As Long, nA As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	mS = ""
+	mN = 0
+	mTotal = 0
+	aP(0).Name = "Hidden"
+	aP(0).Value = True
+	aP(1).Name = "ReadOnly"
+	aP(1).Value = True
+	aP(2).Name = "MacroExecutionMode"
+	aP(2).Value = com.sun.star.document.MacroExecMode.NEVER_EXECUTE
+	' (un fichier reçu ne contacte personne : ses liens vers d'autres fichiers ou des sites ne sont pas mis à jour)
+	aP(3).Name = "UpdateDocMode"
+	aP(3).Value = com.sun.star.document.UpdateDocMode.NO_UPDATE
+	oAncien = StarDesktop.loadComponentFromURL(ConvertToURL(sChemin), "_blank", 0, aP())
+	If IsNull(oAncien) Then
+		Comparer = "!Ce fichier ne s'ouvre pas"
+		Exit Function
+	End If
+	If Not oAncien.supportsService("com.sun.star.sheet.SpreadsheetDocument") Then
+		oAncien.close(True)
+		Comparer = "!Ce fichier n'est pas un classeur"
+		Exit Function
+	End If
+	' Les feuilles se retrouvent par leur nom ; s'il en reste une seule de chaque côté, elle a été renommée
+	nN = 0
+	nA = 0
+	For i = 0 To oDoc.Sheets.Count - 1
+		sNom = oDoc.Sheets.getByIndex(i).Name
+		If Not oAncien.Sheets.hasByName(sNom) Then
+			ReDim Preserve aSeulsN(nN) As String
+			aSeulsN(nN) = sNom
+			nN = nN + 1
+		End If
+	Next i
+	For i = 0 To oAncien.Sheets.Count - 1
+		sNom = oAncien.Sheets.getByIndex(i).Name
+		If Not oDoc.Sheets.hasByName(sNom) Then
+			ReDim Preserve aSeulsA(nA) As String
+			aSeulsA(nA) = sNom
+			nA = nA + 1
+		End If
+	Next i
+	For i = 0 To oDoc.Sheets.Count - 1
+		oF = oDoc.Sheets.getByIndex(i)
+		If oAncien.Sheets.hasByName(oF.Name) Then
+			ComparerFeuille(oDoc, oAncien, oF, oAncien.Sheets.getByName(oF.Name), i)
+		ElseIf nN = 1 And nA = 1 Then
+			Noter("{""g"":""renommee"",""f"":" & Texte(oF.Name) & ",""avant"":" & Texte(aSeulsA(0)) & ",""tab"":" & i & "}")
+			ComparerFeuille(oDoc, oAncien, oF, oAncien.Sheets.getByName(aSeulsA(0)), i)
+		Else
+			Noter("{""g"":""feuille+"",""f"":" & Texte(oF.Name) & ",""tab"":" & i & "}")
+		End If
+	Next i
+	If Not (nN = 1 And nA = 1) Then
+		For j = 0 To nA - 1
+			Noter("{""g"":""feuille-"",""f"":" & Texte(aSeulsA(j)) & "}")
+		Next j
+	End If
+	oAncien.close(True)
+	Comparer = "{""total"":" & mTotal & ",""changements"":[" & mS & "]}"
+	Exit Function
+Erreur:
+	Comparer = "!" & Error$
+	On Error Resume Next
+	If Not IsNull(oAncien) Then oAncien.close(True)
+End Function
+
+' Les tableaux d'une feuille (sans les plages anonymes des filtres)
+Private Function TableauxDe(oDoc As Object, iFeuille As Long, aNoms() As String) As Long
+	Dim i As Long, n As Long, oP As Object
+	n = 0
+	For i = 0 To oDoc.DatabaseRanges.Count - 1
+		oP = oDoc.DatabaseRanges.getByIndex(i)
+		If oP.DataArea.Sheet = iFeuille And Left(oP.Name, 2) <> "__" Then
+			ReDim Preserve aNoms(n) As String
+			aNoms(n) = oP.Name
+			n = n + 1
+		End If
+	Next i
+	TableauxDe = n
+End Function
+
+Private Sub AjouterZone(a As Object, aSC() As Long, aSL() As Long, aEC() As Long, aEL() As Long, n As Long)
+	ReDim Preserve aSC(n) As Long
+	ReDim Preserve aSL(n) As Long
+	ReDim Preserve aEC(n) As Long
+	ReDim Preserve aEL(n) As Long
+	aSC(n) = a.StartColumn
+	aSL(n) = a.StartRow
+	aEC(n) = a.EndColumn
+	aEL(n) = a.EndRow
+	n = n + 1
+End Sub
+
+Private Sub ComparerFeuille(oDoc As Object, oAncien As Object, oF As Object, oA As Object, iTab As Long)
+	Dim aNomsN() As String, aNomsA() As String, nTN As Long, nTA As Long, i As Long, k As Long
+	Dim aSC() As Long, aSL() As Long, aEC() As Long, aEL() As Long, nEx As Long, a As Object, bExclu As Boolean
+	Dim oC As Object, nC As Long, nL As Long, aFN As Variant, aFA As Variant, aVN As Variant, aVA As Variant
+	Dim l As Long, c As Long, sFN As String, sFA As String, bDiff As Boolean, sAv As String, sAp As String
+	nTN = TableauxDe(oDoc, oF.RangeAddress.Sheet, aNomsN())
+	nTA = TableauxDe(oAncien, oA.RangeAddress.Sheet, aNomsA())
+	' Les tableaux : ligne par ligne ; leurs cases ne se comparent pas une à une ensuite
+	nEx = 0
+	For i = 0 To nTN - 1
+		a = oDoc.DatabaseRanges.getByName(aNomsN(i)).DataArea
+		AjouterZone(a, aSC(), aSL(), aEC(), aEL(), nEx)
+		If oAncien.DatabaseRanges.hasByName(aNomsN(i)) Then
+			ComparerTableau(oDoc, oAncien, aNomsN(i), oF.Name, iTab)
+		Else
+			Noter("{""g"":""tableau+"",""f"":" & Texte(oF.Name) & ",""tab"":" & iTab & ",""t"":" & Texte(Replace(aNomsN(i), "_", " ")) _
+			      & ",""l"":" & a.StartRow & ",""c"":" & a.StartColumn & "}")
+		End If
+	Next i
+	For i = 0 To nTA - 1
+		a = oAncien.DatabaseRanges.getByName(aNomsA(i)).DataArea
+		AjouterZone(a, aSC(), aSL(), aEC(), aEL(), nEx)
+		If Not oDoc.DatabaseRanges.hasByName(aNomsA(i)) Then
+			Noter("{""g"":""tableau-"",""f"":" & Texte(oF.Name) & ",""tab"":" & iTab & ",""t"":" & Texte(Replace(aNomsA(i), "_", " ")) & "}")
+		End If
+	Next i
+	' Le reste de la feuille, case par case
+	oC = oF.createCursor()
+	oC.gotoEndOfUsedArea(False)
+	nC = oC.RangeAddress.EndColumn
+	nL = oC.RangeAddress.EndRow
+	oC = oA.createCursor()
+	oC.gotoEndOfUsedArea(False)
+	If oC.RangeAddress.EndColumn > nC Then nC = oC.RangeAddress.EndColumn
+	If oC.RangeAddress.EndRow > nL Then nL = oC.RangeAddress.EndRow
+	If nC > MAX_COLONNES Then nC = MAX_COLONNES
+	If nL > MAX_LIGNES Then nL = MAX_LIGNES
+	aFN = oF.getCellRangeByPosition(0, 0, nC, nL).FormulaArray
+	aFA = oA.getCellRangeByPosition(0, 0, nC, nL).FormulaArray
+	aVN = oF.getCellRangeByPosition(0, 0, nC, nL).DataArray
+	aVA = oA.getCellRangeByPosition(0, 0, nC, nL).DataArray
+	For l = 0 To nL
+		For c = 0 To nC
+			sFN = aFN(l)(c)
+			sFA = aFA(l)(c)
+			bDiff = (sFN <> sFA)
+			If Not bDiff And Left(sFN, 1) = "=" Then bDiff = (CStr(aVN(l)(c)) <> CStr(aVA(l)(c)))
+			If bDiff Then
+				bExclu = False
+				For k = 0 To nEx - 1
+					If c >= aSC(k) And c <= aEC(k) And l >= aSL(k) And l <= aEL(k) Then
+						bExclu = True
+						Exit For
+					End If
+				Next k
+				' (seulement si ce qu'on voit a changé : pas une formule qui donne la même chose)
+				If Not bExclu Then
+					sAv = oA.getCellByPosition(c, l).String
+					sAp = oF.getCellByPosition(c, l).String
+					If sAv <> sAp Then
+						Noter("{""g"":""case"",""f"":" & Texte(oF.Name) & ",""tab"":" & iTab & ",""adresse"":""" & Lettres(c) & (l + 1) _
+						      & """,""l"":" & l & ",""c"":" & c & ",""avant"":" & Texte(sAv) & ",""apres"":" & Texte(sAp) _
+						      & ",""calcul"":" & IIf(Left(sFN, 1) = "=", "true", "false") & "}")
+					End If
+				End If
+			End If
+		Next c
+	Next l
+End Sub
+
+' La clé d'une ligne : sa première case, et son rang parmi les lignes qui ont la même (« Awa », « Awa » : deux clés)
+Private Function CleLigne(aV As Variant, l As Long, l1 As Long) As String
+	Dim s As String, n As Long, i As Long
+	s = CStr(aV(l)(0))
+	n = 0
+	For i = l1 To l - 1
+		If CStr(aV(i)(0)) = s Then n = n + 1
+	Next i
+	CleLigne = s & Chr(1) & n
+End Function
+
+' Une ligne vide : rien d'écrit à la main (les formules d'une colonne calculée ne comptent pas)
+Private Function LigneVide(aF As Variant, l As Long) As Boolean
+	Dim k As Long, s As String
+	LigneVide = True
+	For k = 0 To UBound(aF(l))
+		s = aF(l)(k)
+		If s <> "" And Left(s, 1) <> "=" Then
+			LigneVide = False
+			Exit Function
+		End If
+	Next k
+End Function
+
+' Une ligne en quelques mots : ses premières cases remplies
+Private Function LigneEnMots(oF As Object, a As Object, l As Long) As String
+	Dim k As Long, n As Long, s As String, v As String
+	n = 0
+	s = ""
+	For k = a.StartColumn To a.EndColumn
+		v = oF.getCellByPosition(k, l).String
+		If v <> "" Then
+			If s <> "" Then s = s & " · "
+			s = s & v
+			n = n + 1
+			If n >= 4 Then Exit For
+		End If
+	Next k
+	LigneEnMots = s
+End Function
+
+Private Sub ComparerTableau(oDoc As Object, oAncien As Object, sNom As String, sFeuille As String, iTab As Long)
+	Dim oPN As Object, oPA As Object, aN As Object, aA As Object, oFN As Object, oFA As Object, sT As String
+	Dim aFN As Variant, aFA As Variant, aVN As Variant, aVA As Variant, nCN As Long, nCA As Long, k As Long, k2 As Long
+	Dim aCol() As Long, lFinN As Long, lFinA As Long, l As Long, l2 As Long, aClesA() As String, aPris() As Boolean
+	Dim sCle As String, lA As Long, sCases As String, bDiff As Boolean, sFN As String, sFA As String, bTrouve As Boolean
+	Dim cPremiere As Long, sDebut As String, sAv As String, sAp As String
+	oPN = oDoc.DatabaseRanges.getByName(sNom)
+	oPA = oAncien.DatabaseRanges.getByName(sNom)
+	aN = oPN.DataArea
+	aA = oPA.DataArea
+	oFN = oDoc.Sheets.getByIndex(aN.Sheet)
+	oFA = oAncien.Sheets.getByIndex(aA.Sheet)
+	sT = Replace(sNom, "_", " ")
+	sDebut = """f"":" & Texte(sFeuille) & ",""tab"":" & iTab & ",""t"":" & Texte(sT)
+	If aN.EndRow - aN.StartRow > MAX_LIGNES Then aN.EndRow = aN.StartRow + MAX_LIGNES
+	If aA.EndRow - aA.StartRow > MAX_LIGNES Then aA.EndRow = aA.StartRow + MAX_LIGNES
+	aFN = oFN.getCellRangeByPosition(aN.StartColumn, aN.StartRow, aN.EndColumn, aN.EndRow).FormulaArray
+	aVN = oFN.getCellRangeByPosition(aN.StartColumn, aN.StartRow, aN.EndColumn, aN.EndRow).DataArray
+	aFA = oFA.getCellRangeByPosition(aA.StartColumn, aA.StartRow, aA.EndColumn, aA.EndRow).FormulaArray
+	aVA = oFA.getCellRangeByPosition(aA.StartColumn, aA.StartRow, aA.EndColumn, aA.EndRow).DataArray
+	nCN = aN.EndColumn - aN.StartColumn + 1
+	nCA = aA.EndColumn - aA.StartColumn + 1
+	lFinN = UBound(aFN)
+	If oPN.TotalsRow Then lFinN = lFinN - 1
+	lFinA = UBound(aFA)
+	If oPA.TotalsRow Then lFinA = lFinA - 1
+	' Les colonnes, par leur titre
+	ReDim aCol(nCN - 1) As Long
+	For k = 0 To nCN - 1
+		aCol(k) = -1
+		For k2 = 0 To nCA - 1
+			If aFA(0)(k2) = aFN(0)(k) Then
+				aCol(k) = k2
+				Exit For
+			End If
+		Next k2
+		If aCol(k) < 0 Then Noter("{""g"":""colonne+""," & sDebut & ",""col"":" & Texte(CStr(aFN(0)(k))) & ",""l"":" & aN.StartRow & ",""c"":" & (aN.StartColumn + k) & "}")
+	Next k
+	For k2 = 0 To nCA - 1
+		bTrouve = False
+		For k = 0 To nCN - 1
+			If aFA(0)(k2) = aFN(0)(k) Then
+				bTrouve = True
+				Exit For
+			End If
+		Next k
+		If Not bTrouve Then Noter("{""g"":""colonne-""," & sDebut & ",""col"":" & Texte(CStr(aFA(0)(k2))) & "}")
+	Next k2
+	' Les lignes, par leur clé
+	If lFinA >= 1 Then
+		ReDim aClesA(lFinA) As String
+		ReDim aPris(lFinA) As Boolean
+		For l2 = 1 To lFinA
+			aClesA(l2) = CleLigne(aVA, l2, 1)
+		Next l2
+	End If
+	For l = 1 To lFinN
+		If Not LigneVide(aFN, l) Then
+			sCle = CleLigne(aVN, l, 1)
+			lA = -1
+			For l2 = 1 To lFinA
+				If Not aPris(l2) And aClesA(l2) = sCle Then
+					lA = l2
+					Exit For
+				End If
+			Next l2
+			If lA < 0 Then
+				Noter("{""g"":""ajout""," & sDebut & ",""cle"":" & Texte(CStr(aVN(l)(0))) & ",""l"":" & (aN.StartRow + l) & ",""c"":" & aN.StartColumn _
+				      & ",""texte"":" & Texte(LigneEnMots(oFN, aN, aN.StartRow + l)) & "}")
+			Else
+				aPris(lA) = True
+				sCases = ""
+				cPremiere = -1
+				For k = 0 To nCN - 1
+					If aCol(k) >= 0 Then
+						sFN = aFN(l)(k)
+						sFA = aFA(lA)(aCol(k))
+						bDiff = (sFN <> sFA)
+						If Not bDiff And Left(sFN, 1) = "=" Then bDiff = (CStr(aVN(l)(k)) <> CStr(aVA(lA)(aCol(k))))
+						If bDiff Then
+							sAv = oFA.getCellByPosition(aA.StartColumn + aCol(k), aA.StartRow + lA).String
+							sAp = oFN.getCellByPosition(aN.StartColumn + k, aN.StartRow + l).String
+							bDiff = (sAv <> sAp)
+						End If
+						If bDiff Then
+							If sCases <> "" Then sCases = sCases & ","
+							sCases = sCases & "{""col"":" & Texte(CStr(aFN(0)(k))) & ",""avant"":" & Texte(sAv) & ",""apres"":" & Texte(sAp) _
+							         & ",""calcul"":" & IIf(Left(sFN, 1) = "=", "true", "false") & "}"
+							If cPremiere < 0 Then cPremiere = aN.StartColumn + k
+						End If
+					End If
+				Next k
+				If sCases <> "" Then
+					Noter("{""g"":""ligne""," & sDebut & ",""cle"":" & Texte(CStr(aVN(l)(0))) & ",""l"":" & (aN.StartRow + l) & ",""c"":" & cPremiere _
+					      & ",""cases"":[" & sCases & "]}")
+				End If
+			End If
+		End If
+	Next l
+	For l2 = 1 To lFinA
+		If Not aPris(l2) And Not LigneVide(aFA, l2) Then
+			Noter("{""g"":""retrait""," & sDebut & ",""cle"":" & Texte(CStr(aVA(l2)(0))) & ",""l"":" & aN.StartRow & ",""c"":" & aN.StartColumn _
+			      & ",""texte"":" & Texte(LigneEnMots(oFA, aA, aA.StartRow + l2)) & "}")
+		End If
+	Next l2
+End Sub
+]]></script:module>

@@ -47,6 +47,7 @@ Rectangle {
                 TitreMenu { text: "Enregistrer" }
                 ElementMenu { cle: "enregistrer" }
                 ElementMenu { cle: "enregistrerSous" }
+                ElementMenu { cle: "versions"; coche: fenetre.panneauVersions }
                 ElementMenu { cle: "pdf" }
                 ElementMenu { cle: "envoyer" }
                 ElementMenu { cle: "imprimer" }
@@ -144,6 +145,15 @@ Rectangle {
         }
         Item { Layout.fillWidth: true }
 
+        // Les versions (maquette « En-tête Sheet ») : ce qui a changé depuis, revenir en arrière
+        Outil {
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            picto: "M4 12a8 8 0 1 0 2.3-5.6 M4 5v4h4 M12 8v4l3 2"
+            actif: fenetre.panneauVersions
+            aide: "Versions : ce qui a changé, revenir en arrière"
+            onClicked: fenetre.voirVersions(!fenetre.panneauVersions)
+        }
         // Les commentaires (maquette « En-tête Sheet ») : le panneau, et leur nombre
         Outil {
             id: boutonCommentaires

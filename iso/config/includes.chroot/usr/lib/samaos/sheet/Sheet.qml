@@ -45,6 +45,15 @@ Window {
     property bool panneauCommentaires: false
     function voirCommentaires(oui) {
         panneauCommentaires = oui
+        if (oui) panneauVersions = false
+        if (oui && vue !== "grille") voirGrille()
+        if (!oui) doc.forceActiveFocus()
+    }
+    // Le panneau des versions (de même, à la place des autres)
+    property bool panneauVersions: false
+    function voirVersions(oui) {
+        panneauVersions = oui
+        if (oui) panneauCommentaires = false
         if (oui && vue !== "grille") voirGrille()
         if (!oui) doc.forceActiveFocus()
     }
@@ -122,6 +131,8 @@ Window {
     readonly property alias commentaires: lesCommentaires
     Commentaires { id: lesCommentaires; doc: fenetre.doc }
     readonly property alias tableaux: lesTableaux
+    readonly property alias versions: lesVersions
+    Versions { id: lesVersions; doc: fenetre.doc; tableaux: fenetre.tableaux; onMessage: t => message.montrer(t) }
     Tableaux { id: lesTableaux; doc: fenetre.doc; cible: fenetre.tableauVu; onMessage: t => message.montrer(t) }
 
     function etat(c) { return doc.etats[c] }
@@ -490,7 +501,7 @@ Window {
             }
             PanneauTableau {
                 id: panneauTableau
-                visible: fenetre.panneauOuvert && fenetre.tableaux.courant !== null && !fenetre.panneauCommentaires
+                visible: fenetre.panneauOuvert && fenetre.tableaux.courant !== null && !fenetre.panneauCommentaires && !fenetre.panneauVersions
                 Layout.preferredWidth: 300
                 Layout.fillHeight: true
                 onFermer: { fenetre.panneauOuvert = false; fenetre.doc.forceActiveFocus() }
@@ -500,6 +511,12 @@ Window {
                 Layout.preferredWidth: 300
                 Layout.fillHeight: true
                 onFermer: fenetre.voirCommentaires(false)
+            }
+            PanneauVersions {
+                visible: fenetre.panneauVersions
+                Layout.preferredWidth: 300
+                Layout.fillHeight: true
+                onFermer: fenetre.voirVersions(false)
             }
         }
 
