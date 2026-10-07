@@ -26,6 +26,7 @@ Rectangle {
             if (!ok || !v || v.charAt(0) !== "{" || !panneau.t || panneau.t.nom !== nom) return
             try { colonnes = JSON.parse(v).colonnes } catch (e) { }
         })
+        couleursColonne.lire()
     }
     Timer { id: relire; interval: 300; onTriggered: panneau.lire() }
     Connections {
@@ -183,8 +184,8 @@ Rectangle {
                     color: fenetre.accentFond
                     Text { id: genre; anchors.centerIn: parent; text: panneau.genreEnMots(panneau.colonne); font.pixelSize: 12; font.weight: Font.DemiBold; color: fenetre.accentEncre }
                 }
-                // Une colonne calculée : sa formule en mots, et de quoi la changer
-                RowLayout {
+                // Une colonne calculée : sa formule en mots (elle passe à la ligne si elle est longue), et de quoi la changer
+                Flow {
                     visible: panneau.colonne !== null && panneau.colonne.calcul
                     Layout.fillWidth: true
                     spacing: 6
@@ -195,8 +196,8 @@ Rectangle {
                             return m ? m.filter(function (x) { return x.texte !== "=" }) : [{ texte: panneau.colonne.formule, puce: false }]
                         }
                         delegate: Rectangle {
-                            Layout.preferredHeight: 26
-                            Layout.preferredWidth: morceau.implicitWidth + (modelData.puce ? 18 : 2)
+                            height: 26
+                            width: Math.min(morceau.implicitWidth + (modelData.puce ? 18 : 2), panneau.width - 40)
                             radius: 7
                             color: modelData.puce ? Couleurs.champ : "transparent"
                             border.width: modelData.puce ? 1 : 0
@@ -204,6 +205,8 @@ Rectangle {
                             Text {
                                 id: morceau
                                 anchors.centerIn: parent
+                                width: Math.min(implicitWidth, parent.width - (modelData.puce ? 18 : 2))
+                                elide: Text.ElideRight
                                 text: String(modelData.texte).replace(/^=/, "").replace(/-/g, "−")
                                 font.pixelSize: 13
                                 font.weight: modelData.puce ? Font.DemiBold : Font.Normal
@@ -211,11 +214,11 @@ Rectangle {
                             }
                         }
                     }
-                    Item { Layout.fillWidth: true }
                     QQC2.AbstractButton {
+                        height: 26
                         focusPolicy: Qt.NoFocus
                         hoverEnabled: true
-                        contentItem: Text { text: "Modifier"; font.pixelSize: 13; font.weight: Font.DemiBold; font.underline: parent.hovered; color: fenetre.accentEncre }
+                        contentItem: Text { text: "Modifier"; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13; font.weight: Font.DemiBold; font.underline: parent.hovered; color: fenetre.accentEncre }
                         background: null
                         // (la première case de la colonne, la formule prête à écrire dans la barre)
                         onClicked: {
@@ -301,6 +304,17 @@ Rectangle {
                 colonne: panneau.colonne
                 rang: panneau.rang
                 onChange: panneau.lire()
+            }
+            // ——— Les couleurs selon la valeur ———
+            CouleursColonne {
+                id: couleursColonne
+                visible: panneau.colonne !== null
+                Layout.fillWidth: true
+                Layout.leftMargin: 18
+                Layout.rightMargin: 18
+                t: panneau.t
+                colonne: panneau.colonne
+                colonnes: panneau.colonnes
             }
 
             // ——— La ligne des totaux : le calcul de chaque colonne ———

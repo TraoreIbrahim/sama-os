@@ -268,6 +268,7 @@ Window {
         function onEtatChanged() {
             if (fenetre.doc.etat === DocumentLO.Erreur) message.montrer(fenetre.doc.erreur || "Ce fichier n'a pas pu être ouvert")
             if (fenetre.doc.etat === DocumentLO.Pret && !fenetre.accueilOuvert) fenetre.doc.forceActiveFocus()
+            if (fenetre.doc.etat === DocumentLO.Pret) fenetre.relireRegles()
             // (classeur neuf : la police de Sama)
             if (fenetre.doc.etat === DocumentLO.Pret && !fenetre.doc.chemin) fenetre.tableaux.appeler("SamaModeles.Preparer", [])
             if (fenetre.doc.etat === DocumentLO.Pret && fenetre.modeleEnAttente) {
@@ -717,6 +718,25 @@ Window {
         function montrer(t) { texteMessage.text = t; opacity = 1; delaiMessage.restart() }
         Text { id: texteMessage; anchors.centerIn: parent; font.pixelSize: 13; color: "#F1EBE1" }
         Timer { id: delaiMessage; interval: 2400; onTriggered: message.opacity = 0 }
+    }
+
+    // ——— Les couleurs selon la valeur ———
+    // Le moteur ne redessine pas une case dont la couleur dépend d'une autre (le Stock rouge quand on change le Seuil) :
+    // sur une feuille qui a des formats conditionnels, Sama redessine après chaque changement (pas pendant la saisie)
+    property int reglesSurFeuille: 0
+    function relireRegles() {
+        var f = doc.partie
+        tableaux.appeler("SamaCouleurs.Nombre", [String(f)], function (ok, v) { if (ok && doc.partie === f) fenetre.reglesSurFeuille = Number(v) || 0 })
+    }
+    Connections {
+        target: fenetre.doc
+        function onPartiesChanged() { fenetre.relireRegles() }
+        function onRevisionChanged() { if (fenetre.reglesSurFeuille > 0) repeindre.restart() }
+    }
+    Timer {
+        id: repeindre
+        interval: 350
+        onTriggered: { if (fenetre.doc.curseurTexteVisible) restart(); else fenetre.doc.redessiner() }
     }
 
     // ——— Les messages du moteur (une valeur refusée par la liste de la case, une question) ———

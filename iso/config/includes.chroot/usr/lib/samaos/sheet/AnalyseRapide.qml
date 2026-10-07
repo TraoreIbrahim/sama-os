@@ -114,6 +114,7 @@ Item {
             if (v === "absente") { message.montrer("La mise en forme n'a pas pu être posée"); return }
             if (analyse.tableaux.verifier(ok, v)) {
                 analyse.moteur.redessiner()
+                fenetre.relireRegles()
                 message.montrer("Mise en forme ajoutée (Ctrl+Z pour revenir)")
             }
         })

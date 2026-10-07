@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaCouleurs" script:language="StarBasic"><![CDATA[REM Sama Sheet : les couleurs selon la valeur, dans un tableau (« Stock moins que Seuil : en rouge », « Moyen contient
+REM Mobile : en bleu »). Des formats conditionnels du moteur, que le .xlsx garde et qu'Excel relit : sur les cases de la
+REM colonne, ou sur toute la ligne ; comparées à une valeur ou à une autre colonne de la même ligne. Quatre teintes de
+REM Sama (des styles de cases « Sama · couleur · rouge »…), à quoi Sama reconnaît ses règles.
+Option Explicit
+
+Const PREFIXE = "Sama · couleur · "
+
+' Le style d'une teinte (créé s'il manque) : rouge, ocre, vert, bleu
+Function StyleTeinte(sTeinte As String) As String
+	Dim oStyles As Object, oStyle As Object, sNom As String
+	sNom = PREFIXE & sTeinte
+	oStyles = ThisComponent.StyleFamilies.getByName("CellStyles")
+	If Not oStyles.hasByName(sNom) Then
+		oStyle = ThisComponent.createInstance("com.sun.star.style.CellStyle")
+		oStyles.insertByName(sNom, oStyle)
+	End If
+	oStyle = oStyles.getByName(sNom)
+	Select Case sTeinte
+	Case "rouge"
+		oStyle.CellBackColor = RGB(246, 215, 210)
+		oStyle.CharColor = RGB(140, 40, 32)
+	Case "ocre"
+		oStyle.CellBackColor = RGB(248, 232, 196)
+		oStyle.CharColor = RGB(110, 72, 0)
+	Case "vert"
+		oStyle.CellBackColor = RGB(220, 239, 230)
+		oStyle.CharColor = RGB(38, 92, 74)
+	Case Else
+		oStyle.CellBackColor = RGB(220, 232, 238)
+		oStyle.CharColor = RGB(25, 75, 98)
+	End Select
+	StyleTeinte = sNom
+End Function
+
+' La valeur d'une règle telle que le moteur l'attend : un nombre (« 5 000 F » → 5000), sinon un texte entre guillemets
+Function ValeurRegle(sValeur As String) As String
+	Dim s As String
+	s = Replace(Replace(Replace(Replace(Trim(sValeur), " ", ""), Chr(160), ""), Chr(8239), ""), "F", "")
+	s = Replace(s, ",", ".")
+	If EstNombre(s) Then
+		ValeurRegle = s
+	Else
+		ValeurRegle = """" & Replace(Trim(sValeur), """", """""") & """"
+	End If
+End Function
+
+' (des chiffres, un point au plus, un signe moins devant)
+Function EstNombre(s As String) As Boolean
+	Dim i As Long, ch As String, nPoints As Long
+	EstNombre = False
+	If s = "" Or s = "-" Or s = "." Then Exit Function
+	For i = 1 To Len(s)
+		ch = Mid(s, i, 1)
+		If ch = "." Then
+			nPoints = nPoints + 1
+		ElseIf Not (ch >= "0" And ch <= "9") And Not (ch = "-" And i = 1) Then
+			Exit Function
+		End If
+	Next i
+	EstNombre = (nPoints <= 1)
+End Function
+
+' Une règle de plus sur la colonne sCol du tableau sNom. sOp : moins, plus, egal, different, contient. sValeur : la
+' valeur, ou sColRef : une autre colonne de la même ligne. sTeinte : rouge, ocre, vert, bleu. sLigne « oui » : toute
+' la ligne du tableau prend la couleur.
+Function Ajouter(sNom As String, sCol As String, sOp As String, sValeur As String, sColRef As String, sTeinte As String, sLigne As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, c As Long, cRef As Long, l1 As Long, l2 As Long
+	Dim oZone As Object, nId As Long, oFormat As Object, oE As Object, sCase As String, sAutre As String, sSigne As String, oPlages As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	c = ColonneDe(oF, a, sCol)
+	If c < 0 Then
+		Ajouter = "!La colonne " & sCol & " n'est plus dans le tableau"
+		Exit Function
+	End If
+	l1 = a.StartRow + 1
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	If l2 < l1 Then l2 = l1
+	' (la case de la colonne sur la première ligne, colonne fixée : la règle descend ligne par ligne)
+	sCase = "$" & Lettres(c) & (l1 + 1)
+	If sColRef <> "" Then
+		cRef = ColonneDe(oF, a, sColRef)
+		If cRef < 0 Then
+			Ajouter = "!La colonne " & sColRef & " n'est plus dans le tableau"
+			Exit Function
+		End If
+		sAutre = "$" & Lettres(cRef) & (l1 + 1)
+	Else
+		sAutre = ValeurRegle(sValeur)
+	End If
+	If sLigne = "oui" Then
+		oZone = oF.getCellRangeByPosition(a.StartColumn, l1, a.EndColumn, l2)
+	Else
+		oZone = oF.getCellRangeByPosition(c, l1, c, l2)
+	End If
+	oPlages = oDoc.createInstance("com.sun.star.sheet.SheetCellRanges")
+	oPlages.addRangeAddress(oZone.RangeAddress, False)
+	nId = oF.ConditionalFormats.createByRange(oPlages)
+	oFormat = FormatDe(oF, nId)
+	oFormat.createEntry(com.sun.star.sheet.ConditionEntryType.CONDITION, 0)
+	oE = oFormat.getByIndex(0)
+	' (toujours une expression : « $D5<$C5 », la même pour la case ou toute la ligne)
+	Select Case sOp
+	Case "moins"
+		sSigne = sCase & "<" & sAutre
+	Case "plus"
+		sSigne = sCase & ">" & sAutre
+	Case "different"
+		sSigne = sCase & "<>" & sAutre
+	Case "contient"
+		sSigne = "ISNUMBER(SEARCH(" & sAutre & ";" & sCase & "))"
+	Case Else
+		sSigne = sCase & "=" & sAutre
+	End Select
+	' (une case vide n'est ni « moins que » ni « égale à » : pas de couleur sur les lignes à remplir)
+	If sOp <> "contient" Then sSigne = "AND(" & sCase & "<>"""";" & sSigne & ")"
+	oE.Operator = com.sun.star.sheet.ConditionFormatOperator.EXPRESSION
+	oE.Formula1 = sSigne
+	oE.StyleName = StyleTeinte(sTeinte)
+	oDoc.setModified(True)
+	Ajouter = CStr(nId)
+	Exit Function
+Erreur:
+	Ajouter = "!" & Error$
+End Function
+
+Function FormatDe(oF As Object, nId As Long) As Object
+	Dim aF As Variant, i As Long
+	aF = oF.ConditionalFormats.ConditionalFormats
+	For i = 0 To UBound(aF)
+		If aF(i).ID = nId Then
+			FormatDe = aF(i)
+			Exit Function
+		End If
+	Next i
+End Function
+
+' Les règles de Sama sur un tableau, en JSON : [{"id", "colonne": nom, "ligne": vrai si toute la ligne, "op", "valeur",
+' "colref": nom d'une autre colonne ou "", "teinte"}]
+Function Regles(sNom As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, aF As Variant, i As Long, k As Long, aR As Variant
+	Dim oE As Object, sStyle As String, sF As String, s As String, r As Object, bLigne As Boolean, sCol As String
+	Dim sOp As String, sVal As String, sRef As String, n As Long, oFmt As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	aF = oF.ConditionalFormats.ConditionalFormats
+	s = ""
+	For i = 0 To UBound(aF)
+		oFmt = aF(i)
+		If oFmt.Count = 1 Then
+			oE = oFmt.getByIndex(0)
+			sStyle = ""
+			On Error Resume Next
+			sStyle = oE.StyleName
+			On Error GoTo Erreur
+			If Left(sStyle, Len(PREFIXE)) = PREFIXE Then
+				aR = oFmt.Range.RangeAddresses
+				r = aR(0)
+				If r.StartRow > a.StartRow And r.StartColumn >= a.StartColumn And r.EndColumn <= a.EndColumn Then
+					bLigne = (r.StartColumn = a.StartColumn And r.EndColumn = a.EndColumn And a.EndColumn > a.StartColumn)
+					sF = oE.Formula1
+					LireRegle(sF, oF, a, sCol, sOp, sVal, sRef)
+					If sCol <> "" Then
+						If s <> "" Then s = s & ","
+						s = s & "{""id"":" & oFmt.ID & ",""colonne"":" & Texte(sCol) & ",""ligne"":" & IIf(bLigne, "true", "false") _
+						    & ",""op"":""" & sOp & """,""valeur"":" & Texte(sVal) & ",""colref"":" & Texte(sRef) _
+						    & ",""teinte"":" & Texte(Mid(sStyle, Len(PREFIXE) + 1)) & "}"
+					End If
+				End If
+			End If
+		End If
+	Next i
+	Regles = "[" & s & "]"
+	Exit Function
+Erreur:
+	Regles = "!" & Error$
+End Function
+
+' Relit une expression posée par Ajouter : AND($D5<>"";$D5<$C5), ISNUMBER(SEARCH("x";$B5))
+Sub LireRegle(sF As String, oF As Object, a As Object, sCol As String, sOp As String, sVal As String, sRef As String)
+	Dim t As String, k As Long, sGauche As String, sDroite As String, aSignes As Variant, j As Long, p As Long, aNoms As Variant
+	sCol = ""
+	sOp = ""
+	sVal = ""
+	sRef = ""
+	t = sF
+	If Left(t, 1) = "=" Then t = Mid(t, 2)
+	If UCase(Left(t, 16)) = "ISNUMBER(SEARCH(" Then
+		t = Mid(t, 17, Len(t) - 18)
+		k = InStrRev(t, ";")
+		If k = 0 Then k = InStrRev(t, ",")
+		sOp = "contient"
+		sDroite = Left(t, k - 1)
+		sGauche = Mid(t, k + 1)
+	Else
+		If UCase(Left(t, 4)) = "AND(" Then
+			k = InStr(t, ";")
+			If k = 0 Then k = InStr(t, ",")
+			t = Mid(t, k + 1, Len(t) - k - 1)
+		End If
+		aSignes = Array("<>", "<", ">", "=")
+		aNoms = Array("different", "moins", "plus", "egal")
+		For j = 0 To 3
+			p = InStr(t, aSignes(j))
+			If p > 0 Then
+				sGauche = Left(t, p - 1)
+				sDroite = Mid(t, p + Len(aSignes(j)))
+				sOp = aNoms(j)
+				Exit For
+			End If
+		Next j
+	End If
+	If sOp = "" Then Exit Sub
+	sCol = NomDeColonne(oF, a, sGauche)
+	If Left(sDroite, 1) = """" Then
+		sVal = Replace(Mid(sDroite, 2, Len(sDroite) - 2), """""", """")
+	ElseIf Left(sDroite, 1) = "$" Then
+		sRef = NomDeColonne(oF, a, sDroite)
+	Else
+		sVal = sDroite
+	End If
+End Sub
+
+' « $D5 » → le titre de la colonne D du tableau
+Function NomDeColonne(oF As Object, a As Object, sCase As String) As String
+	Dim s As String, i As Long, c As Long
+	s = Replace(Trim(sCase), "$", "")
+	c = 0
+	For i = 1 To Len(s)
+		If Mid(s, i, 1) >= "A" And Mid(s, i, 1) <= "Z" Then c = c * 26 + Asc(Mid(s, i, 1)) - 64 Else Exit For
+	Next i
+	c = c - 1
+	NomDeColonne = ""
+	If c >= a.StartColumn And c <= a.EndColumn Then NomDeColonne = oF.getCellByPosition(c, a.StartRow).String
+End Function
+
+' Le nombre de formats conditionnels d'une feuille (sF : à partir de 0) : les couleurs de Sama, l'Analyse rapide…
+Function Nombre(sF As String) As String
+	On Error GoTo Erreur
+	Nombre = CStr(UBound(ThisComponent.Sheets.getByIndex(CLng(sF)).ConditionalFormats.ConditionalFormats) + 1)
+	Exit Function
+Erreur:
+	Nombre = "0"
+End Function
+
+Function Retirer(sNom As String, sId As String) As String
+	Dim oDoc As Object, a As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	a = oDoc.DatabaseRanges.getByName(sNom).DataArea
+	oDoc.Sheets.getByIndex(a.Sheet).ConditionalFormats.removeByID(CLng(sId))
+	oDoc.setModified(True)
+	Retirer = ""
+	Exit Function
+Erreur:
+	Retirer = "!" & Error$
+End Function
+]]></script:module>
