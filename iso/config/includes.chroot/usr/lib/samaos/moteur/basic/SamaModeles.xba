@@ -204,7 +204,7 @@ Erreur:
 End Function
 
 Function Remplir(sModele As String) As String
-	Dim m As Long, mz As Long, d As Long
+	Dim m As Long, mz As Long, d As Long, oArticles As Object, sGarde As String
 	On Error GoTo Erreur
 	oF = ThisComponent.Sheets.getByIndex(0)
 	sDepart = "A1"
@@ -239,17 +239,43 @@ Function Remplir(sModele As String) As String
 		Onglet(2)
 
 	Case "stock"
-		oF.Name = "Stock"
-		Titre("Ventes et stock", "Ce qui entre, ce qui sort, ce qui reste en boutique.")
-		Rangee("A3", Array("Article", "Prix", "Entrées", "Sorties", "Stock", "Valeur du stock"))
-		Tableau("A3:F23", "Stock")
-		Calcul("E", 4, 23, "=Stock[[#Cette ligne];[Entrées]]-Stock[[#Cette ligne];[Sorties]]")
-		Calcul("F", 4, 23, "=Stock[[#Cette ligne];[Stock]]*Stock[[#Cette ligne];[Prix]]")
+		' Gestion de stock : les articles (le stock se calcule d'après les mouvements, en rouge sous le seuil, les calculs
+		' protégés) et les mouvements (l'article pris dans la liste des articles, le sens : Entrée ou Sortie)
+		oF.Name = "Articles"
+		Titre("Gestion de stock", "Vos articles : le stock se calcule d'après les mouvements ; la ligne passe en rouge sous le seuil.")
+		Rangee("A3", Array("Article", "Prix de vente", "Seuil", "Entrées", "Sorties", "Stock", "Valeur du stock"))
+		Tableau("A3:G23", "Articles")
+		' (les mouvements d'abord, sur leur feuille : les formules des articles les nomment)
+		oArticles = oF
+		sGarde = sDepart
+		ThisComponent.Sheets.insertNewByName("Mouvements", 1)
+		oF = ThisComponent.Sheets.getByIndex(1)
+		Titre("Mouvements", "Chaque entrée et chaque sortie sur une ligne : la date, l'article, le sens, la quantité.")
+		Rangee("A3", Array("Date", "Article", "Sens", "Quantité", "Note"))
+		Tableau("A3:E53", "Mouvements")
+		Dates("A4:A53", d)
+		Formater("D4:D53", FormatIndex(com.sun.star.i18n.NumberFormatIndex.NUMBER_1000INT))
+		Largeurs(Array(2.6, 6, 2.8, 2.6, 6.5))
+		Onglet(2)
+		SamaListes.Poser("Mouvements", "Article", "tableau", "Articles" & Chr(31) & "Article", "oui")
+		SamaListes.Poser("Mouvements", "Sens", "choix", "Entrée" & Chr(31) & "Sortie", "oui")
+		oF = oArticles
+		sDepart = sGarde
+		' (une ligne encore vide : rien, au lieu de zéros)
+		Calcul("D", 4, 23, "=SI(Articles[[#Cette ligne];[Article]]="""";"""";SOMME.SI.ENS(Mouvements[Quantité];Mouvements[Article];Articles[[#Cette ligne];[Article]];Mouvements[Sens];""Entrée""))")
+		Calcul("E", 4, 23, "=SI(Articles[[#Cette ligne];[Article]]="""";"""";SOMME.SI.ENS(Mouvements[Quantité];Mouvements[Article];Articles[[#Cette ligne];[Article]];Mouvements[Sens];""Sortie""))")
+		Calcul("F", 4, 23, "=SI(Articles[[#Cette ligne];[Article]]="""";"""";Articles[[#Cette ligne];[Entrées]]-Articles[[#Cette ligne];[Sorties]])")
+		Calcul("G", 4, 23, "=SI(Articles[[#Cette ligne];[Article]]="""";"""";Articles[[#Cette ligne];[Stock]]*Articles[[#Cette ligne];[Prix de vente]])")
 		Formater("B4:B23", m)
-		Formater("E4:E24", SansZero(FormatIndex(com.sun.star.i18n.NumberFormatIndex.NUMBER_1000INT)))
-		Formater("F4:F24", mz)
-		Totaux("Stock", "1")
-		Largeurs(Array(6, 3, 2.6, 2.6, 2.6, 3.6))
+		Formater("C4:F23", FormatIndex(com.sun.star.i18n.NumberFormatIndex.NUMBER_1000INT))
+		Formater("G4:G24", m)
+		Totaux("Articles", "1")
+		Total("Articles", "Valeur du stock", m)
+		SamaCouleurs.Ajouter("Articles", "Stock", "moins", "", "Seuil", "rouge", "oui")
+		Regler("Articles", "proteger", "oui")
+		' (le stock n'est pas un reste à payer : pas de pastille ocre)
+		Regler("Articles", "ocre", "non")
+		Largeurs(Array(6, 3, 2.2, 2.4, 2.4, 2.4, 3.6))
 		Choisir("A4")
 		Onglet(2)
 

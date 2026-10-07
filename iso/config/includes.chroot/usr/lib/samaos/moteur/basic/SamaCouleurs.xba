@@ -253,6 +253,20 @@ Erreur:
 	Nombre = "0"
 End Function
 
+' Fait relire au moteur ses formats conditionnels : quand une case dont ils dépendent change par un calcul venu d'une
+' autre feuille (le Stock, d'après les Mouvements), il garde l'ancien résultat ; un recalcul complet le remet à jour
+Function Raviver() As String
+	Dim bModifie As Boolean
+	On Error GoTo Erreur
+	bModifie = ThisComponent.isModified()
+	ThisComponent.calculateAll()
+	If Not bModifie Then ThisComponent.setModified(False)
+	Raviver = ""
+	Exit Function
+Erreur:
+	Raviver = "!" & Error$
+End Function
+
 Function Retirer(sNom As String, sId As String) As String
 	Dim oDoc As Object, a As Object
 	On Error GoTo Erreur

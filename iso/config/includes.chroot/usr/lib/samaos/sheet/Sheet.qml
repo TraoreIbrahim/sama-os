@@ -727,17 +727,33 @@ Window {
     property int reglesSurFeuille: 0
     function relireRegles() {
         var f = doc.partie
-        tableaux.appeler("SamaCouleurs.Nombre", [String(f)], function (ok, v) { if (ok && doc.partie === f) fenetre.reglesSurFeuille = Number(v) || 0 })
+        tableaux.appeler("SamaCouleurs.Nombre", [String(f)], function (ok, v) {
+            if (!ok || doc.partie !== f) return
+            var avant = fenetre.reglesSurFeuille
+            fenetre.reglesSurFeuille = Number(v) || 0
+            // (en arrivant sur une feuille qui a des règles : leurs couleurs à jour)
+            if (fenetre.reglesSurFeuille > 0 && avant === 0) fenetre.raviverRegles()
+        })
+    }
+    // (le recalcul fait repeindre des cases : ce qui suit de près n'en relance pas un autre)
+    property double raviveJusque: 0
+    function raviverRegles() {
+        tableaux.appeler("SamaCouleurs.Raviver", [], function () { fenetre.raviveJusque = Date.now() + 900; fenetre.doc.redessiner() })
     }
     Connections {
         target: fenetre.doc
-        function onPartiesChanged() { fenetre.relireRegles(); fenetre.verifierResumes() }
-        function onRevisionChanged() { if (fenetre.reglesSurFeuille > 0) repeindre.restart() }
+        function onPartiesChanged() { fenetre.reglesSurFeuille = 0; fenetre.relireRegles(); fenetre.verifierResumes() }
+        function onRevisionChanged() { if (fenetre.reglesSurFeuille > 0 && Date.now() > fenetre.raviveJusque) repeindre.restart() }
+    }
+    // (des règles posées par un modèle, l'Analyse rapide, une macro : relues avec les tableaux)
+    Connections {
+        target: fenetre.tableaux
+        function onListeChanged() { fenetre.relireRegles() }
     }
     Timer {
         id: repeindre
         interval: 350
-        onTriggered: { if (fenetre.doc.curseurTexteVisible) restart(); else fenetre.doc.redessiner() }
+        onTriggered: { if (fenetre.doc.curseurTexteVisible) restart(); else fenetre.raviverRegles() }
     }
 
     // ——— Les calculs protégés d'un tableau : on n'écrit pas dessus par erreur ———

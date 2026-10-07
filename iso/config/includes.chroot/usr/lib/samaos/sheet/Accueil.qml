@@ -20,7 +20,7 @@ Rectangle {
 
     readonly property var modeles: [
         { cle: "cotisations", nom: "Cotisations", tableau: true, categorie: "Association", texte: "Tontine, association : qui a versé, qui doit encore.", colonnes: "Membre · Part · Versé · Reste · Date" },
-        { cle: "stock", nom: "Ventes et stock", tableau: true, categorie: "Commerce", texte: "Ce qui entre, ce qui sort, ce qui reste en boutique.", colonnes: "Article · Prix · Entrées · Sorties · Stock" },
+        { cle: "stock", nom: "Gestion de stock", tableau: true, categorie: "Commerce", texte: "Les articles et chaque entrée ou sortie : le stock se calcule, rouge sous le seuil.", colonnes: "Articles · Mouvements · Stock · Seuil" },
         { cle: "facture", nom: "Facture", tableau: false, categorie: "Commerce", texte: "En francs CFA, le total et le net à payer déjà calculés.", colonnes: "Désignation · Quantité · Prix · Montant" },
         { cle: "revient", nom: "Prix de revient", tableau: false, categorie: "Commerce", texte: "Ce que coûte ce qu'on fabrique, et le prix à demander.", colonnes: "Postes · montants · marge · prix conseillé" },
         { cle: "budget", nom: "Budget du mois", tableau: true, categorie: "Maison", texte: "Entrées et dépenses ; le solde se calcule tout seul.", colonnes: "Date · Libellé · Catégorie · Entrée · Dépense" },
