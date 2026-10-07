@@ -151,6 +151,12 @@ signals:
     void resultatScript(int jeton, bool reussi, const QString &valeur);
     void enregistre(bool reussi, const QString &chemin);
     void valeurs(const QString &commande, const QVariant &reponse);
+    // Gestes de la personne (pixels de l'élément) : pour la mini-barre qui suit la sélection
+    void pointeurAppuye();
+    void pointeurRelache(qreal x, qreal y);
+    void doubleClique();
+    void clavierUtilise();
+    void survole(qreal x, qreal y);
 
 protected:
     QSGNode *updatePaintNode(QSGNode *ancien, UpdatePaintNodeData *) override;

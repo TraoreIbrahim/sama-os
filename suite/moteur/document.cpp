@@ -892,6 +892,9 @@ void DocumentLO::keyPressEvent(QKeyEvent *e)
         e->ignore();
         return;
     }
+    // (Maj, Ctrl, Alt seules ne comptent pas)
+    if (e->key() != Qt::Key_Shift && e->key() != Qt::Key_Control && e->key() != Qt::Key_Alt && e->key() != Qt::Key_Meta)
+        emit clavierUtilise();
     const bool ctrl = e->modifiers() & Qt::ControlModifier;
     // Presse-papiers du système
     if (ctrl && !(e->modifiers() & Qt::AltModifier)) {
@@ -999,6 +1002,7 @@ void DocumentLO::mousePressEvent(QMouseEvent *e)
     }
     souris(LOK_MOUSEEVENT_MOUSEBUTTONDOWN, e, 1);
     e->accept();
+    emit pointeurAppuye();
 }
 
 void DocumentLO::mouseMoveEvent(QMouseEvent *e)
@@ -1014,10 +1018,12 @@ void DocumentLO::mouseReleaseEvent(QMouseEvent *e)
         m_poignee = -1;
         emit objetTenuChanged();
     }
+    if (e->button() == Qt::LeftButton) emit pointeurRelache(e->position().x(), e->position().y());
 }
 
 void DocumentLO::mouseDoubleClickEvent(QMouseEvent *e)
 {
+    emit doubleClique();
     // (pas de modification d'un graphique dans le moteur : ses fenêtres ne seraient pas montrées)
     if (!m_objetTwips.isNull() && objet().contains(e->position() + QPointF(m_vueX, m_vueY))) return;
     souris(LOK_MOUSEEVENT_MOUSEBUTTONDOWN, e, 2);
@@ -1028,6 +1034,7 @@ void DocumentLO::mouseDoubleClickEvent(QMouseEvent *e)
 void DocumentLO::hoverMoveEvent(QHoverEvent *e)
 {
     m_survolSuivant = e->position() + QPointF(m_vueX, m_vueY);
+    emit survole(e->position().x(), e->position().y());
     if (m_survolEnvoye) m_survolAttend = true;
     else survoler();
 }

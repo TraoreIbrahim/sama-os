@@ -366,6 +366,9 @@ Item {
                 }
             }
         }
+
+        // La mini-barre qui suit la sélection
+        MiniBarre { moteur: document }
     }
 
     // Barres de défilement (la feuille s'agrandit quand on va au-delà : on peut toujours aller plus loin)
