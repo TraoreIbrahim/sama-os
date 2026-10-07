@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaListes" script:language="StarBasic"><![CDATA[REM Sama Sheet : les listes de choix d'une case. Celle d'une validation (une liste écrite, « "Espèces";"Mobile
+REM money" », ou une plage de cases, un nom), comme dans Excel ; sinon, comme Alt+Bas dans Excel, les textes déjà
+REM écrits dans la colonne, autour de la case.
+Option Explicit
+
+' {"validation": vrai ou faux, "trie": vrai ou faux, "choix": [...], "valeur": "..."} ; sF, sC, sL : à partir de 0
+Function Choix(sF As String, sC As String, sL As String) As String
+	Dim oDoc As Object, oFeuille As Object, oCase As Object, v As Object, aListe() As String, n As Long, s As String, i As Long
+	Dim bValidation As Boolean, bTrie As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oFeuille = oDoc.Sheets.getByIndex(CLng(sF))
+	oCase = oFeuille.getCellByPosition(CLng(sC), CLng(sL))
+	v = oCase.Validation
+	n = 0
+	If v.Type = com.sun.star.sheet.ValidationType.LIST And v.ShowList <> 0 Then
+		bValidation = True
+		bTrie = (v.ShowList = 2)
+		n = Lire(oDoc, oFeuille, Trim(v.Formula1), aListe())
+	End If
+	If n = 0 Then n = Colonne(oFeuille, oCase, aListe())
+	s = ""
+	For i = 0 To n - 1
+		If s <> "" Then s = s & ","
+		s = s & Texte(aListe(i))
+	Next i
+	Choix = "{""validation"":" & IIf(bValidation, "true", "false") & ",""trie"":" & IIf(bTrie, "true", "false") _
+	        & ",""choix"":[" & s & "],""valeur"":" & Texte(oCase.String) & "}"
+	Exit Function
+Erreur:
+	Choix = "!" & Error$
+End Function
+
+Sub Garder(aListe() As String, n As Long, sV As String)
+	Dim i As Long
+	If sV = "" Then Exit Sub
+	For i = 0 To n - 1
+		If aListe(i) = sV Then Exit Sub
+	Next i
+	ReDim Preserve aListe(n) As String
+	aListe(n) = sV
+	n = n + 1
+End Sub
+
+' La liste d'une validation : des valeurs entre guillemets, ou une plage de cases, ou un nom
+Function Lire(oDoc As Object, oFeuille As Object, sF As String, aListe() As String) As Long
+	Dim n As Long, i As Long, ch As String, sV As String, bDedans As Boolean, oPlage As Object, aD As Variant, l As Long, c As Long
+	Dim sNom As String, k As Long
+	n = 0
+	If Left(sF, 1) = "=" Then sF = Mid(sF, 2)
+	If Left(sF, 1) = """" Then
+		' "a";"b";"c" (des guillemets doublés pour un guillemet dans une valeur)
+		sV = ""
+		bDedans = False
+		i = 1
+		Do While i <= Len(sF)
+			ch = Mid(sF, i, 1)
+			If ch = """" Then
+				If bDedans And Mid(sF, i + 1, 1) = """" Then
+					sV = sV & """"
+					i = i + 1
+				Else
+					bDedans = Not bDedans
+					If Not bDedans Then
+						Garder(aListe(), n, sV)
+						sV = ""
+					End If
+				End If
+			ElseIf bDedans Then
+				sV = sV & ch
+			End If
+			i = i + 1
+		Loop
+	Else
+		On Error Resume Next
+		oPlage = Nothing
+		If oDoc.NamedRanges.hasByName(sF) Then
+			oPlage = oDoc.NamedRanges.getByName(sF).ReferredCells
+		Else
+			sNom = Replace(sF, "$", "")
+			k = InStrRev(sNom, ".")
+			If k = 0 Then k = InStrRev(sNom, "!")
+			If k > 0 Then
+				oPlage = oDoc.Sheets.getByName(Replace(Left(sNom, k - 1), "'", "")).getCellRangeByName(Mid(sNom, k + 1))
+			Else
+				oPlage = oFeuille.getCellRangeByName(sNom)
+			End If
+		End If
+		If Not IsNull(oPlage) Then
+			aD = oPlage.DataArray
+			For l = 0 To UBound(aD)
+				For c = 0 To UBound(aD(l))
+					Garder(aListe(), n, CStr(aD(l)(c)))
+				Next c
+			Next l
+		End If
+	End If
+	Lire = n
+End Function
+
+' Comme Alt+Bas dans Excel : les textes de la colonne, dans le bloc de cases autour de la case (sans son titre)
+Function Colonne(oFeuille As Object, oCase As Object, aListe() As String) As Long
+	Dim oC As Object, a As Object, l As Long, n As Long, c As Long, oX As Object, lDebut As Long, lFin As Long, i As Long
+	Dim oPlage As Object, d As Object, oDoc As Object
+	oDoc = ThisComponent
+	c = oCase.CellAddress.Column
+	' (dans un tableau : ses lignes, sans les titres ni les totaux ; sinon le bloc de cases autour, sans son titre)
+	lDebut = -1
+	For i = 0 To oDoc.DatabaseRanges.Count - 1
+		oPlage = oDoc.DatabaseRanges.getByIndex(i)
+		d = oPlage.DataArea
+		If d.Sheet = oCase.CellAddress.Sheet And c >= d.StartColumn And c <= d.EndColumn And oCase.CellAddress.Row >= d.StartRow And oCase.CellAddress.Row <= d.EndRow Then
+			lDebut = d.StartRow + 1
+			lFin = d.EndRow
+			If oPlage.TotalsRow Then lFin = lFin - 1
+		End If
+	Next i
+	If lDebut < 0 Then
+		oC = oFeuille.createCursorByRange(oCase)
+		oC.collapseToCurrentRegion()
+		a = oC.RangeAddress
+		lDebut = a.StartRow
+		lFin = a.EndRow
+		If lFin - lDebut >= 2 Then lDebut = lDebut + 1
+	End If
+	n = 0
+	For l = lDebut To lFin
+		If l <> oCase.CellAddress.Row Then
+			oX = oFeuille.getCellByPosition(c, l)
+			If oX.Type = com.sun.star.table.CellContentType.TEXT Then Garder(aListe(), n, oX.String)
+		End If
+	Next l
+	Colonne = n
+End Function
+]]></script:module>

@@ -12,6 +12,7 @@ Item {
     property alias doc: document
     property alias analyse: analyseRapide
     property alias recherche: rechercheCases
+    property alias listes: listesEtLiens
     readonly property int largeurEntetes: 44
     readonly property int hauteurEntetes: 24
     readonly property color fondEntete: Couleurs.sombre ? "#2A2F42" : "#F6F1EA"
@@ -466,6 +467,8 @@ Item {
         CommentairesGrille { moteur: document; vueGrille: grille; sourisDedans: survolFeuille.hovered }
         // Rechercher et remplacer : les cases trouvées, surlignées, et la carte en haut à droite
         RechercheCases { id: rechercheCases; moteur: document; vueGrille: grille }
+        // Les listes de choix (▾, Alt+Bas) et les liens des cases
+        ListesEtLiens { id: listesEtLiens; moteur: document; vueGrille: grille }
         // (la souris est-elle sur la feuille ? posé sur la feuille, il ne prend pas le survol au moteur)
         HoverHandler { id: survolFeuille }
 
@@ -473,7 +476,7 @@ Item {
         AnalyseRapide { id: analyseRapide; moteur: document; vueGrille: grille }
 
         // La mini-barre qui suit la sélection
-        MiniBarre { moteur: document; masquee: analyseRapide.carteOuverte }
+        MiniBarre { moteur: document; masquee: analyseRapide.carteOuverte || listesEtLiens.listeOuverte }
     }
 
     // Barres de défilement (la feuille s'agrandit quand on va au-delà : on peut toujours aller plus loin)

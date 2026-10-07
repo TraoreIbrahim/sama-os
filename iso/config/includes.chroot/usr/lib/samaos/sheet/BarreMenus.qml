@@ -124,6 +124,7 @@ Rectangle {
                 ElementMenu { cle: "totauxTableau" }
                 TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "analyse" }
+                ElementMenu { cle: "listeChoix" }
                 TitreMenu { text: "Trier" }
                 ElementMenu { cle: "trierAZ" }
                 ElementMenu { cle: "trierZA" }

@@ -287,6 +287,7 @@ Window {
     Shortcut { sequences: ["Ctrl+K", "Alt+/", "Alt+Shift+/"]; onActivated: barreMenus.recherche.ouvrir() }
     // Analyse rapide (comme Excel)
     Shortcut { sequence: "Ctrl+Alt+M"; enabled: !fenetre.accueilOuvert; onActivated: { if (fenetre.vue !== "grille") fenetre.voirGrille(); fenetre.commentaires.demanderEcriture() } }
+    Shortcut { sequence: "Alt+Down"; enabled: fenetre.vue === "grille" && !fenetre.accueilOuvert && !fenetre.doc.curseurTexteVisible; onActivated: grille.listes.ouvrirListe() }
     Shortcut { sequence: "Ctrl+F"; enabled: !fenetre.accueilOuvert; onActivated: grille.recherche.ouvrir(false) }
     Shortcut { sequence: "Ctrl+H"; enabled: !fenetre.accueilOuvert; onActivated: grille.recherche.ouvrir(true) }
     Shortcut { sequence: StandardKey.Print; enabled: !fenetre.accueilOuvert; onActivated: fenetre.imprimer() }

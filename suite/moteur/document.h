@@ -175,6 +175,10 @@ signals:
     void dialogueValide();
     // Un commentaire ajouté, changé ou retiré (le moteur ne les dessine pas : Sama les montre)
     void commentairesChanges();
+    // Une case à liste de choix (validation) est la case courante : Sama y pose son bouton ▾ (c, l : à partir de 0)
+    void boutonListe(int c, int l, bool visible);
+    // Un clic sur un lien (dans une case) : Sama montre où il mène avant de l'ouvrir
+    void lienClique(const QString &adresse, int c, int l);
 
 protected:
     QSGNode *updatePaintNode(QSGNode *ancien, UpdatePaintNodeData *) override;

@@ -627,6 +627,27 @@ void DocumentLO::annonce(int type, const QByteArray &charge)
     case LOK_CALLBACK_COMMENT:
         emit commentairesChanges();
         break;
+    // « 7, 4, 1 » : colonne, ligne, montré ou non
+    case LOK_CALLBACK_VALIDITY_LIST_BUTTON: {
+        const QList<QByteArray> p = charge.split(',');
+        if (p.size() >= 3) emit boutonListe(p[0].trimmed().toInt(), p[1].trimmed().toInt(), p[2].trimmed().toInt() != 0);
+        break;
+    }
+    // « https://… coordinates: x, y, l, h, colonne, ligne, … » (ou l'adresse seule)
+    case LOK_CALLBACK_HYPERLINK_CLICKED: {
+        const QString t = QString::fromUtf8(charge);
+        const int i = t.indexOf(QStringLiteral(" coordinates:"));
+        int c = -1, l = -1;
+        if (i >= 0) {
+            const QStringList p = t.mid(i + 13).split(QLatin1Char(','));
+            if (p.size() >= 6) {
+                c = p[4].trimmed().toInt();
+                l = p[5].trimmed().toInt();
+            }
+        }
+        emit lienClique(i >= 0 ? t.left(i).trimmed() : t.trimmed(), c, l);
+        break;
+    }
     // (le menu du moteur, après un clic droit : Sama montre le sien à la place)
     case LOK_CALLBACK_CONTEXT_MENU:
         if (m_menuAttendu) {

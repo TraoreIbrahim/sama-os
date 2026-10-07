@@ -168,6 +168,7 @@ QtObject {
         c("formulaire", "Remplir par un formulaire", "Données", "formulaire questions saisie enquête inscription google forms", "", function () { fenetre.voirFormulaire(fenetre.tableaux.courant) }, function () { return fenetre.tableaux.courant !== null }),
         c("ligneTableau", "Ajouter une ligne au tableau", "Données", "nouvelle ligne tableau", "", function () { fenetre.tableaux.ajouterLigne(fenetre.tableaux.courant) }, function () { return fenetre.tableaux.courant !== null }),
         c("analyse", "Analyse rapide", "Données", "barres couleurs mise en forme conditionnelle plus grands moyenne totaux graphique", "Ctrl+Q", function () { grille.analyse.ouvrir() }),
+        c("listeChoix", "Choisir dans une liste", "Données", "liste déroulante choix validation valeurs colonne", "Alt+Bas", function () { grille.listes.ouvrirListe() }),
         c("trierAZ", "Trier de A à Z, du plus petit au plus grand", "Données", "ordre croissant ranger", "", function () { uno(".uno:SortAscending") }),
         c("trierZA", "Trier de Z à A, du plus grand au plus petit", "Données", "ordre décroissant ranger", "", function () { uno(".uno:SortDescending") }),
 
@@ -213,6 +214,7 @@ QtObject {
         date: "M4 6h16v14H4z M4 10h16 M8 3v5 M16 3v5 M8 13.5h3v3H8z",
         commentaire: "M4 5h16v11H9l-5 4z M12 8v5 M9.5 10.5h5",
         rechercher: "M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M16 16l4 4",
+        listeChoix: "M4 5h16v6H4z M15 7l1.5 2 1.5-2 M6 14h12 M6 18h8",
         remplacer: "M4 7h11 M12 4l3 3-3 3 M20 17H9 M12 14l-3 3 3 3",
         retirerCommentaire: "M4 5h16v11H9l-5 4z M9.5 10.5h5",
         renommerFeuille: "M4 20h4L18.5 9.5l-4-4L4 16z M12.5 7.5l4 4",
@@ -280,6 +282,7 @@ QtObject {
         formulaire: "Une page claire, question après question",
         commentaire: "Une question, un rappel",
         rechercher: "Un nom, un montant, sans se soucier des accents",
+        listeChoix: "Les choix de la case, ou ce qui est déjà écrit dans la colonne",
         remplacer: "Dans les textes, jamais dans les formules",
         commentaires: "Un clic mène à la case",
         analyse: "Barres, couleurs, totaux, graphique : sur les cases choisies",
