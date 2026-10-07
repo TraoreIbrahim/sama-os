@@ -115,69 +115,6 @@ Rectangle {
     }
     Keys.onEscapePressed: fenetre.voirGrille()
 
-    // ——— Pièces ———
-    component Case: QQC2.AbstractButton {
-        // Case à cocher de Sama (une ligne, et une explication dessous s'il le faut)
-        id: caseACocher
-        property string detail: ""
-        checkable: true
-        hoverEnabled: true
-        focusPolicy: Qt.NoFocus
-        Layout.fillWidth: true
-        implicitHeight: contenuCase.implicitHeight + 14
-        background: null
-        contentItem: RowLayout {
-            id: contenuCase
-            spacing: 10
-            Rectangle {
-                Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 2
-                Layout.preferredWidth: 18; Layout.preferredHeight: 18
-                radius: 5
-                color: caseACocher.checked ? fenetre.accent : Couleurs.champ
-                border.width: caseACocher.checked ? 0 : 1.5
-                border.color: caseACocher.hovered ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.3)
-                Picto { anchors.centerIn: parent; width: 13; height: 13; visible: caseACocher.checked; trace: "M5 12.5l4.5 4.5L19 7.5"; encre: "#FFFFFF"; trait: 2.6 }
-            }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-                Text { Layout.fillWidth: true; text: caseACocher.text; font.pixelSize: 14; color: Couleurs.texte; wrapMode: Text.Wrap }
-                Text { visible: caseACocher.detail !== ""; Layout.fillWidth: true; text: caseACocher.detail; font.pixelSize: 12; color: Couleurs.texte2; wrapMode: Text.Wrap }
-            }
-        }
-    }
-    component Rond: QQC2.AbstractButton {
-        // Bouton radio de Sama
-        id: rond
-        property bool choisi: false
-        property string detail: ""
-        hoverEnabled: true
-        focusPolicy: Qt.NoFocus
-        Layout.fillWidth: true
-        implicitHeight: contenuRond.implicitHeight + 8
-        background: null
-        contentItem: RowLayout {
-            id: contenuRond
-            spacing: 9
-            Rectangle {
-                Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 2
-                Layout.preferredWidth: 18; Layout.preferredHeight: 18
-                radius: 9
-                color: Couleurs.champ
-                border.width: rond.choisi ? 5 : 1.5
-                border.color: rond.choisi ? fenetre.accent : rond.hovered ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.3)
-            }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-                Text { Layout.fillWidth: true; text: rond.text; font.pixelSize: 14; color: Couleurs.texte }
-                Text { visible: rond.detail !== ""; Layout.fillWidth: true; text: rond.detail; font.pixelSize: 12; color: Couleurs.texte2; wrapMode: Text.Wrap }
-            }
-        }
-    }
-
     RowLayout {
         anchors.fill: parent
         spacing: 0

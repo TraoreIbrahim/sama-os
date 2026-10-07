@@ -49,6 +49,7 @@ Rectangle {
                 ElementMenu { cle: "enregistrerSous" }
                 ElementMenu { cle: "pdf" }
                 ElementMenu { cle: "envoyer" }
+                ElementMenu { cle: "imprimer" }
                 TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "fermer" }
             }

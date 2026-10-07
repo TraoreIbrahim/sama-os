@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaImpression" script:language="StarBasic"><![CDATA[REM Sama Sheet : imprimer. Ce qu'on imprime (sQuoi) : « feuille » (ce qui est rempli sur la feuille), « selection »,
+REM « tableau:Nom », « classeur » (toutes les feuilles). Exporter fait le PDF qu'on voit en aperçu et qu'on envoie à
+REM l'imprimante : la mise en page demandée (orientation, ajustée à la largeur ou sur une page, titres du tableau
+REM répétés, quadrillage, numéros des pages), les numéros de téléphone masqués si on le demande ; puis tout revient
+REM comme avant (le fichier n'en garde rien, Ctrl+Z non plus).
+Option Explicit
+
+' La zone d'une feuille où il y a quelque chose
+Function Remplie(oFeuille As Object) As Object
+	Dim oC As Object
+	oC = oFeuille.createCursor()
+	oC.gotoStartOfUsedArea(False)
+	oC.gotoEndOfUsedArea(True)
+	Remplie = oC
+End Function
+
+' Les zones à imprimer : une par feuille (toutes pour le classeur)
+Function Zones(oDoc As Object, sQuoi As String) As Variant
+	Dim aZones() As Object, oSel As Object, i As Long, a As Object
+	If sQuoi = "classeur" Then
+		ReDim aZones(oDoc.Sheets.Count - 1) As Object
+		For i = 0 To oDoc.Sheets.Count - 1
+			aZones(i) = Remplie(oDoc.Sheets.getByIndex(i))
+		Next i
+	ElseIf sQuoi = "selection" Then
+		ReDim aZones(0) As Object
+		oSel = oDoc.CurrentController.Selection
+		If oSel.supportsService("com.sun.star.sheet.SheetCellRanges") Then oSel = oSel.getByIndex(0)
+		aZones(0) = oSel
+	ElseIf Left(sQuoi, 8) = "tableau:" Then
+		ReDim aZones(0) As Object
+		a = oDoc.DatabaseRanges.getByName(Mid(sQuoi, 9)).DataArea
+		aZones(0) = oDoc.Sheets.getByIndex(a.Sheet).getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.EndRow)
+	Else
+		ReDim aZones(0) As Object
+		aZones(0) = Remplie(oDoc.CurrentController.ActiveSheet)
+	End If
+	Zones = aZones
+End Function
+
+Function Chiffres(s As String) As Integer
+	Dim i As Integer, n As Integer, ch As String
+	For i = 1 To Len(s)
+		ch = Mid(s, i, 1)
+		If ch >= "0" And ch <= "9" Then n = n + 1
+	Next i
+	Chiffres = n
+End Function
+
+' Les cases de numéros de téléphone d'une zone : sous un titre « Téléphone », « WhatsApp »… de la même colonne
+Function Telephones(oZone As Object) As Variant
+	Dim aD As Variant, aL As Variant, a As Object, c As Long, l As Long, lTitre As Long, n As Long, aCases() As Object
+	a = oZone.RangeAddress
+	aD = oZone.DataArray
+	n = 0
+	For c = 0 To a.EndColumn - a.StartColumn
+		lTitre = -1
+		For l = 0 To UBound(aD)
+			aL = aD(l)
+			If lTitre < 0 Then
+				If EstTelephone(CStr(aL(c))) Then lTitre = l
+			ElseIf Chiffres(CStr(aL(c))) >= 6 Then
+				ReDim Preserve aCases(n) As Object
+				aCases(n) = oZone.getCellByPosition(c, l)
+				n = n + 1
+			End If
+		Next l
+	Next c
+	Telephones = aCases
+End Function
+
+' Ce qu'il faut savoir pour proposer une mise en page : la taille de la zone (mm), un tableau dedans, des numéros
+Function Decrire(sQuoi As String) As String
+	Dim oDoc As Object, aZones As Variant, oZone As Object, a As Object, oFeuille As Object
+	Dim i As Long, c As Long, l As Long, nLargeur As Double, nHauteur As Double, nL As Double, nH As Double
+	Dim bTableau As Boolean, bTelephones As Boolean, j As Long, d As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	aZones = Zones(oDoc, sQuoi)
+	For i = 0 To UBound(aZones)
+		oZone = aZones(i)
+		a = oZone.RangeAddress
+		oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+		nL = 0
+		nH = 0
+		For c = a.StartColumn To a.EndColumn
+			If oFeuille.Columns.getByIndex(c).IsVisible Then nL = nL + oFeuille.Columns.getByIndex(c).Width
+		Next c
+		' (les hauteurs : la zone entière d'un coup, plus vite que ligne à ligne)
+		nH = oZone.Size.Height
+		If nL > nLargeur Then nLargeur = nL
+		nHauteur = nHauteur + nH
+		If UBound(Telephones(oZone)) >= 0 Then bTelephones = True
+		For j = 0 To oDoc.DatabaseRanges.Count - 1
+			d = oDoc.DatabaseRanges.getByIndex(j).DataArea
+			If d.Sheet = a.Sheet And d.StartRow >= a.StartRow And d.StartRow <= a.EndRow And d.StartColumn <= a.EndColumn And d.EndColumn >= a.StartColumn Then bTableau = True
+		Next j
+	Next i
+	Decrire = "{""largeur"":" & CLng(nLargeur / 100) & ",""hauteur"":" & CLng(nHauteur / 100) & ",""tableau"":" & IIf(bTableau, "true", "false") _
+	          & ",""telephones"":" & IIf(bTelephones, "true", "false") & "}"
+	Exit Function
+Erreur:
+	Decrire = "!" & Error$
+End Function
+
+' Le pied de page « Page 2 sur 3 »
+Sub Numeroter(oDoc As Object, oStyle As Object)
+	Dim oBas As Object, oTexte As Object, oCurseur As Object
+	oBas = oStyle.RightPageFooterContent
+	oBas.LeftText.setString("")
+	oBas.RightText.setString("")
+	oTexte = oBas.CenterText
+	oTexte.setString("")
+	oCurseur = oTexte.createTextCursor()
+	oTexte.insertString(oCurseur, "Page ", False)
+	oTexte.insertTextContent(oCurseur, oDoc.createInstance("com.sun.star.text.TextField.PageNumber"), False)
+	oTexte.insertString(oCurseur, " sur ", False)
+	oTexte.insertTextContent(oCurseur, oDoc.createInstance("com.sun.star.text.TextField.PageCount"), False)
+	oStyle.FooterIsShared = True
+	oStyle.RightPageFooterContent = oBas
+End Sub
+
+Function Exporter(sChemin As String, sQuoi As String, sOrientation As String, sAjuster As String, sTitres As String, _
+                  sQuadrillage As String, sNumeros As String, sCacher As String) As String
+	Dim oDoc As Object, aZones As Variant, oZone As Object, a As Object, oFeuille As Object, oStyles As Object, oStyle As Object
+	Dim aAnciens() As Variant, nAnciens As Long, aCases As Variant, aValeurs() As Variant, nCases As Long, v As Variant
+	Dim aTitres() As Variant, aRepetees() As Boolean, aFeuilles() As Object, i As Long, j As Long, k As Long, bVu As Boolean
+	Dim oCase As Object, oTitre As New com.sun.star.table.CellRangeAddress, d As Object, bModifie As Boolean, bPaysage As Boolean
+	Dim aArgs(1) As New com.sun.star.beans.PropertyValue, aFiltre(1) As New com.sun.star.beans.PropertyValue, aTout(0) As New com.sun.star.beans.PropertyValue
+	Dim sErreur As String, bVerrou As Boolean, nGrand As Long, nPetit As Long, oDeja As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	bModifie = oDoc.isModified()
+	' (le moteur enregistre ces changements pour Ctrl+Z, même passagers : ils vont dans une action « Impression »,
+	' annulée à la fin puis oubliée ; l'historique de la personne reste tel quel)
+	oDoc.UndoManager.enterUndoContext("Impression")
+	bVerrou = True
+	aZones = Zones(oDoc, sQuoi)
+	oStyles = oDoc.StyleFamilies.getByName("PageStyles")
+	bPaysage = (sOrientation = "paysage")
+	nAnciens = 0
+	nCases = 0
+	ReDim aFeuilles(UBound(aZones)) As Object
+	ReDim aTitres(UBound(aZones)) As Variant
+	ReDim aRepetees(UBound(aZones)) As Boolean
+	For i = 0 To UBound(aZones)
+		oZone = aZones(i)
+		a = oZone.RangeAddress
+		oFeuille = oDoc.Sheets.getByIndex(a.Sheet)
+		aFeuilles(i) = oFeuille
+		' La mise en page (une fois par style de page), gardée pour être rendue
+		oStyle = oStyles.getByName(oFeuille.PageStyle)
+		bVu = False
+		For j = 0 To nAnciens - 1
+			v = aAnciens(j)
+			oDeja = v(0)
+			If oDeja.Name = oStyle.Name Then bVu = True
+		Next j
+		If Not bVu Then
+			' (0 style, 1 paysage, 2 largeur, 3 hauteur, 4 échelle, 5 pages, 6 pages en largeur, 7 en hauteur, 8 quadrillage,
+			' 9 centré, 10 en-têtes de lignes et colonnes, 11 en-tête, 12 pied, 13 pied partagé, 14 son contenu, 15-18 marges)
+			ReDim Preserve aAnciens(nAnciens) As Variant
+			aAnciens(nAnciens) = Array(oStyle, oStyle.IsLandscape, oStyle.Width, oStyle.Height, oStyle.PageScale, oStyle.ScaleToPages, _
+			                           oStyle.ScaleToPagesX, oStyle.ScaleToPagesY, oStyle.PrintGrid, oStyle.CenterHorizontally, _
+			                           oStyle.PrintHeaders, oStyle.HeaderIsOn, oStyle.FooterIsOn, oStyle.FooterIsShared, _
+			                           oStyle.RightPageFooterContent, oStyle.LeftMargin, oStyle.RightMargin, oStyle.TopMargin, oStyle.BottomMargin)
+			nAnciens = nAnciens + 1
+			' A4, dans le sens demandé
+			nGrand = 29700
+			nPetit = 21000
+			oStyle.IsLandscape = bPaysage
+			oStyle.Width = IIf(bPaysage, nGrand, nPetit)
+			oStyle.Height = IIf(bPaysage, nPetit, nGrand)
+			oStyle.LeftMargin = 1500
+			oStyle.RightMargin = 1500
+			oStyle.TopMargin = 1500
+			oStyle.BottomMargin = 1500
+			If sAjuster = "page" Then
+				oStyle.ScaleToPages = 1
+			ElseIf sAjuster = "reelle" Then
+				oStyle.PageScale = 100
+			Else
+				oStyle.ScaleToPagesX = 1
+				oStyle.ScaleToPagesY = 0
+			End If
+			oStyle.PrintGrid = (sQuadrillage = "1")
+			oStyle.PrintHeaders = False
+			oStyle.CenterHorizontally = True
+			oStyle.HeaderIsOn = False
+			oStyle.FooterIsOn = (sNumeros = "1")
+			If sNumeros = "1" Then Numeroter(oDoc, oStyle)
+		End If
+		' Les titres du premier tableau de la zone, répétés en haut de chaque page
+		aTitres(i) = oFeuille.TitleRows
+		aRepetees(i) = oFeuille.PrintTitleRows
+		If sTitres = "1" Then
+			For j = 0 To oDoc.DatabaseRanges.Count - 1
+				d = oDoc.DatabaseRanges.getByIndex(j).DataArea
+				If d.Sheet = a.Sheet And d.StartRow >= a.StartRow And d.StartRow <= a.EndRow And d.StartColumn <= a.EndColumn And d.EndColumn >= a.StartColumn Then
+					oTitre.Sheet = a.Sheet
+					oTitre.StartColumn = 0
+					oTitre.EndColumn = 0
+					oTitre.StartRow = d.StartRow
+					oTitre.EndRow = d.StartRow
+					oFeuille.TitleRows = oTitre
+					oFeuille.PrintTitleRows = True
+					Exit For
+				End If
+			Next j
+		Else
+			oFeuille.PrintTitleRows = False
+		End If
+		' Les numéros de téléphone masqués (« 07 •• •• •• 78 »), gardés pour être rendus
+		If sCacher = "1" Then
+			aCases = Telephones(oZone)
+			For k = 0 To UBound(aCases)
+				oCase = aCases(k)
+				ReDim Preserve aValeurs(nCases) As Variant
+				If oCase.Type = com.sun.star.table.CellContentType.FORMULA Then
+					aValeurs(nCases) = Array(oCase, "f", oCase.Formula)
+				ElseIf oCase.Type = com.sun.star.table.CellContentType.VALUE Then
+					aValeurs(nCases) = Array(oCase, "v", oCase.Value)
+				Else
+					aValeurs(nCases) = Array(oCase, "t", oCase.String)
+				End If
+				nCases = nCases + 1
+				oCase.String = Masquer(oCase.String)
+			Next k
+		End If
+	Next i
+
+	' Le PDF : la zone choisie, ou tout le classeur ; sans les commentaires (ils restent dans le classeur)
+	aArgs(0).Name = "FilterName"
+	aArgs(0).Value = "calc_pdf_Export"
+	aArgs(1).Name = "FilterData"
+	If sQuoi = "classeur" Then
+		aTout(0).Name = "ExportNotes"
+		aTout(0).Value = False
+		aArgs(1).Value = aTout()
+	Else
+		aFiltre(0).Name = "ExportNotes"
+		aFiltre(0).Value = False
+		aFiltre(1).Name = "Selection"
+		aFiltre(1).Value = aZones(0)
+		aArgs(1).Value = aFiltre()
+	End If
+	oDoc.storeToURL(ConvertToURL(sChemin), aArgs())
+	sErreur = ""
+	GoTo Rendre
+Erreur:
+	sErreur = "!" & Error$
+	Resume Rendre
+Rendre:
+	On Error Resume Next
+	' Tout revient comme avant
+	For k = 0 To nCases - 1
+		v = aValeurs(k)
+		oCase = v(0)
+		If v(1) = "f" Then
+			oCase.Formula = v(2)
+		ElseIf v(1) = "v" Then
+			oCase.Value = v(2)
+		Else
+			oCase.String = v(2)
+		End If
+	Next k
+	For i = 0 To UBound(aZones)
+		oFeuille = aFeuilles(i)
+		If Not IsNull(oFeuille) Then
+			If Not IsEmpty(aTitres(i)) Then oFeuille.TitleRows = aTitres(i)
+			oFeuille.PrintTitleRows = aRepetees(i)
+		End If
+	Next i
+	For j = 0 To nAnciens - 1
+		v = aAnciens(j)
+		oStyle = v(0)
+		oStyle.IsLandscape = v(1)
+		oStyle.Width = v(2)
+		oStyle.Height = v(3)
+		oStyle.LeftMargin = v(15)
+		oStyle.RightMargin = v(16)
+		oStyle.TopMargin = v(17)
+		oStyle.BottomMargin = v(18)
+		If v(5) > 0 Then
+			oStyle.ScaleToPages = v(5)
+		ElseIf v(6) > 0 Or v(7) > 0 Then
+			oStyle.ScaleToPagesX = v(6)
+			oStyle.ScaleToPagesY = v(7)
+		Else
+			oStyle.PageScale = v(4)
+		End If
+		oStyle.PrintGrid = v(8)
+		oStyle.CenterHorizontally = v(9)
+		oStyle.PrintHeaders = v(10)
+		oStyle.HeaderIsOn = v(11)
+		oStyle.FooterIsOn = v(12)
+		oStyle.FooterIsShared = v(13)
+		oStyle.RightPageFooterContent = v(14)
+	Next j
+	If bVerrou Then
+		oDoc.UndoManager.leaveUndoContext()
+		If oDoc.UndoManager.isUndoPossible() Then
+			If oDoc.UndoManager.getCurrentUndoActionTitle() = "Impression" Then
+				oDoc.UndoManager.undo()
+				oDoc.UndoManager.clearRedo()
+			End If
+		End If
+	End If
+	oDoc.setModified(bModifie)
+	Exporter = sErreur
+End Function
+]]></script:module>

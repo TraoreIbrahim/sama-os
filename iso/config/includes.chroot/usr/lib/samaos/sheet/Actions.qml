@@ -78,6 +78,7 @@ QtObject {
         c("ouvrir", "Ouvrir…", "Fichier", "fichier excel", "Ctrl+O", function () { fenetre.ouvrirDialogue("ouvrir") }),
         c("enregistrer", "Enregistrer", "Fichier", "sauver sauvegarder", "Ctrl+S", function () { fenetre.enregistrer() }),
         c("enregistrerSous", "Enregistrer sous…", "Fichier", "copie autre nom format ods csv", "Ctrl+Maj+S", function () { fenetre.ouvrirDialogue("enregistrer") }),
+        c("imprimer", "Imprimer…", "Fichier", "imprimante papier aperçu pages", "Ctrl+P", function () { fenetre.imprimer() }),
         c("pdf", "Exporter en PDF…", "Fichier", "imprimer pdf envoyer", "", function () { fenetre.ouvrirDialogue("pdf") }),
         c("envoyer", "Envoyer en image…", "Fichier", "envoyer partager image bilan whatsapp photo pdf", "", function () { fenetre.envoyer() }),
         c("fermer", "Fermer", "Fichier", "quitter", "Ctrl+W", function () { fenetre.close() }),
@@ -180,6 +181,7 @@ QtObject {
         ouvrir: "M3 7h6l2 2h10v10H3z",
         enregistrer: "M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6",
         enregistrerSous: "M5 4h11l3 3v4 M5 4v16h6 M8 4v5h7V4 M17 14v7 M13.5 17.5h7",
+        imprimer: "M7 9V4h10v5 M5 9h14v7h-3 M8 16H5V9 M8 13h8v7H8z",
         pdf: "M6 3h8l4 4v14H6z M14 3v4h4 M9 13h6 M9 17h4",
         fermer: "M7 7l10 10 M17 7L7 17",
         envoyer: "M21 3L10 14 M21 3l-7 18-4-7-7-4z",
@@ -262,6 +264,7 @@ QtObject {
     readonly property var details: ({
         modeles: "Cotisations, stock, facture, budget…",
         enregistrer: "Compatible Excel (.xlsx)",
+        imprimer: "L'aperçu des pages, puis l'imprimante",
         pdf: "Pour imprimer ou pour envoyer",
         envoyer: "Un bilan à envoyer, sans les numéros",
         collerValeurs: "Sans les formules ni la mise en forme",

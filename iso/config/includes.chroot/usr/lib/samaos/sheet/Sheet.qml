@@ -53,7 +53,7 @@ Window {
         for (var i = 0; i < tableaux.liste.length; i++) if (tableaux.liste[i].nom === nomFiches) return tableaux.liste[i]
         return null
     }
-    readonly property var tableauVu: vue !== "grille" ? tableauFiches : tableaux.courant
+    readonly property var tableauVu: vue !== "grille" && vue !== "impression" ? tableauFiches : tableaux.courant
     function voirFiches(t) {
         if (!t) return
         nomFiches = t.nom
@@ -88,9 +88,17 @@ Window {
     }
     Timer { id: envoyerPlusTard; interval: 800; onTriggered: fenetre.envoyer(true) }
     function voirGrille() { vue = "grille"; doc.forceActiveFocus() }
+    // Imprimer : l'aperçu des pages et les réglages, à la place de la grille
+    function imprimer() {
+        if (doc.etat !== DocumentLO.Pret) return
+        if (doc.curseurTexteVisible) doc.touche(1280)
+        vue = "impression"
+        vueImpression.ouvrir()
+        vueImpression.forceActiveFocus()
+    }
     function nouvelleFiche() { vueFiches.nouvelle() }
     onTableauFichesChanged: {
-        if (vue === "grille") return
+        if (vue === "grille" || vue === "impression") return
         if (!tableauFiches) voirGrille()
         else if (vue === "fiches") vueFiches.tableau = tableauFiches
         else if (vue === "image") vueImage.tableau = tableauFiches
@@ -279,6 +287,7 @@ Window {
     Shortcut { sequences: ["Ctrl+K", "Alt+/", "Alt+Shift+/"]; onActivated: barreMenus.recherche.ouvrir() }
     // Analyse rapide (comme Excel)
     Shortcut { sequence: "Ctrl+Alt+M"; enabled: !fenetre.accueilOuvert; onActivated: { if (fenetre.vue !== "grille") fenetre.voirGrille(); fenetre.commentaires.demanderEcriture() } }
+    Shortcut { sequence: StandardKey.Print; enabled: !fenetre.accueilOuvert; onActivated: fenetre.imprimer() }
     Shortcut { sequence: "Ctrl+Q"; enabled: fenetre.vue === "grille" && !fenetre.accueilOuvert; onActivated: grille.analyse.ouvrir() }
     Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide() }
     Shortcut { sequence: "Ctrl+W"; onActivated: fenetre.close() }
@@ -401,6 +410,13 @@ Window {
 
         BarreTableau {
             Layout.fillWidth: true
+        }
+
+        VueImpression {
+            id: vueImpression
+            visible: fenetre.vue === "impression"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
 
         VueImage {

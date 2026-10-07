@@ -12,7 +12,7 @@ Rectangle {
     readonly property bool enFiches: fenetre.vue === "fiches"
     readonly property bool enFormulaire: fenetre.vue === "formulaire" || fenetre.vue === "image"
     // (dans la grille, l'onglet posé au-dessus du tableau et son panneau la remplacent)
-    readonly property bool utile: t !== null && (fenetre.vue !== "grille" || (!t.libre && !fenetre.panneauOuvert))
+    readonly property bool utile: t !== null && fenetre.vue !== "impression" && (fenetre.vue !== "grille" || (!t.libre && !fenetre.panneauOuvert))
     implicitHeight: utile ? 38 : 0
     visible: utile
     color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, Couleurs.sombre ? 0.16 : 0.07)
