@@ -210,6 +210,8 @@ Window {
     Shortcut { sequence: "Ctrl+0"; onActivated: fenetre.doc.zoom = 1 }
     // (Alt+/ comme Google Sheets ; sur un clavier AZERTY, « / » demande Maj : Ctrl+K est plus simple)
     Shortcut { sequences: ["Ctrl+K", "Alt+/", "Alt+Shift+/"]; onActivated: barreMenus.recherche.ouvrir() }
+    // Analyse rapide (comme Excel)
+    Shortcut { sequence: "Ctrl+Q"; enabled: fenetre.vue === "grille" && !fenetre.accueilOuvert; onActivated: grille.analyse.ouvrir() }
     Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide() }
     Shortcut { sequence: "Ctrl+W"; onActivated: fenetre.close() }
     Shortcut { sequence: "Ctrl+T"; onActivated: fenetre.actions.lancer("tableau") }

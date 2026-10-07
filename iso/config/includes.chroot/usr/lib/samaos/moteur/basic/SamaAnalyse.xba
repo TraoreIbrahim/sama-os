@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaAnalyse" script:language="StarBasic"><![CDATA[REM Sama Sheet : l'Analyse rapide (le bouton au coin d'une sélection). Les barres, couleurs et mises en avant sont des
+REM formats conditionnels du moteur, que le .xlsx garde et qu'Excel relit : Sama les pose par les fenêtres du moteur
+REM (validées aussitôt, pour que Ctrl+Z les annule), puis leur donne les couleurs de Sama ici. Les totaux sont des
+REM formules sous la sélection. Chaque fonction rend du texte : du JSON, "", ou « !message ».
+Option Explicit
+
+Function Zone(sAdresse As String) As Object
+	Zone = ThisComponent.CurrentController.ActiveSheet.getCellRangeByName(sAdresse)
+End Function
+
+' Les nombres de la plage (null pour le reste), pour l'aperçu ; et si la ligne en dessous est libre (pour les totaux)
+Function Valeurs(sAdresse As String) As String
+	Dim oF As Object, oZ As Object, a As Object, aD As Variant, i As Long, j As Long, s As String, sL As String, bLibre As Boolean
+	On Error GoTo Erreur
+	oF = ThisComponent.CurrentController.ActiveSheet
+	oZ = oF.getCellRangeByName(sAdresse)
+	a = oZ.RangeAddress
+	If (a.EndRow - a.StartRow + 1) * (a.EndColumn - a.StartColumn + 1) > 4000 Then
+		Valeurs = "!trop"
+		Exit Function
+	End If
+	bLibre = False
+	If a.EndRow < 1048575 Then bLibre = EstVide(oF.getCellRangeByPosition(a.StartColumn, a.EndRow + 1, a.EndColumn, a.EndRow + 1))
+	aD = oZ.DataArray
+	s = ""
+	For i = 0 To UBound(aD)
+		sL = ""
+		For j = 0 To UBound(aD(i))
+			If j > 0 Then sL = sL & ","
+			If VarType(aD(i)(j)) = 5 Then sL = sL & Trim(Str(aD(i)(j))) Else sL = sL & "null"
+		Next j
+		If i > 0 Then s = s & ","
+		s = s & "[" & sL & "]"
+	Next i
+	Valeurs = "{""c1"":" & a.StartColumn & ",""l1"":" & a.StartRow & ",""c2"":" & a.EndColumn & ",""l2"":" & a.EndRow _
+	          & ",""dessous"":" & IIf(bLibre, "true", "false") & ",""v"":[" & s & "]}"
+	Exit Function
+Erreur:
+	Valeurs = "!" & Error$
+End Function
+
+' Un style de cases pour les mises en avant (créé s'il manque)
+Function StyleSama(sNom As String, nFond As Long, nEncre As Long) As String
+	Dim oStyles As Object, oStyle As Object
+	oStyles = ThisComponent.StyleFamilies.getByName("CellStyles")
+	If Not oStyles.hasByName(sNom) Then
+		oStyle = ThisComponent.createInstance("com.sun.star.style.CellStyle")
+		oStyles.insertByName(sNom, oStyle)
+	End If
+	oStyle = oStyles.getByName(sNom)
+	oStyle.CellBackColor = nFond
+	oStyle.CharColor = nEncre
+	oStyle.CharWeight = com.sun.star.awt.FontWeight.BOLD
+	StyleSama = sNom
+End Function
+
+' La dernière règle posée sur exactement cette plage, ou Nothing
+Function DerniereRegle(oF As Object, a As Object) As Object
+	Dim aF As Variant, aR As Variant, i As Long, k As Long, nMax As Long
+	nMax = -1
+	aF = oF.ConditionalFormats.ConditionalFormats
+	For i = 0 To UBound(aF)
+		aR = aF(i).Range.RangeAddresses
+		For k = 0 To UBound(aR)
+			If aR(k).StartColumn = a.StartColumn And aR(k).EndColumn = a.EndColumn And aR(k).StartRow = a.StartRow And aR(k).EndRow = a.EndRow Then
+				If aF(i).ID > nMax Then
+					nMax = aF(i).ID
+					DerniereRegle = aF(i)
+				End If
+			End If
+		Next k
+	Next i
+End Function
+
+' Après la fenêtre du moteur : les couleurs de Sama. sGenre : barres, couleurs, grands (sNombre : combien mettre en
+' avant), moyenne
+Function Habiller(sAdresse As String, sGenre As String, sNombre As String) As String
+	Dim oF As Object, a As Object, oRegle As Object, oE As Object, aE As Variant
+	On Error GoTo Erreur
+	oF = ThisComponent.CurrentController.ActiveSheet
+	a = oF.getCellRangeByName(sAdresse).RangeAddress
+	oRegle = DerniereRegle(oF, a)
+	' (la fenêtre du moteur n'a peut-être pas encore posé la règle : Sama redemande)
+	If IsNull(oRegle) Then
+		Habiller = "absente"
+		Exit Function
+	End If
+	oE = oRegle.getByIndex(oRegle.Count - 1)
+	Select Case sGenre
+	Case "barres"
+		oE.Color = RGB(190, 211, 220)
+		oE.UseGradient = False
+	Case "couleurs"
+		' (du plus petit au plus grand : latérite claire, or pâle, vert tendre)
+		aE = oE.ColorScaleEntries
+		If UBound(aE) >= 2 Then
+			aE(0).Color = RGB(240, 179, 146)
+			aE(1).Color = RGB(252, 239, 199)
+			aE(2).Color = RGB(163, 214, 193)
+		End If
+	Case "grands"
+		oE.Formula1 = sNombre
+		oE.StyleName = StyleSama("Sama · mis en avant", RGB(252, 239, 199), RGB(30, 39, 64))
+	Case "moyenne"
+		oE.StyleName = StyleSama("Sama · au-dessus de la moyenne", RGB(228, 236, 239), RGB(25, 75, 98))
+	End Select
+	Habiller = ""
+	Exit Function
+Erreur:
+	Habiller = "!" & Error$
+End Function
+
+' Enlève les règles (barres, couleurs, mises en avant) qui touchent la plage ; rend leur nombre
+Function Effacer(sAdresse As String) As String
+	Dim oF As Object, a As Object, aF As Variant, aR As Variant, i As Long, k As Long, n As Long, aId() As Long, bTouche As Boolean
+	On Error GoTo Erreur
+	oF = ThisComponent.CurrentController.ActiveSheet
+	a = oF.getCellRangeByName(sAdresse).RangeAddress
+	aF = oF.ConditionalFormats.ConditionalFormats
+	n = 0
+	For i = 0 To UBound(aF)
+		bTouche = False
+		aR = aF(i).Range.RangeAddresses
+		For k = 0 To UBound(aR)
+			If Not (aR(k).EndColumn < a.StartColumn Or aR(k).StartColumn > a.EndColumn Or aR(k).EndRow < a.StartRow Or aR(k).StartRow > a.EndRow) Then bTouche = True
+		Next k
+		If bTouche Then
+			ReDim Preserve aId(n)
+			aId(n) = aF(i).ID
+			n = n + 1
+		End If
+	Next i
+	For i = 0 To n - 1
+		oF.ConditionalFormats.removeByID(aId(i))
+	Next i
+	ThisComponent.setModified(True)
+	Effacer = CStr(n)
+	Exit Function
+Erreur:
+	Effacer = "!" & Error$
+End Function
+
+' Un total sous chaque colonne de nombres de la plage (somme, moyenne, nombre, min, max), dans la ligne libre en dessous ;
+' rend la case du premier total
+Function Totaux(sAdresse As String, sCalcul As String) As String
+	Dim oDoc As Object, oF As Object, a As Object, oC As Object, c As Long, r As Long, sFonction As String, sPremiere As String
+	Dim bAnnuler As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oF = oDoc.CurrentController.ActiveSheet
+	a = oF.getCellRangeByName(sAdresse).RangeAddress
+	r = a.EndRow + 1
+	If Not EstVide(oF.getCellRangeByPosition(a.StartColumn, r, a.EndColumn, r)) Then
+		Totaux = "!La ligne sous les cases choisies n'est pas vide : les totaux n'y ont pas la place."
+		Exit Function
+	End If
+	Select Case sCalcul
+	Case "moyenne"
+		sFonction = "MOYENNE"
+	Case "nombre"
+		sFonction = "NB"
+	Case "min"
+		sFonction = "MIN"
+	Case "max"
+		sFonction = "MAX"
+	Case Else
+		sFonction = "SOMME"
+	End Select
+	oDoc.UndoManager.enterUndoContext("Totaux")
+	bAnnuler = True
+	sPremiere = ""
+	For c = a.StartColumn To a.EndColumn
+		If ColonneNumerique(oF, c, a.StartRow, a.EndRow) Then
+			oC = oF.getCellByPosition(c, r)
+			oC.FormulaLocal = "=" & sFonction & "(" & Lettres(c) & (a.StartRow + 1) & ":" & Lettres(c) & (a.EndRow + 1) & ")"
+			If sCalcul <> "nombre" Then oC.NumberFormat = oF.getCellByPosition(c, a.EndRow).NumberFormat
+			oC.CharWeight = com.sun.star.awt.FontWeight.BOLD
+			If sPremiere = "" Then sPremiere = Lettres(c) & (r + 1)
+		End If
+	Next c
+	oDoc.UndoManager.leaveUndoContext()
+	If sPremiere = "" Then
+		Totaux = "!Il n'y a pas de nombres dans les cases choisies."
+	Else
+		Totaux = sPremiere
+	End If
+	Exit Function
+Erreur:
+	If bAnnuler Then oDoc.UndoManager.leaveUndoContext()
+	Totaux = "!" & Error$
+End Function
+]]></script:module>

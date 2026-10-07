@@ -18,6 +18,9 @@ Item {
     readonly property bool voletOuvert: nuancier.opened || choixBordures.opened || choixGraphique.opened
     anchors.fill: parent
     visible: opacity > 0
+    // (une autre carte s'ouvre, l'Analyse rapide : la barre s'efface)
+    property bool masquee: false
+    onMasqueeChanged: if (masquee) fermer()
 
     function fermer() { attente.stop(); ouverte = false }
     // (après un clic : le temps qu'un double-clic, qui ouvre la case à l'écriture, ait lieu)
@@ -34,7 +37,8 @@ Item {
         var cx = r.width > 320 ? souris.x : rx + r.width / 2
         barre.x = Math.max(6, Math.min(cx - barre.width / 2, width - barre.width - 6))
         var y = haut - barre.height - 8
-        barre.y = y >= 6 ? y : Math.min(bas + 8, height - barre.height - 6)
+        // (en dessous : sous le bouton de l'Analyse rapide, au coin de la sélection)
+        barre.y = y >= 6 ? y : Math.min(bas + 20, height - barre.height - 6)
         proximite = 1
         depart = distance(souris.x, souris.y)
         ouverte = true

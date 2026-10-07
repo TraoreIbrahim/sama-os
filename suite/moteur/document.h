@@ -4,6 +4,7 @@
 // (zoom compris) ; vueX/vueY = coin haut gauche de la partie visible.
 #pragma once
 
+#include <QElapsedTimer>
 #include <QHash>
 #include <QImage>
 #include <QPointer>
@@ -123,6 +124,13 @@ public:
     // Graphique de la sélection, du type demandé (rang dans la liste de l'assistant du moteur : 0 colonnes, 1 barres,
     // 2 secteurs, 4 aires, 5 lignes) ; l'assistant n'est pas montré, Sama le remplit
     Q_INVOKABLE void insererGraphique(int type);
+    // Une commande qui ouvre une fenêtre classique du moteur (formatage conditionnel…) : Sama la valide aussitôt par
+    // Entrée, avec ses réglages par défaut (le moteur garde l'action dans son historique : Ctrl+Z l'annule), puis
+    // annonce dialogueValide
+    Q_INVOKABLE void commandeValidee(const QString &nom, const QVariantMap &arguments = QVariantMap());
+    // Redessiner toute la feuille (après un changement que le moteur n'annonce pas : couleurs d'une règle changées par
+    // une macro)
+    Q_INVOKABLE void redessiner() { invalider(QRectF(), m_partie); }
     // Macro de Sama installée dans le moteur (« SamaTableaux.Creer ») avec des arguments texte ; la réponse arrive par
     // resultatScript(jeton, reussi, valeur). Rend le jeton.
     Q_INVOKABLE int script(const QString &fonction, const QVariantList &arguments = QVariantList());
@@ -157,6 +165,7 @@ signals:
     void doubleClique();
     void clavierUtilise();
     void survole(qreal x, qreal y);
+    void dialogueValide();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *ancien, UpdatePaintNodeData *) override;
@@ -225,6 +234,9 @@ private:
     int m_poignee = -1;
     QPointF m_decalage;
     int m_graphiqueEnAttente = -1;
+    bool m_valider = false;
+    QElapsedTimer m_validerDepuis;
+    void fenetreMoteur(const QByteArray &charge);
     int m_revision = 0, m_dernierJeton = 0, m_dessins = 0;
     QHash<QByteArray, QQueue<int>> m_scriptsEnAttente;   // par adresse de macro, dans l'ordre des appels
     bool m_survolEnvoye = false;

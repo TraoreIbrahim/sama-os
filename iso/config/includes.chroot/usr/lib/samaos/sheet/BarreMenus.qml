@@ -113,6 +113,8 @@ Rectangle {
                 ElementMenu { cle: "fiches" }
                 ElementMenu { cle: "ligneTableau" }
                 ElementMenu { cle: "totauxTableau" }
+                TitreMenu { text: "" ; implicitHeight: 9 }
+                ElementMenu { cle: "analyse" }
                 TitreMenu { text: "Trier" }
                 ElementMenu { cle: "trierAZ" }
                 ElementMenu { cle: "trierZA" }

@@ -571,6 +571,9 @@ void DocumentLO::annonce(int type, const QByteArray &charge)
     case LOK_CALLBACK_JSDIALOG:
         dialogue(charge);
         break;
+    case LOK_CALLBACK_WINDOW:
+        fenetreMoteur(charge);
+        break;
     case LOK_CALLBACK_DOCUMENT_SIZE_CHANGED:
     case LOK_CALLBACK_SET_PART:
         relirePartiesEtTaille();
@@ -681,6 +684,39 @@ void DocumentLO::insererGraphique(int type)
     if (!m_doc) return;
     m_graphiqueEnAttente = qMax(0, type);
     commande(QStringLiteral(".uno:InsertObjectChart"));
+}
+
+void DocumentLO::commandeValidee(const QString &nom, const QVariantMap &arguments)
+{
+    if (!m_doc) return;
+    m_valider = true;
+    m_validerDepuis.start();
+    commande(nom, arguments);
+}
+
+// Fenêtres classiques du moteur (jamais montrées) : celle qu'une commandeValidee vient d'ouvrir (annoncée créée, ou
+// par son titre pour les plus petites) est validée par Entrée. Au-delà de 4 s, plus rien n'est validé.
+void DocumentLO::fenetreMoteur(const QByteArray &charge)
+{
+    if (!m_valider || !m_doc) return;
+    if (m_validerDepuis.elapsed() > 4000) {
+        m_valider = false;
+        return;
+    }
+    const QJsonObject o = QJsonDocument::fromJson(charge).object();
+    const QString action = o.value(QStringLiteral("action")).toString();
+    if (action != QLatin1String("created") && action != QLatin1String("title_changed")) return;
+    if (action == QLatin1String("created") && o.value(QStringLiteral("type")).toString() != QLatin1String("dialog")) return;
+    const unsigned fenetre = o.value(QStringLiteral("id")).toString().toUInt();
+    if (!fenetre) return;
+    m_valider = false;
+    auto *doc = m_doc;
+    Moteur::instance()->executer([doc, fenetre] {
+        doc->pClass->postWindowKeyEvent(doc, fenetre, LOK_KEYEVENT_KEYINPUT, 13, 1280);
+        doc->pClass->postWindowKeyEvent(doc, fenetre, LOK_KEYEVENT_KEYUP, 13, 1280);
+    });
+    // (ce que Sama demande ensuite au moteur passe après la touche)
+    emit dialogueValide();
 }
 
 // Fenêtres du moteur (décrites en JSON, jamais montrées telles quelles). L'assistant de graphique : Sama choisit le

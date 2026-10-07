@@ -10,6 +10,7 @@ import "../reglages"
 Item {
     id: grille
     property alias doc: document
+    property alias analyse: analyseRapide
     readonly property int largeurEntetes: 44
     readonly property int hauteurEntetes: 24
     readonly property color fondEntete: Couleurs.sombre ? "#2A2F42" : "#F6F1EA"
@@ -367,8 +368,11 @@ Item {
             }
         }
 
+        // L'Analyse rapide, au coin de la sélection
+        AnalyseRapide { id: analyseRapide; moteur: document; vueGrille: grille }
+
         // La mini-barre qui suit la sélection
-        MiniBarre { moteur: document }
+        MiniBarre { moteur: document; masquee: analyseRapide.carteOuverte }
     }
 
     // Barres de défilement (la feuille s'agrandit quand on va au-delà : on peut toujours aller plus loin)

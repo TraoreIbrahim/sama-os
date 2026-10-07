@@ -149,6 +149,7 @@ QtObject {
         c("totauxTableau", "Ligne des totaux du tableau", "Données", "total somme tableau", "", function () { fenetre.tableaux.totaux(fenetre.tableaux.courant, !fenetre.tableaux.courant.totaux) }, function () { return fenetre.tableaux.courant !== null }),
         c("fiches", "Voir le tableau en fiches", "Données", "fiche formulaire saisie carte", "", function () { fenetre.voirFiches(fenetre.tableaux.courant) }, function () { return fenetre.tableaux.courant !== null }),
         c("ligneTableau", "Ajouter une ligne au tableau", "Données", "nouvelle ligne tableau", "", function () { fenetre.tableaux.ajouterLigne(fenetre.tableaux.courant) }, function () { return fenetre.tableaux.courant !== null }),
+        c("analyse", "Analyse rapide", "Données", "barres couleurs mise en forme conditionnelle plus grands moyenne totaux graphique", "Ctrl+Q", function () { grille.analyse.ouvrir() }),
         c("trierAZ", "Trier de A à Z, du plus petit au plus grand", "Données", "ordre croissant ranger", "", function () { uno(".uno:SortAscending") }),
         c("trierZA", "Trier de Z à A, du plus grand au plus petit", "Données", "ordre décroissant ranger", "", function () { uno(".uno:SortDescending") }),
 
@@ -219,6 +220,7 @@ QtObject {
         pinceau: "M5 4h11v5H5z M16 6h3v5h-7v3 M12 14v6",
         effacerFormat: "M5 6h11 M10.5 6L8 18 M14 14l6 6 M20 14l-6 6",
         tableau: "M4 5h16v14H4z M4 10h16 M10 5v14",
+        analyse: "M4 5h16v14H4z M4 10h7 M13 9l-3 5h4l-3 5",
         totauxTableau: "M4 5h16v14H4z M4 14.5h16 M7 17h5",
         fiches: "M4 5h7v6H4z M13 5h7v6h-7z M4 13h7v6H4z M13 13h7v6h-7z",
         ligneTableau: "M12 5v14 M5 12h14",
@@ -237,6 +239,7 @@ QtObject {
         figer: "Ce qui est au-dessus et à gauche reste visible",
         tableau: "Titres, filtres et totaux, comme dans Excel",
         fiches: "Une carte par ligne, pour saisir sans erreur",
+        analyse: "Barres, couleurs, totaux, graphique : sur les cases choisies",
         totauxTableau: "La somme des colonnes, sans les lignes filtrées",
         largeur: "Quand une case affiche ###",
         pinceau: "Puis cliquez sur les cases à mettre pareil",
