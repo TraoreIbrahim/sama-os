@@ -663,10 +663,19 @@ Window {
         // (sous la barre de formule quand on y écrit ; sous la case quand on écrit dans la case, comme la maquette)
         // (pendant la saisie, le moteur ne donne plus la case : on part du curseur de saisie, au début de la case)
         property int colonneSaisie: -1
+        property int ligneSaisie: -1
         Connections {
             target: fenetre.doc
-            function onCurseurChanged() { if (fenetre.doc.colonne >= 0) aideFonction.colonneSaisie = fenetre.doc.colonne }
+            function onCurseurChanged() {
+                if (fenetre.doc.colonne >= 0) aideFonction.colonneSaisie = fenetre.doc.colonne
+                if (fenetre.doc.ligne >= 0) aideFonction.ligneSaisie = fenetre.doc.ligne
+            }
         }
+        // (le résultat en direct : la formule entière, calculée dans sa case)
+        formule: fenetre.formuleEnCours
+        feuille: fenetre.doc.partie
+        colonne: colonneSaisie
+        ligne: ligneSaisie
         readonly property var bandeCase: colonneSaisie >= 0 ? grille.parLettres[fenetre.tableaux.lettres(colonneSaisie)] || null : null
         readonly property bool dansLaCase: !champFormule.activeFocus && fenetre.doc.curseurTexteVisible && fenetre.doc.curseurTexte.height > 0
         readonly property point coin: dansLaCase ? grille.mapToItem(fenetre.contentItem,

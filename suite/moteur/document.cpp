@@ -1048,6 +1048,13 @@ void DocumentLO::keyPressEvent(QKeyEvent *e)
         const int c = code | modificateurs(e->modifiers());
         const int caractere = code == K_RETURN ? 13 : code == K_TAB ? 9 : code == K_BACKSPACE ? 8 : code == K_ESCAPE ? 27 : 0;
         touche(c, caractere);
+        // Échap pendant une formule : le moteur ferme d'abord sa bulle de fonction (Sama ne la montre pas, il a la
+        // sienne) ; si la saisie est toujours là, un second Échap l'annule, comme l'annonce la barre d'état
+        if (code == K_ESCAPE && m_curseurTexteVisible && m_formule.startsWith(QLatin1Char('='))) {
+            QTimer::singleShot(150, this, [this] {
+                if (m_curseurTexteVisible) touche(K_ESCAPE, 27);
+            });
+        }
         return;
     }
     e->ignore();

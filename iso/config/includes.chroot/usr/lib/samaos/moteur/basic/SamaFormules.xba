@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaFormules" script:language="StarBasic"><![CDATA[REM Sama Sheet : le résultat d'une formule pendant qu'on l'écrit (l'aide des fonctions, maquette « La grille libre » :
+REM « Résultat 16 000 F »). Le moteur la calcule dans la case même, comme si on validait (les noms des colonnes d'un
+REM tableau, les noms, le format en francs CFA en découlent), puis la case redevient ce qu'elle était ; le classeur
+REM n'en garde rien : ni l'historique (Ctrl+Z), ni « modifié », ni la hauteur des lignes, et l'écran n'est pas redessiné
+REM entre-temps.
+Option Explicit
+
+' {"texte": ce que la case afficherait, "erreur": code d'erreur du moteur (0 : aucune), "nombre": vrai ou faux} ;
+' sF, sC, sL : la feuille, la colonne et la ligne de la case (à partir de 0) ; sFormule : en français (« =SOMME(C5:C9) »)
+Function Evaluer(sF As String, sC As String, sL As String, sFormule As String) As String
+	Dim oDoc As Object, oCase As Object, nType As Long, sAvant As String, dAvant As Double, bHistorique As Boolean
+	Dim bHauteur As Boolean, bVerrou As Boolean, bEnCours As Boolean, sTexte As String, nErreur As Long, bNombre As Boolean
+	Dim nFormat As Long, nEtatFormat As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oCase = oDoc.Sheets.getByIndex(CLng(sF)).getCellByPosition(CLng(sC), CLng(sL))
+	nType = oCase.Type
+	If nType = com.sun.star.table.CellContentType.FORMULA Then
+		sAvant = oCase.Formula
+	ElseIf nType = com.sun.star.table.CellContentType.VALUE Then
+		dAvant = oCase.Value
+	ElseIf nType = com.sun.star.table.CellContentType.TEXT Then
+		sAvant = oCase.String
+	End If
+	' (le moteur donne à la case le format du résultat, francs CFA… : on le lui reprend ensuite)
+	nFormat = oCase.NumberFormat
+	nEtatFormat = oCase.getPropertyState("NumberFormat")
+	bHistorique = oDoc.IsUndoEnabled
+	bHauteur = oDoc.IsAdjustHeightEnabled
+	oDoc.lockControllers()
+	bVerrou = True
+	oDoc.disableSetModified()
+	bEnCours = True
+	oDoc.IsUndoEnabled = False
+	oDoc.IsAdjustHeightEnabled = False
+	oCase.FormulaLocal = sFormule
+	nErreur = oCase.getError()
+	sTexte = oCase.String
+	bNombre = (oCase.FormulaResultType2 = com.sun.star.sheet.FormulaResult.VALUE)
+	Remettre(oCase, nType, sAvant, dAvant, nFormat, nEtatFormat)
+	oDoc.IsAdjustHeightEnabled = bHauteur
+	oDoc.IsUndoEnabled = bHistorique
+	' (dans cet ordre : en rendant l'écran, le moteur se dit « modifié » ; il ne doit pas pouvoir l'écrire)
+	oDoc.unlockControllers()
+	bVerrou = False
+	oDoc.enableSetModified()
+	Evaluer = "{""texte"":" & Texte(sTexte) & ",""erreur"":" & nErreur & ",""nombre"":" & IIf(bNombre, "true", "false") & "}"
+	Exit Function
+Erreur:
+	Evaluer = "!" & Error$
+	' (quoi qu'il arrive, le classeur redevient comme avant)
+	On Error Resume Next
+	If bEnCours Then
+		Remettre(oCase, nType, sAvant, dAvant, nFormat, nEtatFormat)
+		oDoc.IsAdjustHeightEnabled = bHauteur
+		oDoc.IsUndoEnabled = bHistorique
+	End If
+	If bVerrou Then oDoc.unlockControllers()
+	If bEnCours Then oDoc.enableSetModified()
+End Function
+
+Private Sub Remettre(oCase As Object, nType As Long, sAvant As String, dAvant As Double, nFormat As Long, nEtatFormat As Long)
+	Dim d As Double
+	If nType = com.sun.star.table.CellContentType.FORMULA Then
+		oCase.Formula = sAvant
+		' (calculée tout de suite : son format se pose maintenant, pas plus tard)
+		d = oCase.Value
+	ElseIf nType = com.sun.star.table.CellContentType.VALUE Then
+		oCase.Value = dAvant
+	ElseIf nType = com.sun.star.table.CellContentType.TEXT Then
+		oCase.String = sAvant
+	Else
+		oCase.clearContents(com.sun.star.sheet.CellFlags.VALUE + com.sun.star.sheet.CellFlags.DATETIME + com.sun.star.sheet.CellFlags.STRING + com.sun.star.sheet.CellFlags.FORMULA)
+	End If
+	If oCase.NumberFormat <> nFormat Or oCase.getPropertyState("NumberFormat") <> nEtatFormat Then
+		If nEtatFormat = com.sun.star.beans.PropertyState.DIRECT_VALUE Then oCase.NumberFormat = nFormat Else oCase.setPropertyToDefault("NumberFormat")
+	End If
+End Sub
+]]></script:module>
