@@ -383,6 +383,21 @@ Item {
             id: document
             anchors.fill: parent
             focus: true
+            // Entrée ou Tab sur une formule qui dit « [@Article] » (comme dans Excel) : Sama l'écrit en entier pour le
+            // moteur, puis passe à la case suivante comme d'habitude
+            Keys.onPressed: (e) => {
+                if (!document.curseurTexteVisible || (e.key !== Qt.Key_Return && e.key !== Qt.Key_Enter && e.key !== Qt.Key_Tab)) return
+                var f = document.formule
+                var t = fenetre.tableaux.deCase(document.partie, aideFonction.colonneSaisie, aideFonction.ligneSaisie)
+                var entiere = Fonctions.lignesCourtes(f, t ? t.nom : "")
+                if (entiere === f) return
+                e.accepted = true
+                // (deux Échap : le premier peut ne fermer que la bulle de fonction du moteur)
+                document.touche(1281, 27)
+                document.touche(1281, 27)
+                document.saisir(entiere)
+                document.touche(e.key === Qt.Key_Tab ? 1027 : 1024)
+            }
             // (clic droit : le moteur a choisi la case, Sama ouvre son menu)
             onMenuDemande: (x, y) => menusContextuels.cases(document, x, y)
         }

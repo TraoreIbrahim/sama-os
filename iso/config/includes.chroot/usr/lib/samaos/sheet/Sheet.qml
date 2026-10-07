@@ -443,7 +443,11 @@ Window {
                         else if (e.key === Qt.Key_Up) { aideFonction.precedente(); e.accepted = true }
                         else if (e.key === Qt.Key_Tab || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { aideFonction.accepter(); e.accepted = true }
                     }
-                    onAccepted: { fenetre.doc.saisir(text); fenetre.doc.forceActiveFocus() }
+                    onAccepted: {
+                        var t = fenetre.tableaux.courant
+                        fenetre.doc.saisir(Fonctions.lignesCourtes(text, t ? t.nom : ""))
+                        fenetre.doc.forceActiveFocus()
+                    }
                     Keys.onEscapePressed: { text = fenetre.doc.formule; fenetre.doc.forceActiveFocus() }
                 }
             }

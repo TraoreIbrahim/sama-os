@@ -20,6 +20,14 @@ Item {
         }
         return null
     }
+    // Le tableau d'une case (feuille, colonne, ligne : à partir de 0), ou null
+    function deCase(f, c, l) {
+        for (var i = 0; i < liste.length; i++) {
+            var t = liste[i]
+            if (t.feuille === f && c >= t.c1 && c <= t.c2 && l >= t.l1 && l <= t.l2) return t
+        }
+        return null
+    }
     // Le tableau vu (celui de la case courante, ou des fiches, du formulaire) et son résumé pour la barre d'état :
     // « <b>9 membres sur 12</b> ont tout versé · il reste 45 000 F à recevoir » (vide si ce n'est pas un tableau de
     // versements)

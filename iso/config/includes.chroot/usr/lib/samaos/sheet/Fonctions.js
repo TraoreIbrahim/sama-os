@@ -328,6 +328,22 @@ function propositions(texte, t, d, courante) {
 
 function echapper(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }
 
+// « [@Article] », l'écriture courte d'Excel pour « la case Article de cette ligne » : le moteur ne la lit pas ; Sama
+// l'écrit en entier, « Articles[[#Cette ligne];[Article]] » (nomTableau : le tableau de la case ; « Articles[@Prix] »
+// garde son tableau ; « [@[Prix unitaire]] » aussi). Hors des textes entre guillemets.
+function lignesCourtes(formule, nomTableau) {
+    if (String(formule).charAt(0) !== "=" || formule.indexOf("[@") < 0) return formule
+    var morceaux = formule.split('"')
+    for (var i = 0; i < morceaux.length; i += 2) {
+        morceaux[i] = morceaux[i].replace(/([A-Za-z\u00C0-\u024F_][\w\u00C0-\u024F.]*)?\[@(\[[^\]]+\]|[^\[\]]+)\]/g, function (tout, nom, col) {
+            var t = nom || nomTableau
+            if (!t) return tout
+            return t + "[[#Cette ligne];" + (col.charAt(0) === "[" ? col : "[" + col + "]") + "]"
+        })
+    }
+    return morceaux.join('"')
+}
+
 // ——— La vue Image (Envoyer) : les images qu'on peut tirer d'un tableau, d'après ses colonnes ———
 // Une image : { cle, nom (pour la choisir), titre (la phrase), sousTitre, legende: [[mot, couleur]],
 //               barres: [{ nom, court, parts: [{ v, c }], texte, encre }] }
