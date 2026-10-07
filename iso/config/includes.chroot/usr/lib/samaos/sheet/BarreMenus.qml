@@ -76,6 +76,8 @@ Rectangle {
                 ElementMenu { cle: "zoomPlus" }
                 ElementMenu { cle: "zoomMoins" }
                 ElementMenu { cle: "zoom100" }
+                TitreMenu { text: "" ; implicitHeight: 9 }
+                ElementMenu { cle: "commentaires"; coche: fenetre.panneauCommentaires }
             }
             MenuSama {
                 id: menuInsertion
@@ -89,6 +91,7 @@ Rectangle {
                 TuilesMenu { menu: menuInsertion; cles: ["somme", "moyenne", "minimum", "maximum", "nombre"] }
                 TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "date" }
+                ElementMenu { cle: "commentaire" }
             }
             MenuSama {
                 id: menuFormat
@@ -135,6 +138,29 @@ Rectangle {
             Layout.preferredWidth: Math.min(420, barre.width * 0.36)
         }
         Item { Layout.fillWidth: true }
+
+        // Les commentaires (maquette « En-tête Sheet ») : le panneau, et leur nombre
+        Outil {
+            id: boutonCommentaires
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            picto: "M4 5h16v11H9l-5 4z"
+            actif: fenetre.panneauCommentaires
+            aide: fenetre.commentaires.liste.length ? fenetre.commentaires.liste.length + (fenetre.commentaires.liste.length > 1 ? " commentaires" : " commentaire") : "Commentaires"
+            onClicked: fenetre.voirCommentaires(!fenetre.panneauCommentaires)
+            Rectangle {
+                visible: fenetre.commentaires.liste.length > 0
+                x: parent.width - width + 1
+                y: 1
+                width: Math.max(15, nombreCommentaires.implicitWidth + 8)
+                height: 15
+                radius: 7.5
+                color: "#E2A62B"
+                border.width: 1.5
+                border.color: Couleurs.fond
+                Text { id: nombreCommentaires; anchors.centerIn: parent; text: fenetre.commentaires.liste.length; font.pixelSize: 9; font.weight: Font.Bold; color: "#3B2A08" }
+            }
+        }
 
         // Envoyer (maquettes) : le tableau en image, à partager
         QQC2.AbstractButton {

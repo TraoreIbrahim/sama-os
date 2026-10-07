@@ -624,6 +624,9 @@ void DocumentLO::annonce(int type, const QByteArray &charge)
     case LOK_CALLBACK_WINDOW:
         fenetreMoteur(charge);
         break;
+    case LOK_CALLBACK_COMMENT:
+        emit commentairesChanges();
+        break;
     case LOK_CALLBACK_DOCUMENT_SIZE_CHANGED:
     case LOK_CALLBACK_SET_PART:
         relirePartiesEtTaille();

@@ -368,6 +368,11 @@ Item {
             }
         }
 
+        // Les commentaires : leurs marques au coin des cases, la bulle de celui qu'on regarde, l'écriture
+        CommentairesGrille { moteur: document; vueGrille: grille; sourisDedans: survolFeuille.hovered }
+        // (la souris est-elle sur la feuille ? posé sur la feuille, il ne prend pas le survol au moteur)
+        HoverHandler { id: survolFeuille }
+
         // L'Analyse rapide, au coin de la sélection
         AnalyseRapide { id: analyseRapide; moteur: document; vueGrille: grille }
 

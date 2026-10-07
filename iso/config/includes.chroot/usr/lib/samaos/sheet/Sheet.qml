@@ -41,6 +41,13 @@ Window {
     property string vue: "grille"
     // Le panneau du tableau (fermé par son ×, rouvert par l'onglet du tableau)
     property bool panneauOuvert: true
+    // Le panneau des commentaires (à la place de celui du tableau quand il est ouvert)
+    property bool panneauCommentaires: false
+    function voirCommentaires(oui) {
+        panneauCommentaires = oui
+        if (oui && vue !== "grille") voirGrille()
+        if (!oui) doc.forceActiveFocus()
+    }
     property string nomFiches: ""
     readonly property var tableauFiches: {
         for (var i = 0; i < tableaux.liste.length; i++) if (tableaux.liste[i].nom === nomFiches) return tableaux.liste[i]
@@ -93,6 +100,8 @@ Window {
     property bool fermetureDemandee: false
     readonly property alias actions: lesActions
     Actions { id: lesActions; doc: fenetre.doc; fenetre: fenetre }
+    readonly property alias commentaires: lesCommentaires
+    Commentaires { id: lesCommentaires; doc: fenetre.doc }
     readonly property alias tableaux: lesTableaux
     Tableaux { id: lesTableaux; doc: fenetre.doc; cible: fenetre.tableauVu; onMessage: t => message.montrer(t) }
 
@@ -244,6 +253,7 @@ Window {
     // (Alt+/ comme Google Sheets ; sur un clavier AZERTY, « / » demande Maj : Ctrl+K est plus simple)
     Shortcut { sequences: ["Ctrl+K", "Alt+/", "Alt+Shift+/"]; onActivated: barreMenus.recherche.ouvrir() }
     // Analyse rapide (comme Excel)
+    Shortcut { sequence: "Ctrl+Alt+M"; enabled: !fenetre.accueilOuvert; onActivated: { if (fenetre.vue !== "grille") fenetre.voirGrille(); fenetre.commentaires.demanderEcriture() } }
     Shortcut { sequence: "Ctrl+Q"; enabled: fenetre.vue === "grille" && !fenetre.accueilOuvert; onActivated: grille.analyse.ouvrir() }
     Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide() }
     Shortcut { sequence: "Ctrl+W"; onActivated: fenetre.close() }
@@ -403,10 +413,16 @@ Window {
             }
             PanneauTableau {
                 id: panneauTableau
-                visible: fenetre.panneauOuvert && fenetre.tableaux.courant !== null
+                visible: fenetre.panneauOuvert && fenetre.tableaux.courant !== null && !fenetre.panneauCommentaires
                 Layout.preferredWidth: 300
                 Layout.fillHeight: true
                 onFermer: { fenetre.panneauOuvert = false; fenetre.doc.forceActiveFocus() }
+            }
+            PanneauCommentaires {
+                visible: fenetre.panneauCommentaires
+                Layout.preferredWidth: 300
+                Layout.fillHeight: true
+                onFermer: fenetre.voirCommentaires(false)
             }
         }
 

@@ -8,7 +8,10 @@
 #include <QStandardPaths>
 #include <QUrl>
 
+#include <array>
 #include <cstdlib>
+#include <pwd.h>
+#include <unistd.h>
 
 namespace {
 // LibreOffice de Debian ; SAMA_LIBREOFFICE permet d'en essayer un autre
@@ -83,6 +86,18 @@ void installerMacros(const QString &dossier)
     if (liste.open(QIODevice::WriteOnly | QIODevice::Truncate)) liste.write(texte.toUtf8());
 }
 
+// Le nom de la personne (le nom complet du compte, sinon son identifiant) : le moteur en signe ses commentaires (le
+// profil de LibreOffice, « Données d'identité »)
+QString nomPersonne()
+{
+    if (const passwd *p = getpwuid(getuid())) {
+        const QString complet = QString::fromLocal8Bit(p->pw_gecos).section(QLatin1Char(','), 0, 0).trimmed();
+        if (!complet.isEmpty()) return complet;
+        return QString::fromLocal8Bit(p->pw_name);
+    }
+    return QString::fromLocal8Bit(qgetenv("USER"));
+}
+
 void preparerProfil(const QString &dossier)
 {
     installerMacros(dossier);
@@ -98,8 +113,12 @@ void preparerProfil(const QString &dossier)
                                "<oor:items xmlns:oor=\"http://openoffice.org/2001/registry\" "
                                "xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" "
                                "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n</oor:items>\n");
-    for (const auto &r : REGLAGES) {
-        const QString chemin = QString::fromLatin1(r[0]), nom = QString::fromLatin1(r[1]), valeur = QString::fromLatin1(r[2]);
+    QList<std::array<QString, 3>> reglages;
+    for (const auto &r : REGLAGES) reglages.append({QString::fromLatin1(r[0]), QString::fromLatin1(r[1]), QString::fromLatin1(r[2])});
+    reglages.append({QStringLiteral("/org.openoffice.UserProfile/Data"), QStringLiteral("givenname"), nomPersonne().toHtmlEscaped()});
+    reglages.append({QStringLiteral("/org.openoffice.UserProfile/Data"), QStringLiteral("sn"), QString()});
+    for (const auto &r : reglages) {
+        const QString &chemin = r[0], &nom = r[1], &valeur = r[2];
         const QString element = QStringLiteral("<item oor:path=\"%1\"><prop oor:name=\"%2\" oor:op=\"fuse\"><value>%3</value></prop></item>")
                                     .arg(chemin, nom, valeur);
         const QRegularExpression existant(QStringLiteral("<item oor:path=\"%1\"><prop oor:name=\"%2\"[^<]*>.*?</item>")

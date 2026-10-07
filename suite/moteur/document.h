@@ -171,6 +171,8 @@ signals:
     void clavierUtilise();
     void survole(qreal x, qreal y);
     void dialogueValide();
+    // Un commentaire ajouté, changé ou retiré (le moteur ne les dessine pas : Sama les montre)
+    void commentairesChanges();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *ancien, UpdatePaintNodeData *) override;

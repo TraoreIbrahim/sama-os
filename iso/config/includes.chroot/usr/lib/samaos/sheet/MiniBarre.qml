@@ -1,7 +1,7 @@
 // La mini-barre qui suit la sélection (maquette « Sheet · Un tableau dans la grille », comme celle de Word) : après
 // un choix de cases à la souris, les gestes les plus courants au-dessus d'elles. Gras, remplissage, bordures,
-// francs CFA, pourcentage, graphique. Elle s'efface quand on tape, qu'on défile, qu'on écrit dans une case, et à
-// mesure que la souris s'en éloigne.
+// francs CFA, pourcentage, graphique, commentaire. Elle s'efface quand on tape, qu'on défile, qu'on écrit dans une
+// case, et à mesure que la souris s'en éloigne.
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -70,6 +70,11 @@ Item {
         function onCurseurTexteVisibleChanged() { if (mini.moteur.curseurTexteVisible) mini.fermer() }
         function onObjetChanged() { if (mini.moteur.objet.width > 0) mini.fermer() }
         function onSurvole(x, y) { mini.approcher(x, y) }
+    }
+    // (on écrit un commentaire : la barre s'efface)
+    Connections {
+        target: fenetre.commentaires
+        function onEcrire() { mini.fermer() }
     }
     opacity: ouverte ? (voletOuvert ? 1 : Math.max(0.15, proximite)) : 0
     Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -159,6 +164,12 @@ Item {
                 ouvert: choixGraphique.opened
                 onClicked: choixGraphique.open()
                 ChoixGraphique { id: choixGraphique; onChoisi: type => { mini.fermer(); mini.moteur.insererGraphique(type) } }
+            }
+            Outil {
+                implicitWidth: 30
+                picto: "M4 5h16v11H9l-5 4z M12 8v5 M9.5 10.5h5"
+                aide: "Commentaire (Ctrl+Alt+M)"
+                onClicked: { mini.fermer(); fenetre.commentaires.demanderEcriture() }
             }
         }
     }
