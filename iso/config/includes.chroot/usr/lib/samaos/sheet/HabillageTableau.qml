@@ -7,6 +7,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import "../reglages"
+import "Fonctions.js" as Fonctions
 
 Item {
     id: habillage
@@ -67,18 +68,7 @@ Item {
     }
 
     // ——— Le genre de chaque colonne : nom de personne, montant, calcul, date, choix, téléphone… ———
-    readonly property var progression: {
-        var cols = donnees.colonnes
-        for (var i = 0; i < cols.length; i++) {
-            if (!cols[i].calcul) continue
-            var m = /\[\[#[^\]]*\];\[([^\]]+)\]\]\s*-\s*[^\[;]+\[\[#[^\]]*\];\[([^\]]+)\]\]/.exec(cols[i].formule)
-            if (!m) continue
-            var du = -1, verse = -1
-            for (var j = 0; j < cols.length; j++) { if (cols[j].nom === m[1]) du = j; if (cols[j].nom === m[2]) verse = j }
-            if (du >= 0 && verse >= 0) return { reste: i, du: du, verse: verse }
-        }
-        return null
-    }
+    readonly property var progression: Fonctions.progression(donnees.colonnes)
     readonly property var genres: {
         var cols = donnees.colonnes, res = []
         for (var i = 0; i < cols.length; i++) {

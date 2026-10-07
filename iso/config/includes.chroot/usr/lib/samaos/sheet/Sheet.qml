@@ -77,7 +77,7 @@ Window {
     readonly property alias actions: lesActions
     Actions { id: lesActions; doc: fenetre.doc; fenetre: fenetre }
     readonly property alias tableaux: lesTableaux
-    Tableaux { id: lesTableaux; doc: fenetre.doc; onMessage: t => message.montrer(t) }
+    Tableaux { id: lesTableaux; doc: fenetre.doc; cible: fenetre.tableauVu; onMessage: t => message.montrer(t) }
 
     function etat(c) { return doc.etats[c] }
     function actif(c) { return doc.etats[c] === "true" }
@@ -478,15 +478,21 @@ Window {
                     font.pixelSize: 11
                     color: Couleurs.texte2
                 }
+                // À droite, selon le moment : la saisie dans une case ; la somme d'une plage ; le résumé du tableau
                 Text {
                     id: statistiques
-                    // (somme et moyenne d'une plage, données par le moteur : « Moyenne: 1 200 F; Somme: 3 600 F »)
-                    visible: fenetre.doc.adresse.indexOf(":") > 0 && text !== ""
-                    text: String(fenetre.etat(".uno:StateTableCell") || "").split(";").map(function (s) {
-                              return s.trim().replace(/\s*:\s*/, " : ").replace(/^NbVal/i, "Nombre").replace(/^Nb\b/, "Nombre")
-                          }).filter(function (s) { return /\d/.test(s) }).join("   ·   ")
-                    font.pixelSize: 11
-                    color: Couleurs.texte2
+                    readonly property bool saisie: fenetre.doc.curseurTexteVisible && fenetre.vue === "grille"
+                    // (somme, moyenne et nombre d'une plage, donnés par le moteur, arrondis : « Moyenne : 45 833,33 »)
+                    readonly property string plage: fenetre.doc.adresse.indexOf(":") > 0 ? Fonctions.statistiques(fenetre.etat(".uno:StateTableCell")) : ""
+                    visible: text !== ""
+                    text: saisie ? "Modifier · Entrée pour valider, Échap pour annuler"
+                          : plage !== "" ? plage
+                          : fenetre.tableaux.resume
+                    textFormat: Text.StyledText
+                    font.pixelSize: 12
+                    color: statistiques.saisie || statistiques.plage !== "" ? Couleurs.texte2 : Couleurs.texte
+                    elide: Text.ElideLeft
+                    Layout.maximumWidth: fenetre.width * 0.6
                 }
                 Text { visible: statistiques.visible; text: "·"; font.pixelSize: 11; color: Couleurs.texte3 }
                 Outil { Layout.preferredHeight: 22; Layout.preferredWidth: 22; picto: "M5 12h14"; aide: "Réduire"; onClicked: fenetre.doc.zoom = fenetre.doc.zoom / 1.1 }

@@ -100,3 +100,67 @@ function morceaux(formule) {
     if (debut < formule.length) res.push({ texte: formule.slice(debut), puce: false, detail: "" })
     return res
 }
+
+// ——— Tableaux : ce qui reste à payer, et le résumé de la barre d'état ———
+
+// Colonne calculée « A − B » (Reste = Part − Versé) : { reste, du, verse } (rangs des colonnes), ou null
+function progression(colonnes) {
+    for (var i = 0; i < colonnes.length; i++) {
+        if (!colonnes[i].calcul) continue
+        var m = /\[\[#[^\]]*\];\[([^\]]+)\]\]\s*-\s*[^\[;]+\[\[#[^\]]*\];\[([^\]]+)\]\]/.exec(colonnes[i].formule)
+        if (!m) continue
+        var du = -1, verse = -1
+        for (var j = 0; j < colonnes.length; j++) { if (colonnes[j].nom === m[1]) du = j; if (colonnes[j].nom === m[2]) verse = j }
+        if (du >= 0 && verse >= 0) return { reste: i, du: du, verse: verse }
+    }
+    return null
+}
+
+// Un nombre à la française : 45 000 ; 3 200,50
+function enChiffres(x) {
+    var entier = Math.abs(x - Math.round(x)) < 0.005
+    return Number(x).toLocaleString(Qt.locale("fr_FR"), "f", entier ? 0 : 2)
+}
+
+// Statistiques du moteur (« Moyenne : 45833,3333333333 ; Somme : 275000 ») arrondies et groupées par milliers
+function statistiques(texte) {
+    return String(texte || "").split(";").map(function (s) {
+        s = s.trim().replace(/\s*:\s*/, " : ").replace(/^NbVal/i, "Nombre").replace(/^Nb\b/, "Nombre")
+        // (le nombre seul : chiffres par groupes de trois, sans l'espace qui le sépare de « F »)
+        return s.replace(/-?\d+(?:[\s\u00a0\u202f]\d{3})*(?:,\d+)?/, function (n) {
+            var x = Number(n.replace(/[\s  ]/g, "").replace(",", "."))
+            return isNaN(x) ? n : enChiffres(x)
+        })
+    }).filter(function (s) { return /\d/.test(s) }).join("   ·   ")
+}
+
+// Ce que montre la barre d'état pour un tableau de versements (maquette « Un tableau dans la grille ») :
+// « <b>9 membres sur 12</b> ont tout versé · il reste 45 000 F à recevoir », ou "" si le tableau n'en est pas un.
+// d : SamaTableaux.Lignes ({ colonnes, lignes })
+function resume(d) {
+    var p = progression(d.colonnes)
+    if (!p) return ""
+    var cols = d.colonnes
+    // (un calcul de ce qui reste à payer, pas un stock : Entrées − Sorties n'en est pas un)
+    if (!/vers|pay|r[ée]gl|rembours|cotis|acompte|re[çc]u/i.test(cols[p.verse].nom) && !/reste|d[ûu]$|solde|impay|[àa] payer|manque/i.test(cols[p.reste].nom)) return ""
+    var lignes = d.lignes.filter(function (r) { return !r.vide })
+    var n = lignes.length
+    if (!n) return ""
+    var soldes = 0, reste = 0
+    for (var i = 0; i < lignes.length; i++) {
+        var x = lignes[i].n[p.reste], du = lignes[i].n[p.du]
+        if (x !== null && x <= 0 && du > 0) soldes++
+        if (x > 0) reste += x
+    }
+    var nom = String(cols[0].nom || "").toLowerCase()
+    if (/^(nom|pr[ée]nom)/.test(nom) || !nom) nom = "personne"
+    var noms = /[sxz]$/.test(nom) ? nom : nom + "s"
+    var nomVerse = cols[p.verse].nom
+    var participe = /vers/i.test(nomVerse) ? "versé" : /pay/i.test(nomVerse) ? "payé" : /rembours/i.test(nomVerse) ? "remboursé" : "réglé"
+    var montant = cols[p.reste].genre === "montant"
+    var resteTexte = enChiffres(reste) + (montant ? " F" : "")
+    if (soldes === n) return "<b>" + (n > 1 ? "Les " + n + " " + noms + " ont" : "1 " + nom + " sur 1 a") + " tout " + participe + "</b> · plus rien à recevoir"
+    var debut = soldes === 0 ? "<b>Personne n'a encore tout " + participe + "</b>"
+                : "<b>" + soldes + " " + (soldes > 1 ? noms : nom) + " sur " + n + "</b> " + (soldes > 1 ? "ont" : "a") + " tout " + participe
+    return debut + " · il reste " + resteTexte + " à recevoir"
+}

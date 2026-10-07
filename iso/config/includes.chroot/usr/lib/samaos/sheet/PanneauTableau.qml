@@ -39,17 +39,7 @@ Rectangle {
     // La colonne de la case courante (rang dans le tableau), et la colonne « reste » d'un calcul A − B
     readonly property int rang: t ? doc.colonne - t.c1 : -1
     readonly property var colonne: rang >= 0 && rang < colonnes.length ? colonnes[rang] : null
-    readonly property var progression: {
-        for (var i = 0; i < colonnes.length; i++) {
-            if (!colonnes[i].calcul) continue
-            var m = /\[\[#[^\]]*\];\[([^\]]+)\]\]\s*-\s*[^\[;]+\[\[#[^\]]*\];\[([^\]]+)\]\]/.exec(colonnes[i].formule)
-            if (!m) continue
-            var du = -1, verse = -1
-            for (var j = 0; j < colonnes.length; j++) { if (colonnes[j].nom === m[1]) du = j; if (colonnes[j].nom === m[2]) verse = j }
-            if (du >= 0 && verse >= 0) return { reste: i, du: du, verse: verse }
-        }
-        return null
-    }
+    readonly property var progression: Fonctions.progression(colonnes)
     // Ce que la colonne contient, en mots
     function genreEnMots(c) {
         if (!c) return ""

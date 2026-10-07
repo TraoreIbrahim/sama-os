@@ -26,18 +26,7 @@ Rectangle {
     readonly property int rang: { for (var i = 0; i < remplies.length; i++) if (remplies[i].l === choisie) return i; return -1 }
 
     // Colonne calculée « A − B » : { reste, du, verse } (rangs des colonnes), ou null
-    readonly property var progression: {
-        var cols = donnees.colonnes
-        for (var i = 0; i < cols.length; i++) {
-            if (!cols[i].calcul) continue
-            var m = /\[\[#[^\]]*\];\[([^\]]+)\]\]\s*-\s*[^\[;]+\[\[#[^\]]*\];\[([^\]]+)\]\]/.exec(cols[i].formule)
-            if (!m) continue
-            var du = -1, verse = -1
-            for (var j = 0; j < cols.length; j++) { if (cols[j].nom === m[1]) du = j; if (cols[j].nom === m[2]) verse = j }
-            if (du >= 0 && verse >= 0) return { reste: i, du: du, verse: verse }
-        }
-        return null
-    }
+    readonly property var progression: Fonctions.progression(fiches.donnees.colonnes)
     function estTelephone(nom) { return /t[ée]l[ée]?phone|^t[ée]l\b|portable|whatsapp/i.test(nom) }
     function masquer(v) {
         var chiffres = v.replace(/\D/g, "")

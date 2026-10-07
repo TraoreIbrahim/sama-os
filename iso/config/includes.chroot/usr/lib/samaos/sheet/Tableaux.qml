@@ -2,6 +2,7 @@
 // Excel). Sama les lit et les change par les macros SamaTableaux du moteur (usr/lib/samaos/moteur/basic).
 import QtQuick
 import Sama.Moteur
+import "Fonctions.js" as Fonctions
 
 Item {
     id: tableaux
@@ -19,6 +20,23 @@ Item {
         }
         return null
     }
+    // Le tableau vu (celui de la case courante, ou des fiches, du formulaire) et son résumé pour la barre d'état :
+    // « <b>9 membres sur 12</b> ont tout versé · il reste 45 000 F à recevoir » (vide si ce n'est pas un tableau de
+    // versements)
+    property var cible: null
+    property string resume: ""
+    readonly property string signatureCible: cible ? cible.nom + ":" + cible.l1 + ":" + cible.l2 : ""
+    onSignatureCibleChanged: { resume = ""; relireResume.restart() }
+    Timer { id: relireResume; interval: 500; onTriggered: tableaux.lireResume() }
+    function lireResume() {
+        var t = cible
+        if (!t) { resume = ""; return }
+        appeler("Lignes", [t.nom], function (ok, v) {
+            if (!ok || !v || v.charAt(0) !== "{" || !tableaux.cible || tableaux.cible.nom !== t.nom) return
+            try { tableaux.resume = Fonctions.resume(JSON.parse(v)) } catch (e) { tableaux.resume = "" }
+        })
+    }
+
     // Ceux de la feuille affichée
     readonly property var visibles: liste.filter(function (t) { return t.feuille === doc.partie })
 
@@ -52,7 +70,7 @@ Item {
             delete tableaux.attentes[jeton]
             if (suite) suite(reussi, valeur)
         }
-        function onRevisionChanged() { relire.restart() }
+        function onRevisionChanged() { relire.restart(); if (tableaux.cible) relireResume.restart() }
         function onPartiesChanged() { relire.restart() }
         function onEtatChanged() { if (tableaux.doc.etat === DocumentLO.Pret) relire.restart(); else tableaux.liste = [] }
     }
