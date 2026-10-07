@@ -16,8 +16,9 @@ import javax.crypto.spec.SecretKeySpec
  *
  * Deux téléphones de proches se reconnaissent sans rien diffuser : celui qui s'ouvre annonce un nombre au hasard
  * et, pour chacun de ses proches, une étiquette (HMAC de ce nombre par leur secret). Seul un proche reconnu y
- * retrouve la sienne. Chaque requête porte ensuite une preuve, liée au nombre de l'autre, à un nombre neuf et à
- * la requête elle-même.
+ * retrouve la sienne. Chaque requête porte ensuite une preuve, liée au nombre de l'autre et à un nombre neuf, et
+ * part chiffrée ([Enveloppe]) avec deux clés tirées des mêmes nombres : une pour la requête, une pour la réponse.
+ * Sugu ne reçoit que ces clés, qui ne servent qu'une fois, jamais le secret.
  */
 object Cercle {
     const val AUTORITE = "africa.samaos.reglages.proches"
@@ -25,6 +26,12 @@ object Cercle {
     private val hasard = SecureRandom()
 
     class Reconnu(val id: String, val nom: String)
+
+    /** De quoi faire une requête chez un proche : l'en-tête « Sama-Proche » et les clés de la requête et de la réponse. */
+    class Acces(val entete: String, val demande: ByteArray, val reponse: ByteArray)
+
+    /** Une requête reçue d'un proche, sa preuve vérifiée : qui, son nombre neuf, et les clés pour la lire et lui répondre. */
+    class Verifie(val id: String, val nombre: String, val demande: ByteArray, val reponse: ByteArray)
 
     // ——— Les calculs (faits dans les Réglages, qui ont les secrets) ———
 
@@ -46,6 +53,10 @@ object Cercle {
 
     /** La preuve d'une requête : « <nombre de l'autre>|<nombre neuf>|<méthode et chemin> ». */
     fun preuve(secret: ByteArray, message: String) = b64(hmac(secret, "sama-proches-1|acces|$message").copyOf(16))
+
+    /** Les clés d'une requête et de sa réponse (AES-256), tirées du même message que la preuve. */
+    fun cles(secret: ByteArray, message: String): Pair<ByteArray, ByteArray> =
+        hmac(secret, "sama-proches-2|chiffre|demande|$message") to hmac(secret, "sama-proches-2|chiffre|reponse|$message")
 
     fun egal(a: String, b: String) = MessageDigest.isEqual(a.toByteArray(), b.toByteArray())
 
@@ -71,23 +82,25 @@ object Cercle {
     fun trouver(c: Context, a: Protocole.Annonce): String? =
         appel(c, "trouver", a.nombre, Bundle().apply { putStringArray("etiquettes", a.etiquettes.take(200).toTypedArray()) })?.getString("id")
 
-    /** L'en-tête « Sama-Proche » d'une requête vers le téléphone du proche [id], qui a annoncé [nombre]. */
-    fun entete(c: Context, id: String, nombre: String, requete: String): String? {
+    /** L'accès pour une requête vers le téléphone du proche [id], qui a annoncé [nombre]. */
+    fun acces(c: Context, id: String, nombre: String, requete: String): Acces? {
         val n = nombre()
-        val p = appel(c, "signer", id, Bundle().apply { putString("message", "$nombre|$n|$requete") })?.getString("preuve") ?: return null
-        return "$n.$p"
+        val b = appel(c, "signer", id, Bundle().apply { putString("message", "$nombre|$n|$requete") }) ?: return null
+        val p = b.getString("preuve") ?: return null
+        return Acces("$n.$p", b.getByteArray("demande") ?: return null, b.getByteArray("reponse") ?: return null)
     }
 
     /** Le proche qui a envoyé une requête, si sa preuve est bonne ([monNombre] : celui de notre annonce). */
-    fun verifier(c: Context, monNombre: String, entete: String, requete: String): Pair<String, String>? {
+    fun verifier(c: Context, monNombre: String, entete: String, requete: String): Verifie? {
         val n = entete.substringBefore('.', "")
         val p = entete.substringAfter('.', "")
         if (n.length !in 16..32 || p.isEmpty()) return null
-        val id = appel(c, "verifier", null, Bundle().apply {
+        val b = appel(c, "verifier", null, Bundle().apply {
             putString("message", "$monNombre|$n|$requete")
             putString("preuve", p)
-        })?.getString("id") ?: return null
-        return id to n
+        }) ?: return null
+        val id = b.getString("id") ?: return null
+        return Verifie(id, n, b.getByteArray("demande") ?: return null, b.getByteArray("reponse") ?: return null)
     }
 
     /** « d'Awa », « de Koffi ». */

@@ -64,7 +64,6 @@ import androidx.core.view.WindowCompat
 import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Icones
 import africa.samaos.banco.Polices
-import africa.samaos.banco.appli.BoutonAppli
 import africa.samaos.banco.appli.BoutonTexteAppli
 import africa.samaos.banco.appli.ChampAppli
 import africa.samaos.banco.appli.DialogueAppli
@@ -241,7 +240,7 @@ private fun IconeAppli(o: Offre?, paquet: String, nom: String, taille: Dp) {
 
 /** Le bouton d'une appli : Installer, Mettre à jour, Ouvrir, ou l'avancement. */
 @Composable
-private fun Action(o: Offre, plein: Boolean = false) {
+private fun Action(o: Offre, plein: Boolean = false, modifier: Modifier = Modifier) {
     val c = LocalContext.current
     val a = LocalIdentite.current
     val e = Installations.de(o.fiche.paquet)
@@ -255,11 +254,11 @@ private fun Action(o: Offre, plein: Boolean = false) {
             },
             style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = a.accentTexte),
         )
-        installee != null && installee >= o.fiche.version -> BoutonTexteAppli("Ouvrir", style = 's') {
+        installee != null && installee >= o.fiche.version -> BoutonTexteAppli("Ouvrir", style = if (plein) ' ' else 's', modifier = modifier) {
             c.packageManager.getLaunchIntentForPackage(o.fiche.paquet)?.let { c.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }
-        installee != null -> BoutonTexteAppli("Mettre à jour", style = if (plein) ' ' else 's') { Catalogue.lancer(c, o) }
-        else -> BoutonTexteAppli("Installer", style = if (plein) ' ' else 's') { Catalogue.lancer(c, o) }
+        installee != null -> BoutonTexteAppli("Mettre à jour", style = if (plein) ' ' else 's', modifier = modifier) { Catalogue.lancer(c, o) }
+        else -> BoutonTexteAppli("Installer", style = if (plein) ' ' else 's', modifier = modifier) { Catalogue.lancer(c, o) }
     }
 }
 
@@ -377,9 +376,7 @@ private fun PageFiche(paquet: String, aller: (Vue) -> Unit, retour: () -> Unit) 
     LaunchedEffect(paquet, Installations.fins) { donnable = withContext(Dispatchers.IO) { Gardees.donnable(c, paquet) } }
     val o = Catalogue.offre(paquet) ?: donnable?.let { Offre(it.fiche, it.vitrine, ICI) }
     EcranAppli {
-        Tete("", retour = retour, petit = true) {
-            if (donnable != null) BoutonAppli(Icones.PARTAGER, "Envoyer à un proche") { aller(Vue.Envoyer(paquet)) }
-        }
+        Tete("", retour = retour, petit = true)
         if (o == null) {
             BasicText("Cette appli n'est plus proposée à portée.", modifier = Modifier.padding(20.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2))
             return@EcranAppli
@@ -428,23 +425,18 @@ private fun PageFiche(paquet: String, aller: (Vue) -> Unit, retour: () -> Unit) 
                         )
                     }
                 } else {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Action(o, plein = true) }
+                    // Une seule rangée : envoyer à un proche (si ce téléphone peut la donner), puis l'action
+                    // principale, pleine, à droite ; seule, elle prend toute la largeur.
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (donnable != null) BoutonTexteAppli("Envoyer", style = 's', icone = Icones.PROXIMITE, modifier = Modifier.weight(1f)) { aller(Vue.Envoyer(paquet)) }
+                        Action(o, plein = true, modifier = Modifier.weight(1f))
+                    }
                 }
             }
             if (e?.etape == Installations.Etape.ECHEC) e.message?.let {
                 BasicText(it, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, lineHeight = 20.sp, color = a.accentTexte))
             }
-            Spacer(Modifier.height(10.dp))
-            if (donnable != null) Box(Modifier.padding(horizontal = 20.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(a.voile).clickable(role = Role.Button) { aller(Vue.Envoyer(paquet)) },
-                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconeTrait(Icones.PROXIMITE, 18.dp, a.accentTexte)
-                    Spacer(Modifier.width(8.dp))
-                    BasicText("Envoyer à un proche, sans data", style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = a.accentTexte))
-                }
-            }
+            Spacer(Modifier.height(4.dp))
             v?.description?.ifBlank { null }?.let {
                 BasicText(it, modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, lineHeight = 23.sp, color = a.encre))
             }

@@ -79,7 +79,7 @@ object Echange {
     private var annonce: NsdManager.RegistrationListener? = null
     private var decouverte: Decouverte? = null
 
-    fun annonceJson(): JSONObject = JSONObject().put("v", 1).put("n", nombre).put("e", JSONArray(etiquettes))
+    fun annonceJson(): JSONObject = JSONObject().put("v", Protocole.VERSION_PROCHES).put("n", nombre).put("e", JSONArray(etiquettes))
 
     fun envoisEnCours() = (serveur?.envoisEnCours?.get() ?: 0) > 0
 
@@ -141,7 +141,7 @@ object Echange {
             serviceName = "sama-" + Cercle.nombre().take(8)
             serviceType = Protocole.SERVICE_PROCHE
             this.port = port
-            setAttribute("v", "1")
+            setAttribute("v", Protocole.VERSION_PROCHES.toString())
         }
         val l = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(s: NsdServiceInfo) {}
@@ -169,7 +169,7 @@ object Echange {
         val id = Cercle.trouver(c, a) ?: return null
         voisins[id]?.takeIf { it.nombre == a.nombre && it.point.adresse == p.adresse }?.let { return it }
         val nom = noms[id] ?: Cercle.reconnus(c).firstOrNull { it.id == id }?.nom?.also { noms = noms + (id to it) } ?: "Un proche"
-        val point = Point(nom, p.hote, p.port, proche = id) { requete -> Cercle.entete(c, id, a.nombre, requete) }
+        val point = Point(nom, p.hote, p.port, proche = id) { Cercle.acces(c, id, a.nombre, "POST ${Protocole.CHIFFRE}") }
         val v = Voisin(id, nom, a.nombre, point)
         voisins[id] = v
         actualiser(c, v)

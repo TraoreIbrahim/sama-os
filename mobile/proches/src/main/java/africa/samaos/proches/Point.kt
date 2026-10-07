@@ -13,41 +13,44 @@ import java.net.Socket
 
 /**
  * Un point Sama (ordinateur Sama d'une école, d'une mairie, d'un cybercafé) ou le téléphone d'un proche.
- * [proche] : l'identifiant du proche reconnu dont c'est le téléphone ; [preuve] : de quoi prouver, à chaque
- * requête, qu'on est l'un de ses proches (un téléphone ne répond qu'à eux).
+ * [proche] : l'identifiant du proche reconnu dont c'est le téléphone ; [acces] : à chaque requête, de quoi
+ * prouver qu'on est l'un de ses proches (un téléphone ne répond qu'à eux) et chiffrer l'échange.
  */
-class Point(val nom: String, val hote: String, val port: Int, val proche: String? = null, val preuve: ((String) -> String?)? = null) {
+class Point(val nom: String, val hote: String, val port: Int, val proche: String? = null, val acces: (() -> Cercle.Acces?)? = null) {
     val adresse get() = "$hote:$port"
 }
 
 /**
- * Le protocole de Proche en proche, version 1 : du HTTP tout simple sur le réseau local (Wi-Fi, point d'accès,
- * Wi-Fi Direct). Rien n'y est secret ni protégé : ce sont la signature des fiches et l'empreinte des fichiers qui
- * garantissent qu'on reçoit ce que l'éditeur a publié.
+ * Le protocole de Proche en proche : du HTTP tout simple sur le réseau local (Wi-Fi, point d'accès, Wi-Fi Direct).
+ * Ce sont la signature des fiches et l'empreinte des fichiers qui garantissent qu'on reçoit ce que l'éditeur a
+ * publié. Chez un point Sama (version 1), rien n'est caché :
  *   GET /proches/v1/catalogue        → {"point": {"nom": …}, "paquets": [fiches signées]}
  *   GET /proches/v1/fichier/<sha256> → le fichier ; « Range: bytes=N- » pour reprendre où l'on s'était arrêté
- * Entre téléphones de proches (PROTOCOLE.md), en plus : l'annonce, la proposition et la réponse, et l'en-tête
- * « Sama-Proche » sur chaque requête.
+ * Entre téléphones de proches (version 2, PROTOCOLE.md) : l'annonce reste publique ; tout le reste (les mêmes
+ * requêtes, plus la proposition et la réponse) part chiffré dans « POST /proches/v2/chiffre », avec l'en-tête
+ * « Sama-Proche ».
  */
 object Protocole {
     const val SERVICE = "_samapoint._tcp."
     const val PORT = 8765
     /** Les téléphones ouverts à leurs proches. */
     const val SERVICE_PROCHE = "_samaproche._tcp."
+    /** La version du protocole entre proches (annonce, mDNS) : 2, l'échange chiffré. */
+    const val VERSION_PROCHES = 2
+    /** Le seul chemin, entre proches, en dehors de l'annonce : la vraie requête est dans l'enveloppe. */
+    const val CHIFFRE = "/proches/v2/chiffre"
     private const val DELAI = 15_000
 
     private class Reponse(val code: Int, val entetes: Map<String, String>, val corps: InputStream, val socket: Socket)
 
     private fun demander(p: Point, chemin: String, debut: Long = 0, corps: ByteArray? = null): Reponse {
         val methode = if (corps != null) "POST" else "GET"
-        // La preuve se calcule avant d'ouvrir la connexion : chez un proche, pas de preuve, pas de requête.
-        val preuve = p.preuve?.let { it("$methode $chemin") ?: error("Pas de preuve pour ce proche") }
-        val s = Socket()
-        s.connect(InetSocketAddress(p.hote, p.port), DELAI)
-        s.soTimeout = DELAI
+        // L'accès se calcule avant d'ouvrir la connexion : chez un proche, pas de preuve, pas de requête.
+        val a = p.acces?.let { it() ?: error("Pas d'accès pour ce proche") }
+        if (a != null) return demanderChiffre(p, a, methode, chemin, debut, corps)
+        val s = connecter(p)
         val requete = buildString {
             append("$methode $chemin HTTP/1.1\r\nHost: ${p.hote}\r\nConnection: close\r\nUser-Agent: SamaProches/1\r\n")
-            if (preuve != null) append("Sama-Proche: $preuve\r\n")
             if (debut > 0) append("Range: bytes=$debut-\r\n")
             if (corps != null) append("Content-Type: application/json\r\nContent-Length: ${corps.size}\r\n")
             append("\r\n")
@@ -58,26 +61,58 @@ object Protocole {
             flush()
         }
         val e = BufferedInputStream(s.getInputStream())
-        fun ligne(): String {
-            val b = StringBuilder()
-            while (true) {
-                val x = e.read()
-                if (x < 0 || x == '\n'.code) break
-                if (x != '\r'.code) b.append(x.toChar())
-                if (b.length > 8192) error("En-tête trop long")
-            }
-            return b.toString()
+        val (code, entetes) = lireEntete(e, http = true)
+        return Reponse(code, entetes, e, s)
+    }
+
+    /**
+     * Chez un proche : la vraie requête (méthode, chemin, reprise, contenu) part chiffrée dans
+     * « POST /proches/v2/chiffre », et la vraie réponse (code, en-têtes, contenu) revient chiffrée. En clair ne
+     * passent que la preuve et la taille, à 16 Kio près.
+     */
+    private fun demanderChiffre(p: Point, a: Cercle.Acces, methode: String, chemin: String, debut: Long, corps: ByteArray?): Reponse {
+        val enveloppe = java.io.ByteArrayOutputStream()
+        Enveloppe.Ecrivain(a.demande, enveloppe).use { w ->
+            w.write(buildString {
+                append("$methode $chemin\n")
+                if (debut > 0) append("Range: bytes=$debut-\n")
+                append("\n")
+            }.toByteArray(Charsets.UTF_8))
+            if (corps != null) w.write(corps)
         }
-        val statut = ligne()
-        val code = statut.split(' ').getOrNull(1)?.toIntOrNull() ?: error("Réponse illisible")
+        val s = connecter(p)
+        s.getOutputStream().apply {
+            write(("POST $CHIFFRE HTTP/1.1\r\nHost: ${p.hote}\r\nConnection: close\r\nUser-Agent: SamaProches/2\r\n" +
+                "Sama-Proche: ${a.entete}\r\nContent-Type: application/octet-stream\r\nContent-Length: ${enveloppe.size()}\r\n\r\n").toByteArray(Charsets.US_ASCII))
+            enveloppe.writeTo(this)
+            flush()
+        }
+        val e = BufferedInputStream(s.getInputStream())
+        val (code, entetes) = lireEntete(e, http = true)
+        if (code != 200) return Reponse(code, entetes, e, s)
+        val dedans = Enveloppe.Lecteur(a.reponse, e)
+        val (vraiCode, vraisEntetes) = lireEntete(dedans, http = false)
+        return Reponse(vraiCode, vraisEntetes, dedans, s)
+    }
+
+    private fun connecter(p: Point) = Socket().apply {
+        connect(InetSocketAddress(p.hote, p.port), DELAI)
+        soTimeout = DELAI
+    }
+
+    /** La ligne d'état (« HTTP/1.1 200 OK », ou « 200 » dans l'enveloppe) et les en-têtes, jusqu'à la ligne vide. */
+    private fun lireEntete(e: InputStream, http: Boolean): Pair<Int, Map<String, String>> {
+        val statut = Enveloppe.ligne(e) ?: error("Réponse vide")
+        val code = (if (http) statut.split(' ').getOrNull(1) else statut.trim()).let { it?.toIntOrNull() } ?: error("Réponse illisible")
         val entetes = mutableMapOf<String, String>()
         while (true) {
-            val l = ligne()
+            val l = Enveloppe.ligne(e) ?: break
             if (l.isEmpty()) break
             val i = l.indexOf(':')
             if (i > 0) entetes[l.substring(0, i).trim().lowercase()] = l.substring(i + 1).trim()
+            if (entetes.size > 50) error("Trop d'en-têtes")
         }
-        return Reponse(code, entetes, e, s)
+        return code to entetes
     }
 
     /**
@@ -93,8 +128,8 @@ object Protocole {
         val texte = r.socket.use { if (r.code == 200) r.corps.readBytes().decodeToString() else error("Le point a répondu ${r.code}") }
         val o = JSONObject(texte)
         val nom = o.optJSONObject("point")?.optString("nom")?.ifBlank { null }
-        // Le point garde ce qui le rattache à un proche (sa preuve) : les fichiers se demandent avec.
-        val ici = if (nom == null || nom == p.nom) p else Point(nom, p.hote, p.port, p.proche, p.preuve)
+        // Le point garde ce qui le rattache à un proche (son accès) : les fichiers se demandent avec.
+        val ici = if (nom == null || nom == p.nom) p else Point(nom, p.hote, p.port, p.proche, p.acces)
         val bruts = o.optJSONArray("paquets")
         var ecartes = 0
         val offres = (0 until (bruts?.length() ?: 0)).mapNotNull { i ->
@@ -120,7 +155,7 @@ object Protocole {
             if (r.code != 200) return null
             val o = JSONObject(lireLimite(r.corps, 64 * 1024).decodeToString())
             val e = o.optJSONArray("e")
-            Annonce(o.getString("n"), (0 until (e?.length() ?: 0)).map { e!!.getString(it) }).takeIf { o.optInt("v") == 1 }
+            Annonce(o.getString("n"), (0 until (e?.length() ?: 0)).map { e!!.getString(it) }).takeIf { o.optInt("v") == VERSION_PROCHES }
         }
     } catch (_: Exception) {
         null

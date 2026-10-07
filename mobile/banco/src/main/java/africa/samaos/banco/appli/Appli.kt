@@ -449,10 +449,10 @@ fun PuceFiltre(texte: String, choisie: Boolean, debut: (@Composable () -> Unit)?
 
 /** Le bouton d'action d'une appli : plein d'accent, voilé (s) ou texte (t). */
 @Composable
-fun BoutonTexteAppli(texte: String, style: Char = ' ', icone: String? = null, actif: Boolean = true, onClick: () -> Unit) {
+fun BoutonTexteAppli(texte: String, style: Char = ' ', icone: String? = null, actif: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val a = LocalIdentite.current
     Row(
-        Modifier
+        modifier
             .height(48.dp)
             .clip(RoundedCornerShape(24.dp))
             .then(
@@ -465,7 +465,8 @@ fun BoutonTexteAppli(texte: String, style: Char = ' ', icone: String? = null, ac
             .clickable(enabled = actif, onClickLabel = texte, role = Role.Button, onClick = onClick)
             .padding(horizontal = if (style == 't') 10.dp else 22.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Centré quand on lui donne une largeur (deux boutons côte à côte).
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
         val encre = when (style) {
             's', 't' -> a.accentTexte

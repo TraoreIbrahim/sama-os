@@ -325,8 +325,11 @@ Pour se reconnaître sans caméra, chaque émulateur ouvre le code de l'autre, c
 avec `adb shell content call --uri content://africa.samaos.reglages.proches --method code`, puis
 `adb -s <l'autre> shell "am start -a android.intent.action.VIEW -d '<code>'"`. Ensuite, Sugu › Autour ›
 « Ouvrir à mes proches » des deux côtés. Les émulateurs sont débranchés : `adb shell dumpsys battery set ac 1`
-pour que les applis soient montrées aux proches. Le Wi-Fi Direct (sans routeur) et le point Sama du bureau
-restent à faire.
+pour que les applis soient montrées aux proches. Entre proches, tout est chiffré (AES-GCM, clés tirées du secret
+partagé, une par requête) : sur le Wi-Fi, un voisin ne voit ni les applis, ni les catalogues, ni les fichiers
+(`proches/PROTOCOLE.md`, « L'enveloppe »). Pour le vérifier, `tcpdump` existe sur l'émulateur (après `adb root`) :
+`tcpdump -i wlan0 -w /data/local/tmp/cap.pcap tcp and not port 5555`. Le Wi-Fi Direct (sans routeur) et le point
+Sama du bureau restent à faire.
 
 ## Contenu
 

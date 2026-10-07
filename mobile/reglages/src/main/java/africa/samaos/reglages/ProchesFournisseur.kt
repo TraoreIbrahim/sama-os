@@ -12,8 +12,9 @@ import africa.samaos.proches.Cercle
 
 /**
  * Les proches reconnus, pour les autres applis de Sama (Sugu) : les Réglages gardent la clé du téléphone et les
- * secrets partagés, et ne donnent que des étiquettes et des preuves calculées avec eux. Réservé aux applis signées
- * comme le système ; adb (shell ou root) peut seulement lire le code QR du téléphone, qui est public.
+ * secrets partagés, et ne donnent que des étiquettes, des preuves et les clés d'une seule requête, calculées avec
+ * eux. Réservé aux applis signées comme le système ; adb (shell ou root) peut seulement lire le code QR du
+ * téléphone, qui est public.
  */
 class ProchesFournisseur : ContentProvider() {
     private companion object {
@@ -51,13 +52,24 @@ class ProchesFournisseur : ContentProvider() {
                 "signer" -> {
                     val p = l.firstOrNull { Cercle.id(it.cle) == arg } ?: return null
                     val m = extras?.getString("message") ?: return null
-                    Bundle().apply { putString("preuve", Cercle.preuve(MoteurReconnus.secret(p), m)) }
+                    val secret = MoteurReconnus.secret(p)
+                    val (demande, reponse) = Cercle.cles(secret, m)
+                    Bundle().apply {
+                        putString("preuve", Cercle.preuve(secret, m))
+                        putByteArray("demande", demande)
+                        putByteArray("reponse", reponse)
+                    }
                 }
                 "verifier" -> {
                     val m = extras?.getString("message") ?: return null
                     val preuve = extras.getString("preuve") ?: return null
                     val p = l.firstOrNull { Cercle.egal(Cercle.preuve(MoteurReconnus.secret(it), m), preuve) } ?: return Bundle()
-                    Bundle().apply { putString("id", Cercle.id(p.cle)) }
+                    val (demande, reponse) = Cercle.cles(MoteurReconnus.secret(p), m)
+                    Bundle().apply {
+                        putString("id", Cercle.id(p.cle))
+                        putByteArray("demande", demande)
+                        putByteArray("reponse", reponse)
+                    }
                 }
                 else -> null
             }

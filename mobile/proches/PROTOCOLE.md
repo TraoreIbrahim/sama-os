@@ -1,13 +1,14 @@
-# Proche en proche — protocole, version 1
+# Proche en proche — protocole (version 1 chez un point Sama, version 2 entre proches)
 
 Recevoir sans data les applis et mises à jour de Sama et de Sugu, depuis un **point Sama** (ordinateur Sama
 d'une école, d'une mairie, d'un cybercafé) ou depuis le téléphone d'un proche reconnu.
 
 ## Le principe de sécurité
 
-Le transport n'est pas protégé et n'a pas besoin de l'être : ce qui fait foi, c'est **la fiche signée** de
-l'éditeur. Un fichier peut passer par n'importe qui ; s'il ne correspond pas exactement à sa fiche, il est
-supprimé sans rien installer.
+Ce qui fait foi, c'est **la fiche signée** de l'éditeur, pas le transport : un fichier peut passer par
+n'importe qui ; s'il ne correspond pas exactement à sa fiche, il est supprimé sans rien installer. Chez un point
+Sama, le transport n'est pas protégé ; entre téléphones de proches, il est en plus chiffré, pour que personne
+sur le même Wi-Fi ne sache ce qu'ils s'échangent (voir « L'enveloppe »).
 
 Avant d'installer, le téléphone vérifie, dans l'ordre :
 
@@ -93,29 +94,41 @@ reconnus **des deux côtés** se voient. Les secrets ne quittent jamais les Rég
 étiquettes et les preuves (fournisseur `africa.samaos.reglages.proches`, réservé aux applis signées comme le
 système).
 
-- **L'annonce** : mDNS `_samaproche._tcp`, sous un nom de service au hasard (`sama-xxxxxxxx`) et un port au
-  hasard. `GET /proches/v1/annonce`, la seule requête publique, répond `{"v": 1, "n": "<nombre>", "e": [étiquettes]}` :
+- **L'annonce** : mDNS `_samaproche._tcp` (attribut `v=2`), sous un nom de service au hasard (`sama-xxxxxxxx`)
+  et un port au hasard. `GET /proches/v1/annonce`, la seule requête en clair, répond `{"v": 2, "n": "<nombre>", "e": [étiquettes]}` :
   un nombre au hasard de 128 bits, neuf à chaque ouverture, et une étiquette par proche, dans le désordre :
   `HMAC-SHA256(secret, "sama-proches-1|annonce|" + n)`, 16 octets en base64url. Celui qui n'est pas un proche ne
   voit qu'un nombre au hasard et des étiquettes qu'il ne peut ni comprendre ni relier d'une ouverture à l'autre.
 - **Se trouver** : le téléphone qui voit l'annonce calcule, pour ce nombre, l'étiquette de chacun de ses proches ;
   s'il en retrouve une, c'est ce proche.
-- **La preuve** : toutes les autres requêtes portent `Sama-Proche: <m>.<preuve>`, où `m` est un nombre neuf et
-  `preuve = HMAC-SHA256(secret, "sama-proches-1|acces|" + n + "|" + m + "|" + "<MÉTHODE> <chemin>")`, 16 octets.
-  Le téléphone qui répond retrouve le proche dont le secret donne cette preuve ; il refuse une preuve absente,
-  fausse ou déjà servie (`403`).
-- **Catalogue et fichiers** : les mêmes que ceux d'un point Sama. Un téléphone ne donne que les applis dont le
+- **La preuve** : toutes les autres requêtes sont `POST /proches/v2/chiffre` et portent `Sama-Proche: <m>.<preuve>`,
+  où `m` est un nombre neuf et `preuve = HMAC-SHA256(secret, "sama-proches-1|acces|" + n + "|" + m + "|POST /proches/v2/chiffre")`,
+  16 octets. Le téléphone qui répond retrouve le proche dont le secret donne cette preuve ; il refuse une preuve
+  absente, fausse ou déjà servie, et toute autre requête en clair (`403`).
+- **L'enveloppe** : la vraie requête est dans le corps, chiffrée : `<MÉTHODE> <chemin>`, puis ses en-têtes
+  (`Range: bytes=N-` pour reprendre), une ligne vide et son contenu. La vraie réponse revient chiffrée dans une
+  réponse `200` : son code (`200`, `206`, `404`…), ses en-têtes, une ligne vide et son contenu. Deux clés
+  AES-256, tirées du même message que la preuve (`message = n + "|" + m + "|POST /proches/v2/chiffre"`) :
+  `HMAC-SHA256(secret, "sama-proches-2|chiffre|demande|" + message)` pour la requête,
+  `HMAC-SHA256(secret, "sama-proches-2|chiffre|reponse|" + message)` pour la réponse. Comme `m` est neuf, une
+  clé ne sert qu'une fois. Le texte part en blocs AES-GCM de même taille : 1 octet (1 pour le dernier bloc,
+  sinon 0), 2 octets (la longueur utile, au plus 16 384), le contenu complété de zéros jusqu'à 16 384 octets,
+  puis le sceau de 16 octets ; le nonce de 12 octets est le numéro du bloc (4 octets nuls, puis 8 octets, à
+  partir de 0). Un bloc changé, retiré, déplacé ou ajouté, ou une enveloppe sans dernier bloc, est refusé. Les
+  Réglages calculent les clés et ne donnent à Sugu que celles de la requête en cours, jamais le secret.
+- **Catalogue et fichiers** : les mêmes que ceux d'un point Sama, dans l'enveloppe. Un téléphone ne donne que les applis dont le
   fichier installé est exactement celui d'une fiche signée qu'il a reçue (d'un point ou d'un proche) : il garde
   la fiche et la vitrine à l'installation. Les réglages « Donner » s'appliquent (partage permis, seulement
   branché avec la batterie au-dessus de 50 %, limite par jour), sauf pour ce qu'on envoie soi-même à un proche.
-- **La proposition** : `POST /proches/v1/proposition` `{"sha256": …, "port": …}` (« je t'envoie ce fichier »).
+- **La proposition** : `POST /proches/v1/proposition` `{"sha256": …, "port": …}` (« je t'envoie ce fichier »),
+  dans l'enveloppe, comme la réponse.
   Le téléphone qui la reçoit, seulement s'il est ouvert, va lire la fiche chez l'envoyeur (son adresse, le port
   donné) avec sa propre preuve ; il ne la montre que si elle est signée et plus récente que ce qu'il a, et la
   personne choisit. S'il l'a déjà, ou si la personne refuse : `POST /proches/v1/reponse`
   `{"sha256": …, "reponse": "deja" | "non"}`.
-- **Ce qui n'est pas caché** : sur un Wi-Fi partagé, le contenu n'est pas chiffré ; un autre appareil du réseau
-  peut voir quelles applis passent (jamais un nom ni un numéro). Le chiffrement par le secret partagé viendra avec
-  Wi-Fi Direct.
+- **Ce qui reste visible** sur un Wi-Fi partagé : que deux téléphones Sama ouverts se parlent, quand, et combien
+  (à 16 Kio près ; toutes les requêtes ont la même taille). Ni les applis, ni les noms, ni les catalogues, ni les
+  fichiers.
 
 ## Les alertes du bouclier entre proches
 

@@ -5,11 +5,15 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import africa.samaos.proches.Cercle
+import africa.samaos.proches.Enveloppe
 import africa.samaos.proches.Partage
+import africa.samaos.proches.Protocole
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
 import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
@@ -52,7 +56,7 @@ object Don {
 /**
  * Le petit serveur du téléphone ouvert à ses proches : le protocole des points Sama (PROTOCOLE.md), plus
  * l'annonce, la proposition et la réponse. Seule l'annonce est publique ; tout le reste exige la preuve d'un
- * proche reconnu, et chaque preuve ne sert qu'une fois.
+ * proche reconnu, chaque preuve ne sert qu'une fois, et la requête comme la réponse sont chiffrées ([Enveloppe]).
  */
 class Serveur(private val c: Context) {
     private val ecoute = ServerSocket(0)
@@ -114,7 +118,8 @@ class Serveur(private val c: Context) {
             if (entetes.size > 50) return null
         }
         val n = entetes["content-length"]?.toIntOrNull() ?: 0
-        if (n !in 0..16 * 1024) return null
+        // Une requête tient dans quelques blocs chiffrés (une proposition, une réponse : un seul).
+        if (n !in 0..4 * Enveloppe.BLOC) return null
         val corps = ByteArray(n)
         var lu = 0
         while (lu < n) {
@@ -125,55 +130,101 @@ class Serveur(private val c: Context) {
         return Requete(premiere[0], premiere[1], entetes, corps)
     }
 
-    private fun repondre(o: OutputStream, code: Int, corps: ByteArray = ByteArray(0), type: String = "application/json", plus: String = "") {
+    /** Une réponse en clair, hors de l'enveloppe : l'annonce, ou un refus (sans preuve, preuve fausse ou déjà servie). */
+    private fun repondre(o: OutputStream, code: Int, corps: ByteArray = ByteArray(0)) {
         val texte = when (code) {
-            200 -> "OK"; 202 -> "Accepted"; 206 -> "Partial Content"; 403 -> "Forbidden"; 404 -> "Not Found"; else -> "Error"
+            200 -> "OK"; 400 -> "Bad Request"; 403 -> "Forbidden"; 404 -> "Not Found"; else -> "Error"
         }
-        o.write("HTTP/1.1 $code $texte\r\nContent-Type: $type\r\nContent-Length: ${corps.size}\r\nConnection: close\r\n$plus\r\n".toByteArray(Charsets.US_ASCII))
+        o.write("HTTP/1.1 $code $texte\r\nContent-Type: application/json\r\nContent-Length: ${corps.size}\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
         o.write(corps)
         o.flush()
     }
 
-    private fun json(o: OutputStream, code: Int, j: JSONObject) = repondre(o, code, j.toString().toByteArray(Charsets.UTF_8))
+    /**
+     * La réponse à un proche : en clair, seulement « 200 » et la taille de l'enveloppe ; le vrai code, les en-têtes
+     * et le contenu sont dedans, chiffrés avec la clé de la réponse.
+     */
+    private class Sortie(private val o: OutputStream, private val cle: ByteArray) {
+        /** [contenu] doit écrire exactement [longueur] octets. */
+        fun ecrire(code: Int, entetes: String = "", longueur: Long = 0, contenu: (OutputStream) -> Unit = {}) {
+            val tete = "$code\n$entetes\n".toByteArray(Charsets.UTF_8)
+            o.write("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: ${Enveloppe.taille(tete.size + longueur)}\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
+            val w = Enveloppe.Ecrivain(cle, o)
+            w.write(tete)
+            contenu(w)
+            w.close()
+        }
+
+        fun json(code: Int, j: JSONObject) {
+            val b = j.toString().toByteArray(Charsets.UTF_8)
+            ecrire(code, "Content-Type: application/json\nContent-Length: ${b.size}\n", b.size.toLong()) { it.write(b) }
+        }
+    }
+
+    /** La vraie requête d'un proche, sortie de l'enveloppe. */
+    private class Interne(val methode: String, val chemin: String, val entetes: Map<String, String>, val corps: ByteArray)
+
+    private fun ouvrir(e: InputStream): Interne {
+        val premiere = Enveloppe.ligne(e)?.split(' ') ?: throw IOException("Requête vide")
+        if (premiere.size != 2) throw IOException("Requête illisible")
+        val entetes = mutableMapOf<String, String>()
+        while (true) {
+            val l = Enveloppe.ligne(e) ?: break
+            if (l.isEmpty()) break
+            val i = l.indexOf(':')
+            if (i > 0) entetes[l.substring(0, i).trim().lowercase()] = l.substring(i + 1).trim()
+            if (entetes.size > 20) throw IOException("Trop d'en-têtes")
+        }
+        return Interne(premiere[0], premiere[1], entetes, e.readBytes())
+    }
 
     private fun traiter(s: Socket) {
         val r = lire(s) ?: return
         val o = s.getOutputStream()
-        if (r.methode == "GET" && r.chemin == "/proches/v1/annonce") return json(o, 200, Echange.annonceJson())
-        // Tout le reste : seulement un proche reconnu, avec une preuve neuve.
-        val en = r.entetes["sama-proche"] ?: return repondre(o, 403).also { android.util.Log.w("SamaProches", "Requête sans preuve : ${r.methode} ${r.chemin}") }
-        val (id, n) = Cercle.verifier(c, Echange.nombre, en, "${r.methode} ${r.chemin}")
-            ?: return repondre(o, 403).also { android.util.Log.w("SamaProches", "Preuve refusée : ${r.methode} ${r.chemin}") }
-        if (!vus.add(n)) return repondre(o, 403).also { android.util.Log.w("SamaProches", "Preuve déjà servie : ${r.chemin}") }
+        if (r.methode == "GET" && r.chemin == "/proches/v1/annonce") return repondre(o, 200, Echange.annonceJson().toString().toByteArray(Charsets.UTF_8))
+        // Tout le reste : seulement un proche reconnu, avec une preuve neuve, et chiffré.
+        if (r.methode != "POST" || r.chemin != Protocole.CHIFFRE) return repondre(o, 403).also { android.util.Log.w("SamaProches", "Requête en clair refusée : ${r.methode} ${r.chemin}") }
+        val en = r.entetes["sama-proche"] ?: return repondre(o, 403).also { android.util.Log.w("SamaProches", "Requête sans preuve") }
+        val v = Cercle.verifier(c, Echange.nombre, en, "POST ${Protocole.CHIFFRE}")
+            ?: return repondre(o, 403).also { android.util.Log.w("SamaProches", "Preuve refusée") }
+        if (!vus.add(v.nombre)) return repondre(o, 403).also { android.util.Log.w("SamaProches", "Preuve déjà servie") }
+        val q = try {
+            ouvrir(Enveloppe.Lecteur(v.demande, r.corps.inputStream()))
+        } catch (x: IOException) {
+            android.util.Log.w("SamaProches", "Enveloppe illisible : $x")
+            return repondre(o, 400)
+        }
+        val id = v.id
+        val so = Sortie(o, v.reponse)
         when {
-            r.methode == "GET" && r.chemin == "/proches/v1/catalogue" -> {
+            q.methode == "GET" && q.chemin == "/proches/v1/catalogue" -> {
                 val paquets = JSONArray(offertes(id).map { d -> d.fiche.json().also { j -> d.vitrine?.let { j.put("vitrine", it.json()) } } })
-                json(o, 200, JSONObject().put("paquets", paquets))
+                so.json(200, JSONObject().put("paquets", paquets))
             }
-            r.methode == "GET" && r.chemin.startsWith("/proches/v1/fichier/") -> fichier(o, r, id, r.chemin.substringAfterLast('/').lowercase())
-            r.methode == "POST" && r.chemin == "/proches/v1/proposition" -> {
+            q.methode == "GET" && q.chemin.startsWith("/proches/v1/fichier/") -> fichier(so, q, id, q.chemin.substringAfterLast('/').lowercase())
+            q.methode == "POST" && q.chemin == "/proches/v1/proposition" -> {
                 val j = try {
-                    JSONObject(r.corps.decodeToString())
+                    JSONObject(q.corps.decodeToString())
                 } catch (_: Exception) {
-                    return repondre(o, 400)
+                    return so.ecrire(400)
                 }
                 val sha = j.optString("sha256").lowercase()
                 val port = j.optInt("port")
-                if (sha.length != 64 || port !in 1..65535) return repondre(o, 400)
-                val hote = s.inetAddress.hostAddress ?: return repondre(o, 400)
+                if (sha.length != 64 || port !in 1..65535) return so.ecrire(400)
+                val hote = s.inetAddress.hostAddress ?: return so.ecrire(400)
                 thread { Echange.recevoirProposition(c, id, hote, port, sha) }
-                json(o, 202, JSONObject())
+                so.json(202, JSONObject())
             }
-            r.methode == "POST" && r.chemin == "/proches/v1/reponse" -> {
+            q.methode == "POST" && q.chemin == "/proches/v1/reponse" -> {
                 val j = try {
-                    JSONObject(r.corps.decodeToString())
+                    JSONObject(q.corps.decodeToString())
                 } catch (_: Exception) {
-                    return repondre(o, 400)
+                    return so.ecrire(400)
                 }
                 Echange.reponse(id, j.optString("sha256").lowercase(), j.optString("reponse"))
-                json(o, 200, JSONObject())
+                so.json(200, JSONObject())
             }
-            else -> repondre(o, 404)
+            else -> so.ecrire(404)
         }
     }
 
@@ -185,44 +236,40 @@ class Serveur(private val c: Context) {
         return tout.filter { it.fiche.sha256 in envoyees }
     }
 
-    private fun fichier(o: OutputStream, r: Requete, id: String, sha: String) {
+    private fun fichier(so: Sortie, q: Interne, id: String, sha: String) {
         val offertes = offertes(id)
         val d = offertes.firstOrNull { it.fiche.sha256 == sha }
         val f: File = d?.fichier
             ?: offertes.firstOrNull { it.vitrine?.icone == sha }?.let { Gardees.icone(c, sha) }
-            ?: return repondre(o, 404)
+            ?: return so.ecrire(404)
         val taille = f.length()
-        val debut = Regex("bytes=(\\d+)-").find(r.entetes["range"].orEmpty())?.groupValues?.get(1)?.toLongOrNull()?.takeIf { it in 1 until taille } ?: 0L
-        val entete = buildString {
-            append(if (debut > 0) "HTTP/1.1 206 Partial Content\r\n" else "HTTP/1.1 200 OK\r\n")
-            append("Content-Type: application/octet-stream\r\nContent-Length: ${taille - debut}\r\nConnection: close\r\n")
-            if (debut > 0) append("Content-Range: bytes $debut-${taille - 1}/$taille\r\n")
-            append("\r\n")
+        val debut = Regex("bytes=(\\d+)-").find(q.entetes["range"].orEmpty())?.groupValues?.get(1)?.toLongOrNull()?.takeIf { it in 1 until taille } ?: 0L
+        val entetes = buildString {
+            append("Content-Type: application/octet-stream\nContent-Length: ${taille - debut}\n")
+            if (debut > 0) append("Content-Range: bytes $debut-${taille - 1}/$taille\n")
         }
-        o.write(entete.toByteArray(Charsets.US_ASCII))
-        if (d == null) {
-            f.inputStream().use { it.copyTo(o) }
-            return o.flush()
-        }
+        // Une icône : petite, toujours entière.
+        if (d == null) return so.ecrire(200, "Content-Type: application/octet-stream\nContent-Length: $taille\n", taille) { o -> f.inputStream().use { it.copyTo(o) } }
         envoisEnCours.incrementAndGet()
         var envoye = 0L
         try {
-            f.inputStream().use { e ->
-                e.skip(debut)
-                val t = ByteArray(64 * 1024)
-                var dernier = 0L
-                while (true) {
-                    val n = e.read(t)
-                    if (n < 0) break
-                    o.write(t, 0, n)
-                    envoye += n
-                    if (envoye - dernier > 256 * 1024) {
-                        dernier = envoye
-                        Echange.servi(id, sha, debut + envoye, false)
+            so.ecrire(if (debut > 0) 206 else 200, entetes, taille - debut) { o ->
+                f.inputStream().use { e ->
+                    e.skip(debut)
+                    val t = ByteArray(64 * 1024)
+                    var dernier = 0L
+                    while (true) {
+                        val n = e.read(t)
+                        if (n < 0) break
+                        o.write(t, 0, n)
+                        envoye += n
+                        if (envoye - dernier > 256 * 1024) {
+                            dernier = envoye
+                            Echange.servi(id, sha, debut + envoye, false)
+                        }
                     }
                 }
             }
-            o.flush()
             Echange.servi(id, sha, debut + envoye, debut + envoye == taille)
         } finally {
             envoisEnCours.decrementAndGet()
