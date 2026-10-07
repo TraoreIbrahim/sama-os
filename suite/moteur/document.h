@@ -185,8 +185,9 @@ signals:
     void lienClique(const QString &adresse, int c, int l);
     // Un message du moteur (une valeur refusée par la liste de la case, une question…) : Sama le montre à sa façon et
     // répond par repondreMessage ; boutons : [{ id, texte }] ; messageFerme : le moteur l'a refermé lui-même
-    void messageMoteur(qulonglong fenetre, const QString &texte, const QString &detail, const QVariantList &boutons);
-    void messageFerme(qulonglong fenetre);
+    // (numero : la fenêtre du moteur ; pas « fenetre », qui masquerait celle de Sama dans le QML)
+    void messageMoteur(qulonglong numero, const QString &texte, const QString &detail, const QVariantList &boutons);
+    void messageFerme(qulonglong numero);
 
 protected:
     QSGNode *updatePaintNode(QSGNode *ancien, UpdatePaintNodeData *) override;

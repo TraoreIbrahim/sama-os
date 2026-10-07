@@ -291,6 +291,18 @@ Rectangle {
                 }
             }
 
+            // ——— La liste de choix de la colonne (pas pour une colonne calculée) ———
+            ListeDeChoixColonne {
+                visible: panneau.colonne !== null && !panneau.colonne.calcul
+                Layout.fillWidth: true
+                Layout.leftMargin: 18
+                Layout.rightMargin: 18
+                t: panneau.t
+                colonne: panneau.colonne
+                rang: panneau.rang
+                onChange: panneau.lire()
+            }
+
             // ——— La ligne des totaux : le calcul de chaque colonne ———
             ColumnLayout {
                 Layout.fillWidth: true

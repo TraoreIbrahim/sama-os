@@ -24,10 +24,18 @@ Item {
 
     // ——— Les listes de choix ———
     property var bouton: null          // { c, l } : la case courante a une liste
+    // (la dernière case qui a montré sa liste : le moteur cache le ▾ pendant qu'on écrit ; on s'en souvient jusqu'à ce
+    // qu'on change de case — pour dire « pas dans la liste » quand il refuse une valeur)
+    property var caseListe: null       // { f, c, l }
     Connections {
         target: couche.moteur
-        function onBoutonListe(c, l, visible) { couche.bouton = visible ? { c: c, l: l } : null }
+        function onBoutonListe(c, l, visible) {
+            couche.bouton = visible ? { c: c, l: l } : null
+            if (visible) couche.caseListe = { f: couche.moteur.partie, c: c, l: l }
+        }
         function onCurseurChanged() {
+            var cl = couche.caseListe, m = couche.moteur
+            if (cl && m.colonne >= 0 && (m.colonne !== cl.c || m.ligne !== cl.l || m.partie !== cl.f)) couche.caseListe = null
             if (couche.lien && (couche.moteur.colonne !== couche.lien.c || couche.moteur.ligne !== couche.lien.l)) couche.lien = null
         }
         function onLienClique(adresse, c, l) { couche.montrerLien(adresse, c, l) }

@@ -2,7 +2,9 @@
 <!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
 <script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaListes" script:language="StarBasic"><![CDATA[REM Sama Sheet : les listes de choix d'une case. Celle d'une validation (une liste écrite, « "Espèces";"Mobile
 REM money" », ou une plage de cases, un nom), comme dans Excel ; sinon, comme Alt+Bas dans Excel, les textes déjà
-REM écrits dans la colonne, autour de la case.
+REM écrits dans la colonne, autour de la case. Poser la liste d'une colonne de tableau : des choix écrits, ou la colonne
+REM d'un autre tableau (les articles du tableau Articles) par un nom, « Liste_Articles_Article » = Articles[Article],
+REM comme on le fait dans Excel : la liste suit le tableau quand il grandit.
 Option Explicit
 
 ' {"validation": vrai ou faux, "trie": vrai ou faux, "choix": [...], "valeur": "..."} ; sF, sC, sL : à partir de 0
@@ -77,7 +79,11 @@ Function Lire(oDoc As Object, oFeuille As Object, sF As String, aListe() As Stri
 		On Error Resume Next
 		oPlage = Nothing
 		If oDoc.NamedRanges.hasByName(sF) Then
-			oPlage = oDoc.NamedRanges.getByName(sF).ReferredCells
+			' (la colonne d'un tableau : ses lignes, lues dans le tableau lui-même)
+			oPlage = ColonneTableau(oDoc, oDoc.NamedRanges.getByName(sF).Content)
+			If IsNull(oPlage) Then oPlage = oDoc.NamedRanges.getByName(sF).ReferredCells
+		ElseIf InStr(sF, "[") > 1 Then
+			oPlage = ColonneTableau(oDoc, sF)
 		Else
 			sNom = Replace(sF, "$", "")
 			k = InStrRev(sNom, ".")
@@ -133,5 +139,256 @@ Function Colonne(oFeuille As Object, oCase As Object, aListe() As String) As Lon
 		End If
 	Next l
 	Colonne = n
+End Function
+
+' Les lignes de la colonne d'un tableau, d'après « Articles[Article] » (ou « Articles[[Prix unitaire]] ») ; Nothing
+' si ce n'en est pas une
+Function ColonneTableau(oDoc As Object, sRef As String) As Object
+	Dim k As Long, sT As String, sC As String, oP As Object, a As Object, oF As Object, c As Long, l2 As Long
+	ColonneTableau = Nothing
+	sRef = Trim(sRef)
+	If Left(sRef, 1) = "=" Then sRef = Mid(sRef, 2)
+	k = InStr(sRef, "[")
+	If k < 2 Or Right(sRef, 1) <> "]" Then Exit Function
+	sT = Left(sRef, k - 1)
+	sC = Mid(sRef, k + 1, Len(sRef) - k - 1)
+	If Left(sC, 1) = "[" And Right(sC, 1) = "]" Then sC = Mid(sC, 2, Len(sC) - 2)
+	If Not oDoc.DatabaseRanges.hasByName(sT) Then Exit Function
+	oP = oDoc.DatabaseRanges.getByName(sT)
+	a = oP.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	c = ColonneDe(oF, a, sC)
+	If c < 0 Then Exit Function
+	l2 = a.EndRow
+	If oP.TotalsRow Then l2 = l2 - 1
+	If l2 <= a.StartRow Then Exit Function
+	ColonneTableau = oF.getCellRangeByPosition(c, a.StartRow + 1, c, l2)
+End Function
+
+' Le tableau et la colonne d'une liste de choix reliée à un tableau (« Articles » Chr(31) « Article »), sinon ""
+Function SourceDe(oDoc As Object, v As Object) As String
+	Dim sF As String, k As Long, sT As String, sC As String
+	SourceDe = ""
+	If v.Type <> com.sun.star.sheet.ValidationType.LIST Then Exit Function
+	sF = Trim(v.Formula1)
+	If Left(sF, 1) = "=" Then sF = Mid(sF, 2)
+	If oDoc.NamedRanges.hasByName(sF) Then sF = Trim(oDoc.NamedRanges.getByName(sF).Content)
+	If IsNull(ColonneTableau(oDoc, sF)) Then Exit Function
+	k = InStr(sF, "[")
+	sT = Left(sF, k - 1)
+	sC = Mid(sF, k + 1, Len(sF) - k - 1)
+	If Left(sC, 1) = "[" And Right(sC, 1) = "]" Then sC = Mid(sC, 2, Len(sC) - 2)
+	SourceDe = sT & Chr(31) & sC
+End Function
+
+' La liste de choix d'une case, en JSON : null, ou {"genre": "choix" (écrits) | "tableau" (la colonne d'un tableau) |
+' "autre" (une plage de cases), "choix": [...], "tableau", "colonne", "refuser": vrai si une autre valeur est refusée}
+Function DecrireListe(oDoc As Object, oCase As Object) As String
+	Dim v As Object, sF As String, aListe() As String, n As Long, s As String, i As Long, sSource As String, aSrc As Variant
+	Dim sGenre As String, sT As String, sC As String
+	On Error GoTo Erreur
+	v = oCase.Validation
+	If v.Type <> com.sun.star.sheet.ValidationType.LIST Then
+		DecrireListe = "null"
+		Exit Function
+	End If
+	sF = Trim(v.Formula1)
+	n = Lire(oDoc, oDoc.Sheets.getByIndex(oCase.CellAddress.Sheet), sF, aListe())
+	sSource = SourceDe(oDoc, v)
+	If sSource <> "" Then
+		sGenre = "tableau"
+		aSrc = Split(sSource, Chr(31))
+		sT = aSrc(0)
+		sC = aSrc(1)
+	ElseIf Left(sF, 1) = """" Then
+		sGenre = "choix"
+	Else
+		sGenre = "autre"
+	End If
+	s = ""
+	For i = 0 To n - 1
+		If s <> "" Then s = s & ","
+		s = s & Texte(aListe(i))
+	Next i
+	DecrireListe = "{""genre"":""" & sGenre & """,""choix"":[" & s & "],""tableau"":" & Texte(sT) & ",""colonne"":" & Texte(sC) _
+	               & ",""refuser"":" & IIf(v.ShowErrorMessage And v.ErrorAlertStyle = com.sun.star.sheet.ValidationAlertStyle.STOP, "true", "false") & "}"
+	Exit Function
+Erreur:
+	DecrireListe = "null"
+End Function
+
+' Pose (ou retire) la liste de choix de la colonne sCol du tableau sNom, sur toutes ses lignes. sGenre : « aucune » ;
+' « choix » (sValeurs : les choix, séparés par Chr(31)) ; « tableau » (sValeurs : « Articles » Chr(31) « Article »).
+' sRefuser « oui » : une autre valeur est refusée (Sama le dit et rouvre la liste) ; sinon elle est acceptée.
+Function Poser(sNom As String, sCol As String, sGenre As String, sValeurs As String, sRefuser As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, c As Long, l2 As Long, oZone As Object, v As Object
+	Dim aV As Variant, f As String, i As Long, sListe As String, oBase As New com.sun.star.table.CellAddress, bAnnuler As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	c = ColonneDe(oF, a, sCol)
+	If c < 0 Then
+		Poser = "!La colonne " & sCol & " n'est plus dans le tableau"
+		Exit Function
+	End If
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	If l2 <= a.StartRow Then l2 = a.StartRow + 1
+	oZone = oF.getCellRangeByPosition(c, a.StartRow + 1, c, l2)
+	oDoc.UndoManager.enterUndoContext("Liste de choix")
+	bAnnuler = True
+	v = oZone.Validation
+	If sGenre = "aucune" Then
+		v.Type = com.sun.star.sheet.ValidationType.ANY
+		v.ShowErrorMessage = False
+	Else
+		aV = Split(sValeurs, Chr(31))
+		v.Type = com.sun.star.sheet.ValidationType.LIST
+		v.ShowList = com.sun.star.sheet.TableValidationVisibility.UNSORTED
+		If sGenre = "tableau" Then
+			' (un nom pour la colonne de l'autre tableau : Excel le lit tel quel, et la liste suit le tableau)
+			sListe = "Liste_" & NomPermis(aV(0)) & "_" & NomPermis(aV(1))
+			If oDoc.NamedRanges.hasByName(sListe) Then oDoc.NamedRanges.removeByName(sListe)
+			oBase.Sheet = a.Sheet
+			oDoc.NamedRanges.addNewByName(sListe, aV(0) & "[" & aV(1) & "]", oBase, 0)
+			v.setFormula1(sListe)
+			v.ErrorMessage = "Choisissez une valeur de la colonne " & aV(1) & " du tableau " & Replace(aV(0), "_", " ") & "."
+		Else
+			f = ""
+			For i = LBound(aV) To UBound(aV)
+				If aV(i) <> "" Then
+					If f <> "" Then f = f & ";"
+					f = f & """" & Replace(aV(i), """", """""") & """"
+				End If
+			Next i
+			v.setFormula1(f)
+			v.ErrorMessage = "Choisissez une valeur de la liste."
+		End If
+		v.ErrorTitle = "Valeur hors de la liste"
+		v.ShowErrorMessage = (sRefuser = "oui")
+		v.ErrorAlertStyle = com.sun.star.sheet.ValidationAlertStyle.STOP
+	End If
+	oZone.Validation = v
+	oDoc.UndoManager.leaveUndoContext()
+	Poser = ""
+	Exit Function
+Erreur:
+	If bAnnuler Then oDoc.UndoManager.leaveUndoContext()
+	Poser = "!" & Error$
+End Function
+
+' Un nom permis dans un nom de plage (lettres, chiffres, _ ; les accents s'en vont)
+Function NomPermis(s As String) As String
+	Dim i As Long, ch As String, r As String, k As Long
+	Const AVEC = "àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ"
+	Const SANS = "aaaeeeeiioouuucAAAEEEEIIOOUUUC"
+	r = ""
+	For i = 1 To Len(s)
+		ch = Mid(s, i, 1)
+		k = InStr(AVEC, ch)
+		If k > 0 Then ch = Mid(SANS, k, 1)
+		If InStr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_", ch) > 0 Then r = r & ch Else r = r & "_"
+	Next i
+	NomPermis = r
+End Function
+
+' La liste de choix d'une case (sF, sC, sL : à partir de 0), en JSON (voir DecrireListe) : null s'il n'y en a pas
+Function Liste(sF As String, sC As String, sL As String) As String
+	On Error GoTo Erreur
+	Liste = DecrireListe(ThisComponent, ThisComponent.Sheets.getByIndex(CLng(sF)).getCellByPosition(CLng(sC), CLng(sL)))
+	Exit Function
+Erreur:
+	Liste = "null"
+End Function
+
+' La source d'une liste de case reliée à un tableau (sF, sC, sL : à partir de 0) : « Articles » Chr(31) « Article », ou ""
+Function Source(sF As String, sC As String, sL As String) As String
+	On Error GoTo Erreur
+	Source = SourceDe(ThisComponent, ThisComponent.Sheets.getByIndex(CLng(sF)).getCellByPosition(CLng(sC), CLng(sL)).Validation)
+	Exit Function
+Erreur:
+	Source = ""
+End Function
+
+' Un choix de plus dans une liste écrite (« "Entrée";"Sortie" »), pour toutes les cases voisines de la colonne qui
+' ont la même liste, puis la valeur dans la case ; rend ""
+Function AjouterAuxChoix(oDoc As Object, oCase As Object, sValeur As String) As String
+	Dim v As Object, sF As String, oF As Object, c As Long, l1 As Long, l2 As Long, oZone As Object
+	v = oCase.Validation
+	sF = Trim(v.Formula1)
+	If v.Type <> com.sun.star.sheet.ValidationType.LIST Or Left(sF, 1) <> """" Then
+		AjouterAuxChoix = "!Cette liste ne se complète pas d'ici"
+		Exit Function
+	End If
+	oF = oDoc.Sheets.getByIndex(oCase.CellAddress.Sheet)
+	c = oCase.CellAddress.Column
+	l1 = oCase.CellAddress.Row
+	l2 = l1
+	Do While l1 > 0 And MemeListe(oF.getCellByPosition(c, l1 - 1), sF)
+		l1 = l1 - 1
+	Loop
+	Do While l2 < 1048575 And MemeListe(oF.getCellByPosition(c, l2 + 1), sF)
+		l2 = l2 + 1
+	Loop
+	oDoc.UndoManager.enterUndoContext("Ajouter « " & sValeur & " » à la liste")
+	oZone = oF.getCellRangeByPosition(c, l1, c, l2)
+	v.setFormula1(sF & ";""" & Replace(sValeur, """", """""") & """")
+	oZone.Validation = v
+	oCase.String = sValeur
+	oDoc.UndoManager.leaveUndoContext()
+	AjouterAuxChoix = ""
+End Function
+
+Function MemeListe(oC As Object, sF As String) As Boolean
+	Dim v As Object
+	v = oC.Validation
+	MemeListe = (v.Type = com.sun.star.sheet.ValidationType.LIST And Trim(v.Formula1) = sF)
+End Function
+
+' Une valeur refusée par la liste d'une case, ajoutée au tableau d'où vient la liste (un article de plus dans
+' Articles), ou à ses choix écrits, puis écrite dans la case : un seul Ctrl+Z pour revenir. Rend l'adresse de la
+' nouvelle ligne du tableau (« Articles.A6 »), ou "" pour des choix écrits.
+Function AjouterChoix(sF As String, sC As String, sL As String, sValeur As String) As String
+	Dim oDoc As Object, oCase As Object, aSrc As Variant, oPlage As Object, a As Object, oT As Object, c As Long, l As Long
+	Dim r As Long, sSource As String, bAnnuler As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oCase = oDoc.Sheets.getByIndex(CLng(sF)).getCellByPosition(CLng(sC), CLng(sL))
+	sSource = SourceDe(oDoc, oCase.Validation)
+	If sSource = "" Then
+		' (des choix écrits : un de plus)
+		AjouterChoix = AjouterAuxChoix(oDoc, oCase, sValeur)
+		Exit Function
+	End If
+	aSrc = Split(sSource, Chr(31))
+	oPlage = oDoc.DatabaseRanges.getByName(aSrc(0))
+	oDoc.UndoManager.enterUndoContext("Ajouter « " & sValeur & " » à " & Replace(aSrc(0), "_", " "))
+	bAnnuler = True
+	a = oPlage.DataArea
+	oT = oDoc.Sheets.getByIndex(a.Sheet)
+	c = ColonneDe(oT, a, aSrc(1))
+	' (la première ligne vide du tableau, sinon une ligne de plus)
+	r = -1
+	For l = a.StartRow + 1 To a.EndRow - IIf(oPlage.TotalsRow, 1, 0)
+		If EstVide(oT.getCellRangeByPosition(a.StartColumn, l, a.EndColumn, l)) Then
+			r = l
+			Exit For
+		End If
+	Next l
+	If r < 0 Then
+		AjouterLigne(aSrc(0))
+		a = oPlage.DataArea
+		r = a.EndRow - IIf(oPlage.TotalsRow, 1, 0)
+	End If
+	oT.getCellByPosition(c, r).String = sValeur
+	oCase.String = sValeur
+	oDoc.UndoManager.leaveUndoContext()
+	AjouterChoix = oT.Name & "." & Lettres(c) & (r + 1)
+	Exit Function
+Erreur:
+	If bAnnuler Then oDoc.UndoManager.leaveUndoContext()
+	AjouterChoix = "!" & Error$
 End Function
 ]]></script:module>

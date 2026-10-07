@@ -7,6 +7,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import "../reglages"
+import "Fonctions.js" as Fonctions
 
 Rectangle {
     id: formulaire
@@ -73,6 +74,8 @@ Rectangle {
         return res
     }
     function deduire(c, i) {
+        // (une colonne qui a sa liste de choix : une question à choix)
+        if (c.liste && c.liste.choix && c.liste.choix.length) return "choix"
         if (/t[ée]l[ée]?phone|^t[ée]l\b|portable|whatsapp/i.test(c.nom)) return "telephone"
         if (c.genre === "montant") return "montant"
         if (c.genre === "date") return "date"
@@ -90,7 +93,10 @@ Rectangle {
             question: d && d.question ? d.question : c.nom,
             aide: d && d.aide ? d.aide : "",
             type: type,
-            options: d && d.options && d.options.length ? d.options : (type === "choix" ? valeursDe(c.nom) : []),
+            // (la liste de choix de la colonne fait foi : les articles du tableau Articles, à jour)
+            options: c.liste && c.liste.choix && c.liste.choix.length ? c.liste.choix
+                     : d && d.options && d.options.length ? d.options : (type === "choix" ? valeursDe(c.nom) : []),
+            liste: c.liste || null,
             obligatoire: d ? !!d.obligatoire : i === 0,
             defaut: d && d.defaut !== undefined ? d.defaut : (type === "date" ? "aujourdhui" : ""),
             cache: d ? !!d.cache : false
@@ -492,6 +498,15 @@ Rectangle {
                             readonly property var champ: formulaire.champs[index] || ({ col: "", question: "", aide: "", type: "texte", options: [], obligatoire: false, cache: true })
                             readonly property string erreur: formulaire.erreurs[champ.col] || ""
                             readonly property string valeur: formulaire.reponses[champ.col] || ""
+                            // (les choix montrés : tous jusqu'à 8 ; au-delà, ceux qui répondent à la recherche, et celui choisi)
+                            readonly property var choixVus: {
+                                var o = champ.options || []
+                                if (o.length <= 8) return o
+                                var f = Fonctions.normaliser(chercheChoix.text || "")
+                                var r = o.filter(function (x) { return !f || Fonctions.normaliser(x).indexOf(f) >= 0 }).slice(0, 8)
+                                if (valeur && r.indexOf(valeur) < 0) r.unshift(valeur)
+                                return r
+                            }
                             visible: !champ.cache
                             Layout.fillWidth: true
                             spacing: 6
@@ -554,13 +569,29 @@ Rectangle {
                                     }
                                 }
                             }
+                            // (beaucoup de choix : on cherche, les pastilles suivent)
+                            QQC2.TextField {
+                                id: chercheChoix
+                                visible: question.champ.type === "choix" && question.champ.options.length > 8
+                                Layout.fillWidth: true
+                                Layout.maximumWidth: 320
+                                Layout.preferredHeight: 38
+                                leftPadding: 12
+                                placeholderText: "Chercher parmi " + question.champ.options.length + " choix"
+                                placeholderTextColor: Couleurs.texte3
+                                font.pixelSize: 14
+                                color: Couleurs.texte
+                                background: Rectangle { radius: 10; color: Couleurs.champ; border.width: chercheChoix.activeFocus ? 1.5 : 1; border.color: chercheChoix.activeFocus ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.16) }
+                                // (Entrée : le premier choix trouvé)
+                                onAccepted: { var v = question.choixVus; if (v.length) { formulaire.repondre(question.champ.col, v[0]); text = "" } }
+                            }
                             // Choix, oui ou non : des pastilles
                             Flow {
                                 visible: question.champ.type === "choix" || question.champ.type === "ouinon"
                                 Layout.fillWidth: true
                                 spacing: 8
                                 Repeater {
-                                    model: question.champ.type === "ouinon" ? ["Oui", "Non"] : question.champ.options
+                                    model: question.champ.type === "ouinon" ? ["Oui", "Non"] : question.choixVus
                                     delegate: Pastille {
                                         text: modelData
                                         choisie: question.valeur === modelData
@@ -692,7 +723,21 @@ Rectangle {
                                     Layout.fillWidth: true
                                     spacing: 8
                                     Text { text: "Les choix"; font.pixelSize: 12; font.weight: Font.DemiBold; color: Couleurs.texte2 }
+                                    // (la colonne a sa liste de choix : elle fait foi ; elle se règle dans le panneau du tableau)
+                                    Text {
+                                        visible: carteQuestion.champ.liste !== null && carteQuestion.champ.liste !== undefined
+                                        Layout.fillWidth: true
+                                        text: !carteQuestion.champ.liste ? "" : carteQuestion.champ.liste.genre === "tableau"
+                                              ? "Ceux de la colonne " + carteQuestion.champ.liste.colonne + " du tableau " + carteQuestion.champ.liste.tableau.replace(/_/g, " ") + " (" + carteQuestion.champ.options.length + "), à jour quand il change. Ils se règlent dans le panneau du tableau."
+                                              : "Ceux de la liste de choix de la colonne (" + carteQuestion.champ.options.length + "). Ils se règlent dans le panneau du tableau."
+                                        font.pixelSize: 13
+                                        lineHeight: 18
+                                        lineHeightMode: Text.FixedHeight
+                                        color: Couleurs.texte2
+                                        wrapMode: Text.Wrap
+                                    }
                                     Flow {
+                                        visible: !carteQuestion.champ.liste
                                         Layout.fillWidth: true
                                         spacing: 6
                                         Repeater {
@@ -716,6 +761,7 @@ Rectangle {
                                         }
                                     }
                                     RowLayout {
+                                        visible: !carteQuestion.champ.liste
                                         Layout.fillWidth: true
                                         spacing: 8
                                         Champ {

@@ -444,7 +444,7 @@ Function ListeColonnes(oDoc As Object, oPlage As Object, a As Object, oFeuille A
 		If sCols <> "" Then sCols = sCols & ","
 		sCols = sCols & "{""nom"":" & Texte(oFeuille.getCellByPosition(c, a.StartRow).String) & ",""calcul"":" & IIf(bCalcul, "true", "false") _
 		        & ",""formule"":" & Texte(sFormule) & ",""nombre"":" & IIf(bNombre, "true", "false") & ",""genre"":" & Texte(sGenre) _
-		        & ",""total"":" & Texte(sTotal) & "}"
+		        & ",""total"":" & Texte(sTotal) & ",""liste"":" & DecrireListe(oDoc, oFeuille.getCellByPosition(c, a.StartRow + 1)) & "}"
 	Next c
 	ListeColonnes = sCols
 End Function
