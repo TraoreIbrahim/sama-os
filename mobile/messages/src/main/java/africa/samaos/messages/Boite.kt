@@ -17,6 +17,8 @@ import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
+import africa.samaos.proches.Cercle
+import africa.samaos.proches.Veille
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -178,6 +180,48 @@ object Boite {
         nm.createNotificationChannel(NotificationChannel(CANAL_SERVICES, "Opérateurs et services", NotificationManager.IMPORTANCE_LOW))
     }
 
+    /**
+     * Une alerte jamais vue : la même, rejouée, ne sonne pas une seconde fois. On ne se fie pas à l'heure du
+     * téléphone qui l'envoie : après une batterie à plat, beaucoup de téléphones se croient en 1970.
+     */
+    fun alerteFraiche(c: Context, proche: String, a: Veille.Recue): Boolean {
+        val p = c.getSharedPreferences("veille", Context.MODE_PRIVATE)
+        val vues = p.getString("vues_$proche", "").orEmpty().split(' ').filter { it.isNotEmpty() }
+        if (a.preuve in vues) return false
+        p.edit().putString("vues_$proche", (vues.takeLast(50) + a.preuve).joinToString(" ")).apply()
+        return true
+    }
+
+    /** « Alerte du bouclier · Maman » : le proche a évité une arnaque. Appeler, ou ouvrir la conversation. */
+    fun notifierProche(c: Context, fil: Long, adresse: String, proche: String, a: Veille.Recue) {
+        canaux(c)
+        val nom = Cercle.reconnus(c).firstOrNull { it.id == proche }?.nom ?: "Un proche"
+        val heure = Instant.now().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("H:mm"))
+        val essai = a.alerte == Veille.Alerte.ESSAI
+        val texte = if (essai) "Les alertes du bouclier de $nom arriveront bien ici." else "$nom ${a.alerte.texte} (alerte reçue à $heure). Prenez de ses nouvelles."
+        val ouvrir = PendingIntent.getActivity(
+            c, fil.toInt(), Intent(c, Messages::class.java).putExtra("fil", fil).putExtra("adresse", adresse),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val appeler = PendingIntent.getActivity(
+            c, fil.toInt() + 1, Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", adresse, null)), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = Notification.Builder(c, CANAL)
+            .setSmallIcon(R.drawable.ic_notif_message)
+            .setContentTitle(if (essai) "Essai du bouclier · $nom" else "Alerte du bouclier · $nom")
+            .setContentText(texte)
+            .setStyle(Notification.BigTextStyle().bigText("$texte\nVérifiée : elle vient bien du téléphone de $nom."))
+            .setContentIntent(ouvrir)
+            .addAction(Notification.Action.Builder(null, "Appeler $nom", appeler).build())
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_MESSAGE)
+            .build()
+        try {
+            c.getSystemService(NotificationManager::class.java).notify(fil.toInt(), n)
+        } catch (_: SecurityException) {
+        }
+    }
+
     /** La notification d'une conversation : ses derniers messages, et « Répondre » sans ouvrir l'appli. */
     fun notifier(c: Context, fil: Long, adresse: String, alerte: africa.samaos.bouclier.Verdict? = null) {
         canaux(c)
@@ -221,6 +265,12 @@ object Boite {
 
     /** Le verdict du bouclier sur un SMS reçu (null : rien à signaler, ou bouclier coupé). */
     fun verdict(c: Context, adresse: String, corps: String): africa.samaos.bouclier.Verdict? {
+        // Un message qui imite une alerte du bouclier de Sama sans venir d'un proche reconnu.
+        Veille.lire(corps)?.let { alerte ->
+            if (Veille.auteur(c, alerte) == null) {
+                return africa.samaos.bouclier.Verdict("Fausse alerte", "Ce message imite une alerte du bouclier de Sama, mais il ne vient d'aucun de vos proches reconnus.")
+            }
+        }
         val b = africa.samaos.bouclier.Bouclier
         val sms = if (b.actif(c, africa.samaos.bouclier.Bouclier.Garde.SMS)) b.sms(adresse, corps, nomDe(c, adresse) != null) else null
         return sms ?: if (b.actif(c, africa.samaos.bouclier.Bouclier.Garde.LIENS)) b.lien(corps) else null
@@ -306,6 +356,14 @@ class RecuSms : BroadcastReceiver() {
             null
         } ?: return
         val fil = c.contentResolver.query(uri, arrayOf(Telephony.Sms.THREAD_ID), null, null, null)?.use { if (it.moveToFirst()) it.getLong(0) else null } ?: return
+        // L'alerte du bouclier d'un proche (« un proche veille sur vous ») : vérifiée avec le secret partagé.
+        Veille.lire(corps)?.let { alerte ->
+            val id = Veille.auteur(c, alerte)
+            if (id != null && Boite.alerteFraiche(c, id, alerte)) {
+                Boite.notifierProche(c, fil, adresse, id, alerte)
+                return
+            }
+        }
         val v = Boite.verdict(c, adresse, corps)
         if (v != null) africa.samaos.bouclier.Bouclier.noter(c, "sms", v.titre, "SMS du ${Boite.formater(adresse)} · ${v.raison}")
         // Un SMS de l'opérateur : crédit, data, fin de forfait (innovation 1).

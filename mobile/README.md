@@ -218,7 +218,18 @@ réglages globaux d'Android, partagés entre les applis signées avec la clé de
 Pour essayer sur l'émulateur : `adb emu sms send 0759331208 "Orange Money : vous avez recu 25 000 F…"`,
 `adb emu gsm call 0599401277` (trois fois), une page de test servie en local (`adb reverse tcp:8088 tcp:8088`).
 Pas encore fait : « J'ai été arnaqué » (il faut les numéros et codes officiels des opérateurs), la liste
-commune des numéros signalés (serveur), « Protéger aussi un proche ».
+commune des numéros signalés (serveur).
+
+**Un proche veille sur vous** (protéger aussi un proche) : dans Réglages › Bouclier, la personne choisit
+elle-même un proche reconnu (Proche en proche, par code QR) et son numéro. Quand son bouclier arrête une arnaque
+grave (faux SMS ou faux mail d'opérateur, appel suspect, transfert pendant l'appel d'un inconnu, faux site,
+demande d'installation hors de Sugu, fausse mise à jour), les Réglages envoient au proche un SMS court : le type
+d'arnaque seulement, jamais le contenu, les numéros ni le solde ; trois au plus par jour, une fois par heure pour
+la même. Le SMS finit par une signature (`#SA1.<heure>.<code>.<preuve>`, HMAC du secret partagé) : Messages, chez
+le proche, la vérifie, notifie « Alerte du bouclier · Koffi » (avec « Appeler ») et marque la bulle
+« Alerte vérifiée » ; une imitation est signalée « Fausse alerte ». « Envoyer un essai » vérifie le chemin ; on
+arrête quand on veut. Sur l'émulateur, Android ne fait pas passer les SMS d'un émulateur à l'autre : le SMS
+parti se relit dans `content://sms` et se remet au second avec `adb emu sms send`.
 
 ## Soldes et forfaits (innovation 1, premier pas)
 

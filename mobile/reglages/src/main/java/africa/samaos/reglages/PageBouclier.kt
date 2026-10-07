@@ -2,6 +2,17 @@ package africa.samaos.reglages
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.provider.ContactsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import africa.samaos.proches.Cercle
+import kotlin.concurrent.thread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,6 +96,18 @@ fun PageBouclier(nav: Nav) {
     var v by remember { mutableIntStateOf(0) }
     var recents by remember { mutableStateOf(emptyList<Evenement>()) }
     LaunchedEffect(reprise) { recents = Bouclier.recents(c) }
+    // « Un proche veille sur vous » : choisir un proche reconnu, puis son numéro.
+    var ajout by remember { mutableStateOf(false) }
+    var choisi by remember { mutableStateOf<ProcheReconnu?>(null) }
+    var numero by remember { mutableStateOf("") }
+    var arreter by remember { mutableStateOf<MoteurVeille.Gardien?>(null) }
+    var essai by remember { mutableStateOf<String?>(null) }
+    val contact = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        val u = r.data?.data
+        if (r.resultCode == Activity.RESULT_OK && u != null) {
+            c.contentResolver.query(u, arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER), null, null, null)?.use { k -> if (k.moveToFirst()) numero = k.getString(0).orEmpty() }
+        }
+    }
     PageReglages(titre = "Bouclier", sousTitre = "Contre les arnaques au mobile money. Tout se passe sur le téléphone.", retour = nav.retour) {
         section("Surveiller", cle = "surveiller") {
             Bouclier.Garde.entries.forEach { g ->
@@ -103,6 +126,71 @@ fun PageBouclier(nav: Nav) {
                 icone = Icones.ALERTE,
             ) { nav.aller(Page.BilanBouclier) }
             Ligne("Les 5 arnaques les plus courantes", detail = "Et comment les reconnaître", icone = Icones.INFO) { nav.aller(Page.Arnaques) }
+        }
+        section("Un proche veille sur vous", cle = "veille") {
+            val reconnus = remember(v) { MoteurReconnus.liste(c) }
+            val gardiens = remember(v) { MoteurVeille.gardiens(c) }
+            gardiens.forEach { g ->
+                Ligne(g.nom, detail = "Prévenu par SMS au ${g.numero}", icone = Icones.PERSONNE, fin = Fin.Valeur("Arrêter")) { arreter = g }
+            }
+            if (gardiens.isNotEmpty()) {
+                Ligne("Envoyer un essai", detail = essai ?: "Pour vérifier que le SMS arrive bien", icone = Icones.ENVOYER, fin = Fin.Rien) {
+                    val l = gardiens
+                    thread { l.forEach { MoteurVeille.essai(c, it) } }
+                    essai = "Essai envoyé à " + l.joinToString(" et ") { it.nom }
+                }
+            }
+            val libres = reconnus.filter { r -> gardiens.none { it.id == Cercle.id(r.cle) } }
+            val ch = choisi
+            when {
+                reconnus.isEmpty() -> {
+                    Explication("Un proche peut être prévenu quand le bouclier arrête une arnaque chez vous. Reconnaissez-vous d'abord, téléphones côte à côte.")
+                    Ligne("Reconnaître un proche", detail = "Chacun scanne le code de l'autre", icone = Icones.QR) { nav.aller(Page.Reconnaitre()) }
+                }
+                ch != null -> {
+                    Explication("Le numéro ${MoteurReconnus.de(ch.nom)}, où partiront les alertes.")
+                    Champ(numero, "Son numéro de téléphone", { numero = it.take(20) }, clavier = KeyboardType.Phone)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        BoutonTexte("Dans les contacts") {
+                            try {
+                                contact.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI))
+                            } catch (_: Exception) {
+                            }
+                        }
+                        BoutonTexte("Annuler") {
+                            choisi = null
+                            ajout = false
+                        }
+                        if (numero.count { it.isDigit() } >= 8) BoutonTexte("Ajouter") {
+                            MoteurVeille.ajouter(c, ch, numero)
+                            choisi = null
+                            ajout = false
+                            numero = ""
+                            v++
+                        }
+                    }
+                }
+                ajout -> {
+                    libres.forEach { r -> Ligne(r.nom, detail = "Proche depuis le ${MoteurReconnus.date(r.quand)}", icone = Icones.PERSONNE) { choisi = r } }
+                    if (libres.isEmpty()) Explication("Tous vos proches reconnus sont déjà prévenus.")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { BoutonTexte("Annuler") { ajout = false } }
+                }
+                libres.isNotEmpty() -> Ligne(
+                    if (gardiens.isEmpty()) "Choisir un proche à prévenir" else "Prévenir un autre proche",
+                    detail = "Quand le bouclier arrête une arnaque grave chez vous", icone = Icones.PLUS, fin = Fin.Rien,
+                ) { ajout = true }
+            }
+            Explication(
+                "Seul le type d'arnaque part, par SMS (un seul, trois au plus par jour) : jamais vos messages, vos numéros ni votre solde. " +
+                    "Le SMS est signé avec le secret de vos deux téléphones : personne ne peut fabriquer une fausse alerte. Vous arrêtez quand vous voulez.",
+            )
+            arreter?.let { g ->
+                Confirmation("${g.nom} ne sera plus prévenu quand le bouclier arrête une arnaque chez vous.", "Arrêter", annuler = { arreter = null }) {
+                    MoteurVeille.retirer(c, g)
+                    arreter = null
+                    v++
+                }
+            }
         }
         section(cle = "signaler") {
             val oui = remember(v) { Bouclier.signaler(c) }
@@ -214,7 +302,15 @@ fun PageDelaiInstallation(paquet: String, nav: Nav) {
     val nom = remember(paquet) { MoteurApplis.nom(c, paquet) }
     val icone = remember(paquet) { MoteurApplis.icone(c, paquet, 32) }
     val autorisee = remember(v, reprise) { MoteurApplis.op(c, op, paquet) }
-    val pret = remember(v, reprise) { if (autorisee) null else Bouclier.demanderInstallation(c, paquet) }
+    val pret = remember(v, reprise) {
+        if (autorisee) {
+            null
+        } else {
+            // Une nouvelle demande entre au journal du bouclier : un proche qui veille en est prévenu.
+            val nouvelle = Bouclier.delaiInstallation(c, paquet) == null
+            Bouclier.demanderInstallation(c, paquet).also { if (nouvelle) Bouclier.noter(c, "installation", "Demande d'installation hors de Sugu", nom) }
+        }
+    }
     val possible = remember(v, reprise) { !autorisee && Bouclier.installationPossible(c, paquet) }
     val heureReseau = remember(reprise) { Bouclier.heureDuReseau(c) }
     fun annuler() {

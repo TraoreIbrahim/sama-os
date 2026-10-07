@@ -381,6 +381,16 @@
             android:foregroundServiceType="location" />
         <!-- Proche en proche : les proches reconnus et leurs secrets restent ici ; Sugu demande des étiquettes et des
              preuves. Exporté, mais chaque appel vérifie que l'appli est signée comme le système. -->
+        <!-- Le bouclier annonce une arnaque arrêtée : les Réglages préviennent le proche choisi (« un proche veille sur
+             vous »). Seules les applis qui écrivent le journal du bouclier (droit du système) peuvent l'annoncer. -->
+        <receiver
+            android:name=".AlerteBouclier"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS">
+            <intent-filter>
+                <action android:name="africa.samaos.action.BOUCLIER_ALERTE" />
+            </intent-filter>
+        </receiver>
         <provider
             android:name=".ProchesFournisseur"
             android:authorities="africa.samaos.reglages.proches"

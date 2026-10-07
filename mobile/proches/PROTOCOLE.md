@@ -117,6 +117,17 @@ système).
   peut voir quelles applis passent (jamais un nom ni un numéro). Le chiffrement par le secret partagé viendra avec
   Wi-Fi Direct.
 
+## Les alertes du bouclier entre proches
+
+Le secret partagé sert aussi à « Un proche veille sur vous » : la personne choisit, sur son propre téléphone,
+un proche reconnu à prévenir par SMS quand son bouclier arrête une arnaque grave. Le SMS reste lisible
+partout et finit par `#SA1.<t>.<code>.<preuve>` : `t` l'heure d'envoi (secondes, base 36), `code` le type
+d'arnaque (S, M, A, P, L, I, F ; E pour un essai), `preuve = HMAC-SHA256(secret, "sama-proches-1|acces|alerte|" + t + "|" + code)`,
+16 octets en base64url. Le téléphone du proche vérifie la preuve (fournisseur des Réglages, méthode `verifier`),
+refuse une alerte déjà reçue (même preuve) sans se fier à l'heure de l'expéditeur, et signale une imitation.
+Seul le type part : jamais le contenu des messages, les numéros ni le solde. Le texte n'utilise que l'alphabet
+des SMS (GSM 7 bits) : un seul SMS.
+
 ## Pas encore fait
 
 - **Wi-Fi Direct** (sans routeur) : le même protocole une fois le groupe formé ; à essayer sur deux vrais

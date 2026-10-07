@@ -1,6 +1,7 @@
 package africa.samaos.bouclier
 
 import android.content.Context
+import android.content.Intent
 import android.provider.Settings
 import org.json.JSONArray
 import org.json.JSONObject
@@ -260,9 +261,15 @@ object Bouclier {
             if (l.lastOrNull()?.let { it.optString("detail") == detail && it.optString("type") == type && it.optString("titre") == titre } == true) return
             l += JSONObject().put("quand", System.currentTimeMillis()).put("type", type).put("titre", titre).put("detail", detail)
             Settings.Global.putString(c.contentResolver, CLE_JOURNAL, JSONArray(l.takeLast(60)).toString())
+            // Les Réglages préviennent le proche choisi, si la personne l'a voulu (« Protéger aussi un proche ») :
+            // seuls le type et le titre partent, jamais le détail.
+            c.sendBroadcast(Intent(ALERTE).setPackage("africa.samaos.reglages").putExtra("type", type).putExtra("titre", titre))
         } catch (_: Exception) {
         }
     }
+
+    /** L'annonce d'une arnaque arrêtée, reçue par les Réglages (réservée aux applis qui écrivent le journal). */
+    const val ALERTE = "africa.samaos.action.BOUCLIER_ALERTE"
 
     /** Ce que le bouclier a vu ces [jours] derniers jours, le plus récent d'abord. */
     fun recents(c: Context, jours: Int = 7): List<Evenement> {

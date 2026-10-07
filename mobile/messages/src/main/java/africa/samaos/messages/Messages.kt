@@ -205,7 +205,7 @@ private fun LigneDeConversation(nom: String, dernier: String, date: Long, nonLus
         debut()
         Column(Modifier.weight(1f)) {
             BasicText(nom, maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontWeight = if (nonLus > 0) FontWeight.Bold else FontWeight.Medium, fontSize = 17.sp, color = a.encre))
-            BasicText(dernier.replace('\n', ' '), maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontWeight = if (nonLus > 0) FontWeight.SemiBold else FontWeight.Normal, fontSize = 14.sp, color = if (nonLus > 0) a.encre else a.encre2))
+            BasicText(dernier.replace(Regex("\\s*#SA1\\.\\S+\\s*$"), "").replace('\n', ' '), maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontWeight = if (nonLus > 0) FontWeight.SemiBold else FontWeight.Normal, fontSize = 14.sp, color = if (nonLus > 0) a.encre else a.encre2))
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             BasicText(Boite.quand(date), style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = if (nonLus > 0) a.accentTexte else a.encre2))
@@ -230,8 +230,16 @@ private fun PageFil(fil: Long, adresse: String, version: Int, retour: () -> Unit
     // Le bouclier : le dernier message suspect de la conversation, et le vrai solde pour comparer.
     var alerte by remember { mutableStateOf<Triple<Long, africa.samaos.bouclier.Verdict, String?>?>(null) }
     var bloque by remember { mutableStateOf(false) }
+    // Les alertes du bouclier d'un proche dont la signature est bonne.
+    var verifiees by remember { mutableStateOf(emptyMap<Long, String>()) }
     LaunchedEffect(fil, version) {
         messages = withContext(Dispatchers.IO) { Boite.messages(c, fil) }
+        verifiees = withContext(Dispatchers.IO) {
+            val proches = lazy { africa.samaos.proches.Cercle.reconnus(c).associate { it.id to it.nom } }
+            messages.filter { it.recu }.mapNotNull { m ->
+                africa.samaos.proches.Veille.lire(m.corps)?.let { r -> africa.samaos.proches.Veille.auteur(c, r)?.let { id -> m.id to (proches.value[id] ?: "un proche") } }
+            }.toMap()
+        }
         alerte = withContext(Dispatchers.IO) {
             val suspects = messages.filter { it.recu }.mapNotNull { m -> Boite.verdict(c, adresse, m.corps)?.let { m to it } }
             suspects.lastOrNull()?.let { (m, dernier) ->
@@ -271,7 +279,7 @@ private fun PageFil(fil: Long, adresse: String, version: Int, retour: () -> Unit
                 }
             }
             items(messages, key = { it.id }) { m ->
-                Bulle(m)
+                Bulle(m, verifiees[m.id])
                 alerte?.takeIf { it.first == m.id }?.let { (_, v, solde) ->
                     AlerteArnaque(v, solde, bloque, bloquer = { if (Boite.bloquer(c, adresse)) bloque = true }) {
                         africa.samaos.bouclier.Bouclier.noter(c, "signalement", "Numéro signalé", Boite.formater(adresse))
@@ -325,8 +333,11 @@ private fun AlerteArnaque(v: africa.samaos.bouclier.Verdict, solde: String?, blo
 }
 
 @Composable
-private fun Bulle(m: Sms) {
+private fun Bulle(m: Sms, alerteDe: String? = null) {
     val a = LocalIdentite.current
+    // Une alerte du bouclier d'un proche : sans son code technique, avec la mention « vérifiée ».
+    val alerte = m.recu && africa.samaos.proches.Veille.lire(m.corps) != null
+    val texte = if (alerte) m.corps.replace(Regex("\\s*#SA1\\.\\S+\\s*$"), "") else m.corps
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = if (m.recu) Arrangement.Start else Arrangement.End) {
         Column(
             Modifier
@@ -335,7 +346,11 @@ private fun Bulle(m: Sms) {
                 .background(if (m.recu) a.surface else a.accent)
                 .padding(horizontal = 14.dp, vertical = 9.dp),
         ) {
-            BasicText(m.corps, style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, lineHeight = 22.sp, color = if (m.recu) a.encre else a.surAccent))
+            if (alerte && alerteDe != null) Row(Modifier.padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                IconeTrait(Icones.BOUCLIER, 16.dp, a.accentTexte)
+                BasicText("Alerte vérifiée · bouclier ${if (alerteDe.first().lowercaseChar() in "aeiouyh") "d'" else "de "}$alerteDe", style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = a.accentTexte))
+            }
+            BasicText(texte, style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, lineHeight = 22.sp, color = if (m.recu) a.encre else a.surAccent))
             val etat = when (m.etat) {
                 Telephony.Sms.MESSAGE_TYPE_OUTBOX, Telephony.Sms.MESSAGE_TYPE_QUEUED -> " · envoi…"
                 Telephony.Sms.MESSAGE_TYPE_FAILED -> " · pas envoyé"
