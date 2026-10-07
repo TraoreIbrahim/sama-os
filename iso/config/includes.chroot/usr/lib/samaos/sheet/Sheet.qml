@@ -165,9 +165,10 @@ Window {
         else dialogueEnregistrer.open()
     }
     function ouvrirVolet(nom) { barreOutils.ouvrirVolet(nom) }
-    function ouvrirAide() {
+    // (article : « sheet/formules »… ; sinon l'accueil de l'aide)
+    function ouvrirAide(article) {
         commande.lancer("systemd-run --user --quiet --collect --slice=app.slice "
-                        + commande.q("--unit=app-samaos\\x2daide@" + Date.now() + ".service") + " sama-aide")
+                        + commande.q("--unit=app-samaos\\x2daide@" + Date.now() + ".service") + " sama-aide" + (article ? " " + commande.q(article) : ""))
     }
     function ajouterFeuille() {
         var n = doc.nomsParties.length + 1
@@ -302,7 +303,7 @@ Window {
     Shortcut { sequence: "Ctrl+H"; enabled: !fenetre.accueilOuvert; onActivated: grille.recherche.ouvrir(true) }
     Shortcut { sequence: StandardKey.Print; enabled: !fenetre.accueilOuvert; onActivated: fenetre.imprimer() }
     Shortcut { sequence: "Ctrl+Q"; enabled: fenetre.vue === "grille" && !fenetre.accueilOuvert; onActivated: grille.analyse.ouvrir() }
-    Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide() }
+    Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide(fenetre.formuleEnCours ? "sheet/formules" : "") }
     Shortcut { sequence: "Ctrl+W"; onActivated: fenetre.close() }
     Shortcut { sequence: "Ctrl+T"; onActivated: fenetre.actions.lancer("tableau") }
 

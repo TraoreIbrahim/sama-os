@@ -114,5 +114,13 @@ Rectangle {
             color: Couleurs.texte3
             wrapMode: Text.Wrap
         }
+        Text {
+            visible: !aide.proposer && aide.fonction !== null
+            text: "Voir l'aide des formules · F1"
+            font.pixelSize: 12
+            font.weight: Font.DemiBold
+            color: fenetre.accentEncre
+            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: fenetre.ouvrirAide("sheet/formules") }
+        }
     }
 }

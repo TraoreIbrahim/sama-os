@@ -130,7 +130,9 @@ public:
     Q_INVOKABLE void commandeValidee(const QString &nom, const QVariantMap &arguments = QVariantMap());
     // Redessiner toute la feuille (après un changement que le moteur n'annonce pas : couleurs d'une règle changées par
     // une macro)
-    Q_INVOKABLE void redessiner() { invalider(QRectF(), m_partie); }
+    // (après un changement fait par une macro : les cases, et les en-têtes, que le moteur ne signale pas toujours —
+    // les lignes qu'un filtre cache ou montre)
+    Q_INVOKABLE void redessiner() { invalider(QRectF(), m_partie); relireEntetes(); }
     // Pour Envoyer (la vue Image) : une image dans le presse-papiers ; une image en PDF (A4, en pages si elle est
     // longue) ; un chemin libre dans un dossier (« Cotisations 7 oct.png », sinon « … (2).png »)
     Q_INVOKABLE bool copierImage(const QString &chemin);

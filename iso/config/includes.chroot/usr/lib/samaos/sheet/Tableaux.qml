@@ -145,15 +145,17 @@ Item {
         })
     }
     // Ne garder que les lignes qui ont la valeur de cette case (c, l : à partir de 0)
+    // (après un filtre : les lignes cachées ou montrées, que le moteur ne signale pas aux en-têtes)
+    function apresFiltre() { rafraichir(); doc.redessiner() }
     function filtrerSur(t, c, l) {
-        appeler("FiltrerSur", [t.nom, String(c), String(l)], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+        appeler("FiltrerSur", [t.nom, String(c), String(l)], function (ok, v) { if (verifier(ok, v)) apresFiltre() })
     }
     function toutAfficher(t) {
-        appeler("ToutAfficher", [t.nom], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+        appeler("ToutAfficher", [t.nom], function (ok, v) { if (verifier(ok, v)) apresFiltre() })
     }
     // gardees : valeurs à garder ; null : plus de filtre sur cette colonne
     function filtrer(t, colonne, gardees) {
         appeler("Filtrer", [t.nom, String(colonne), gardees ? gardees.join("\n") : "", gardees ? "0" : "1"],
-                function (ok, v) { if (verifier(ok, v)) rafraichir() })
+                function (ok, v) { if (verifier(ok, v)) apresFiltre() })
     }
 }

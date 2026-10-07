@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaPropositions" script:language="StarBasic"><![CDATA[REM Sama Sheet : ce que « Que voulez-vous faire ? » propose d'après le tableau, quand les fonctions des tableaux n'y
+REM suffisent pas. Montrer seulement les lignes au-dessus d'une valeur (« les membres qui doivent encore » : Reste > 0) ;
+REM ajouter une ligne de bilan sous le tableau (« Doivent encore : 3 ») ; ajouter une colonne calculée. Chaque action
+REM s'annule d'un Ctrl+Z.
+Option Explicit
+
+' Ne garder que les lignes où la colonne sCol (rang dans le tableau) dépasse sValeur ; les autres filtres restent
+Function FiltrerSuperieur(sNom As String, sCol As String, sValeur As String) As String
+	Dim oDoc As Object, oPlage As Object, oDesc As Object, aAnciens As Variant, i As Long, n As Long, c As Long
+	Dim aNouveaux() As New com.sun.star.sheet.TableFilterField3
+	Dim aValeurs(0) As New com.sun.star.sheet.FilterFieldValue
+	Dim oChamp As New com.sun.star.sheet.TableFilterField3
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	oDesc = oPlage.getFilterDescriptor()
+	c = CLng(sCol)
+	aAnciens = oDesc.FilterFields3
+	n = 0
+	For i = LBound(aAnciens) To UBound(aAnciens)
+		If aAnciens(i).Field <> c Then n = n + 1
+	Next i
+	ReDim aNouveaux(n) As New com.sun.star.sheet.TableFilterField3
+	n = 0
+	For i = LBound(aAnciens) To UBound(aAnciens)
+		If aAnciens(i).Field <> c Then
+			aNouveaux(n) = aAnciens(i)
+			n = n + 1
+		End If
+	Next i
+	aValeurs(0).IsNumeric = True
+	aValeurs(0).FilterType = com.sun.star.sheet.FilterFieldType.NUMERIC
+	aValeurs(0).NumericValue = Val(sValeur)
+	oChamp.Connection = com.sun.star.sheet.FilterConnection.AND
+	oChamp.Field = c
+	oChamp.Operator = com.sun.star.sheet.FilterOperator2.GREATER
+	oChamp.Values = aValeurs
+	aNouveaux(n) = oChamp
+	oDesc.ContainsHeader = True
+	oDesc.FilterFields3 = aNouveaux
+	Appliquer(oDoc, oPlage, oDesc, False)
+	' (la ligne des totaux reste visible, comme dans Excel)
+	If oPlage.TotalsRow Then oDoc.Sheets.getByIndex(oPlage.DataArea.Sheet).Rows.getByIndex(oPlage.DataArea.EndRow).IsVisible = True
+	FiltrerSuperieur = ""
+	Exit Function
+Erreur:
+	FiltrerSuperieur = "!" & Error$
+End Function
+
+' Une ligne de bilan sous le tableau : le libellé dans sa première colonne, la formule (en anglais, comme l'API la
+' lit) dans la suivante ; à la première ligne libre après une ligne vide. Rend l'adresse du résultat (« B18 »).
+Function AjouterBilan(sNom As String, sLibelle As String, sFormule As String) As String
+	Dim oDoc As Object, a As Object, oF As Object, l As Long, oCase As Object, bContexte As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	a = oDoc.DatabaseRanges.getByName(sNom).DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	l = a.EndRow + 2
+	Do While Not EstVide(oF.getCellRangeByPosition(a.StartColumn, l, a.StartColumn + 1, l))
+		l = l + 1
+	Loop
+	oDoc.UndoManager.enterUndoContext("Bilan")
+	bContexte = True
+	oF.getCellByPosition(a.StartColumn, l).String = sLibelle
+	oF.getCellByPosition(a.StartColumn, l).CharWeight = com.sun.star.awt.FontWeight.SEMIBOLD
+	oCase = oF.getCellByPosition(a.StartColumn + 1, l)
+	oCase.Formula = sFormule
+	oCase.CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oDoc.UndoManager.leaveUndoContext()
+	AjouterBilan = Lettres(a.StartColumn + 1) & (l + 1)
+	Exit Function
+Erreur:
+	AjouterBilan = "!" & Error$
+	If bContexte Then oDoc.UndoManager.leaveUndoContext()
+End Function
+
+' Une colonne de plus au bout du tableau, calculée ligne par ligne (sFormule : en anglais, avec [#This Row]), avec son
+' genre d'affichage (« pourcent », « montant »…)
+Function ColonneCalculee(sNom As String, sTitre As String, sFormule As String, sGenre As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, l As Long, l2 As Long, s As String, bContexte As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oDoc.UndoManager.enterUndoContext("Colonne calculée")
+	bContexte = True
+	s = AjouterColonne(sNom, sTitre)
+	If Left(s, 1) = "!" Then
+		oDoc.UndoManager.leaveUndoContext()
+		ColonneCalculee = s
+		Exit Function
+	End If
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	For l = a.StartRow + 1 To l2
+		oF.getCellByPosition(a.EndColumn, l).Formula = sFormule
+	Next l
+	If sGenre <> "" Then FormaterColonne(sNom, sTitre, sGenre)
+	oDoc.UndoManager.leaveUndoContext()
+	ColonneCalculee = Lettres(a.EndColumn) & (a.StartRow + 2)
+	Exit Function
+Erreur:
+	ColonneCalculee = "!" & Error$
+	If bContexte Then oDoc.UndoManager.leaveUndoContext()
+End Function
+]]></script:module>

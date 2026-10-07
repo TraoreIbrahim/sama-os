@@ -206,6 +206,128 @@ function resume(d) {
     return debut + " · il reste " + resteTexte + " à recevoir"
 }
 
+// ——— « Que voulez-vous faire ? » d'après le tableau (maquette « Sheet · Que voulez-vous faire ? ») ———
+// texte : ce qu'on a écrit ; t : le tableau ({ nom, c1, ocre, filtres… }) ; d : SamaTableaux.Lignes ; courante : le rang
+// de la colonne de la case (ou -1). Rend [{ groupe, html, badge, deja, action, args }] : on nomme une colonne (« trier
+// par reste »), ou ce qu'on veut (« qui doivent encore »), Sama propose ce qui s'y rapporte, rangé par groupes ; ce que
+// l'on a demandé d'abord.
+function propositions(texte, t, d, courante) {
+    var q = normaliser(texte)
+    if (!t || !d || q.length < 3) return []
+    var cols = d.colonnes, lignes = d.lignes.filter(function (r) { return !r.vide })
+    var p = progression(cols)
+    // (le vocabulaire du tableau : « membre », « membres »)
+    var mot = String(cols[0].nom || "").toLowerCase()
+    if (/^(nom|pr[ée]nom)/.test(mot) || !mot) mot = "personne"
+    var mots = /[sxz]$/.test(mot) ? mot : mot + "s"
+    var trier = /\b(tri|trie|trier|ranger|range|classer|ordre|croissant|decroissant)/.test(q)
+    var doivent = p !== null && /(doivent|doit encore|impaye|pas solde|en retard|reste a payer|retard)/.test(q)
+    var montrer = doivent || /(montrer|seulement|filtr|cacher|ceux qui|celles qui)/.test(q)
+    var calculer = /(total|somme|combien|compter|moyenne|bilan|calcul|pourcent|part du)/.test(q)
+    var forme = /(couleur|ocre|forme|fcfa|franc|montant en)/.test(q)
+    // La colonne : nommée dans la question (la plus longue d'abord), sinon celle de ce qu'on veut, sinon celle de la case
+    var rang = -1, longueur = 0
+    for (var i = 0; i < cols.length; i++) {
+        var n = normaliser(cols[i].nom)
+        if (n.length >= 3 && q.indexOf(n) >= 0 && n.length > longueur) { rang = i; longueur = n.length }
+    }
+    if (rang < 0 && doivent) rang = p.reste
+    if (rang < 0 && (trier || montrer || calculer || forme) && courante >= 0 && courante < cols.length) rang = courante
+    if (rang < 0) return []
+    var c = cols[rang], nom = c.nom, b = "<b>" + echapper(nom) + "</b>"
+    var nombre = c.nombre || c.genre === "montant" || c.genre === "pourcent"
+    var res = []
+    function ajouter(groupe, html, action, args, badge, deja) { res.push({ groupe: groupe, html: html, action: action, args: args || {}, badge: badge || "", deja: !!deja }) }
+
+    // Ranger
+    var r = []
+    if (c.genre === "date") {
+        r.push([b + ", du plus récent au plus ancien", false], [b + ", du plus ancien au plus récent", true])
+    } else if (nombre) {
+        r.push([b + ", du plus grand au plus petit", false], [b + ", du plus petit au plus grand", true])
+    } else {
+        r.push([b + ", de A à Z", true], [b + ", de Z à A", false])
+    }
+    // (quand on demande à montrer, le filtre passe devant les tris)
+    if (!(montrer && !trier)) r.forEach(function (x) { ajouter("Ranger", "Trier par " + x[0], "trier", { rang: rang, croissant: x[1] }) })
+    if (p && rang === p.reste) {
+        var doiventN = lignes.filter(function (l) { return l.n[p.reste] > 0 }).length
+        ajouter("Ranger", "Montrer seulement les " + mots + " qui doivent encore", "filtrerSuperieur", { rang: rang },
+                doiventN + " " + (doiventN > 1 ? mots : mot))
+    } else if (!nombre && c.genre !== "date") {
+        // (une colonne à choix : ses valeurs les plus fréquentes)
+        var compte = {}
+        lignes.forEach(function (l) { var v = l.v[rang]; if (v) compte[v] = (compte[v] || 0) + 1 })
+        var valeurs = Object.keys(compte).sort(function (a, z) { return compte[z] - compte[a] })
+        if (valeurs.length >= 2 && valeurs.length <= 8)
+            valeurs.slice(0, 2).forEach(function (v) {
+                ajouter("Ranger", "Montrer seulement « " + echapper(v) + " »", "filtrerValeur", { rang: rang, valeur: v },
+                        compte[v] + " " + (compte[v] > 1 ? mots : mot))
+            })
+    }
+    if (montrer && !trier) r.forEach(function (x) { ajouter("Ranger", "Trier par " + x[0], "trier", { rang: rang, croissant: x[1] }) })
+    if (t.filtres && t.filtres.length) ajouter("Ranger", "Montrer toutes les lignes", "toutAfficher", {}, "")
+
+    // Calculer
+    if (p && rang === p.reste) {
+        var nDoivent = lignes.filter(function (l) { return l.n[p.reste] > 0 }).length
+        ajouter("Calculer", "Ajouter au bilan : combien doivent encore", "bilan",
+                { libelle: (mots.charAt(0).toUpperCase() + mots.slice(1)) + " qui doivent encore",
+                  formule: "=COUNTIF(" + t.nom + "[" + nom + "];\">0\")" }, String(nDoivent))
+        ajouter("Calculer", "Nouvelle colonne calculée à partir de " + b + " : la part déjà versée, en %", "colonne",
+                { titre: "Payé", genre: "pourcent",
+                  formule: "=IFERROR(1-" + t.nom + "[[#This Row];[" + nom + "]]/" + t.nom + "[[#This Row];[" + cols[p.du].nom + "]];\"\")" })
+    } else if (nombre) {
+        var vals = lignes.map(function (l) { return l.n[rang] }).filter(function (x) { return x !== null })
+        var somme = vals.reduce(function (a, x) { return a + x }, 0), moy = vals.length ? somme / vals.length : 0
+        var unite = c.genre === "montant" ? " F" : ""
+        var veutMoyenne = /moyenne/.test(q), veutSomme = /(somme|total)/.test(q)
+        if (veutSomme || !veutMoyenne)
+            ajouter("Calculer", "Ajouter au bilan : la somme de " + b, "bilan",
+                    { libelle: "Somme de " + nom, formule: "=SUM(" + t.nom + "[" + nom + "])" }, enChiffres(somme) + unite)
+        if (veutMoyenne || !veutSomme)
+            ajouter("Calculer", "Ajouter au bilan : la moyenne de " + b, "bilan",
+                    { libelle: "Moyenne de " + nom, formule: "=AVERAGE(" + t.nom + "[" + nom + "])" }, enChiffres(moy) + unite)
+        ajouter("Calculer", "Nouvelle colonne calculée à partir de " + b + " : sa part du total, en %", "colonne",
+                { titre: "Part de " + nom, genre: "pourcent",
+                  formule: "=IFERROR(" + t.nom + "[[#This Row];[" + nom + "]]/SUM(" + t.nom + "[" + nom + "]);\"\")" })
+    } else if (c.genre !== "date") {
+        // (une colonne à choix : combien de fois sa valeur la plus fréquente ; sinon, combien de cases remplies)
+        var nb = {}
+        lignes.forEach(function (l) { var v = l.v[rang]; if (v) nb[v] = (nb[v] || 0) + 1 })
+        var choix = Object.keys(nb).sort(function (a, z) { return nb[z] - nb[a] })
+        if (choix.length >= 2 && choix.length <= 8)
+            ajouter("Calculer", "Ajouter au bilan : combien de « " + echapper(choix[0]) + " »", "bilan",
+                    { libelle: choix[0], formule: "=COUNTIF(" + t.nom + "[" + nom + "];\"" + choix[0].replace(/"/g, '""') + "\")" }, String(nb[choix[0]]))
+        else
+            ajouter("Calculer", "Ajouter au bilan : combien de cases remplies dans " + b, "bilan",
+                    { libelle: nom + " rempli", formule: "=COUNTA(" + t.nom + "[" + nom + "])" },
+                    String(lignes.filter(function (l) { return l.v[rang] }).length))
+    }
+
+    // Mettre en forme
+    if (p && rang === p.reste) ajouter("Mettre en forme", b + " en ocre quand il n'est pas soldé", "ocre", {}, "", t.ocre !== false)
+    if (nombre && !c.calcul) ajouter("Mettre en forme", b + " en francs CFA", "formater", { nom: nom, genre: "montant" }, "", c.genre === "montant")
+    if (c.genre === "date" || /date|jour/i.test(nom)) ajouter("Mettre en forme", b + " en date courte (3 oct)", "formater", { nom: nom, genre: "date" }, "", c.genre === "date")
+
+    // Apprendre
+    if (trier || !montrer) ajouter("Apprendre", "Trier sans perdre l'ordre de départ", "aide", { article: "sheet/trier" }, "Aide · 1 minute")
+    if (montrer) ajouter("Apprendre", "Filtrer, puis tout revoir", "aide", { article: "sheet/filtrer" }, "Aide · 1 minute")
+
+    // Ce qu'on a demandé d'abord
+    var ordre = ["Ranger", "Calculer", "Mettre en forme", "Apprendre"]
+    var voulu = trier || montrer ? "Ranger" : calculer ? "Calculer" : forme ? "Mettre en forme" : ""
+    // (un tri qui garde l'ordre de chaque groupe)
+    res.forEach(function (x, k) { x.rangInitial = k })
+    res.sort(function (x, y) {
+        var a = x.groupe === voulu ? -1 : ordre.indexOf(x.groupe), z = y.groupe === voulu ? -1 : ordre.indexOf(y.groupe)
+        return a - z || x.rangInitial - y.rangInitial
+    })
+    return res
+}
+
+function echapper(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }
+
 // ——— La vue Image (Envoyer) : les images qu'on peut tirer d'un tableau, d'après ses colonnes ———
 // Une image : { cle, nom (pour la choisir), titre (la phrase), sousTitre, legende: [[mot, couleur]],
 //               barres: [{ nom, court, parts: [{ v, c }], texte, encre }] }
