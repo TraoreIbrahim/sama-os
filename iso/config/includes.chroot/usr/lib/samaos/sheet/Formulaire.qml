@@ -135,15 +135,31 @@ Rectangle {
         definition = d
         garder.restart()
     }
-    Timer {
-        id: garder
-        interval: 500
-        onTriggered: {
-            if (!formulaire.tableau) return
-            var d = { titre: formulaire.definition.titre || "", intro: formulaire.definition.intro || "", champs: formulaire.champs }
-            formulaire.definition = d
-            formulaire.tableaux.regler(formulaire.tableau, "formulaire", JSON.stringify(d))
-        }
+    Timer { id: garder; interval: 500; onTriggered: formulaire.garderMaintenant() }
+    function garderMaintenant() {
+        garder.stop()
+        if (!tableau) return
+        var d = { titre: definition.titre || "", intro: definition.intro || "", champs: champs }
+        definition = d
+        tableaux.regler(tableau, "formulaire", JSON.stringify(d))
+    }
+    // Terminé : ce qu'on était en train d'écrire est pris (le champ lâche le clavier), tout est gardé, et on revient au
+    // formulaire à remplir
+    function fermerQuestion() {
+        formulaire.forceActiveFocus()
+        if (garder.running) garderMaintenant()
+        choisi = -1
+    }
+    function terminer() {
+        var avant = mode
+        formulaire.forceActiveFocus()
+        if (garder.running) garderMaintenant()
+        choisi = -1
+        mode = "remplir"
+        vider()
+        Qt.callLater(premierChamp)
+        if (avant === "composer")
+            message.montrer("Formulaire prêt" + (fenetre.doc.modifie ? " · Ctrl+S pour l'enregistrer dans le fichier" : ""))
     }
     // Le genre de réponse change aussi l'affichage de la colonne dans la grille (montant en F, date courte…)
     function changerGenre(i, type) {
@@ -347,38 +363,12 @@ Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
                 spacing: 10
-                Rectangle {
-                    Layout.preferredHeight: 34
-                    Layout.preferredWidth: modes.implicitWidth + 6
-                    radius: 10
-                    color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.055)
-                    Row {
-                        id: modes
-                        anchors.centerIn: parent
-                        spacing: 2
-                        Repeater {
-                            model: [["remplir", "Remplir", "M4 20h4L18.5 9.5l-4-4L4 16z M12.5 7.5l4 4"], ["composer", "Composer", "M4 6h16 M4 12h16 M4 18h10 M18 15v6 M15 18h6"]]
-                            delegate: QQC2.AbstractButton {
-                                id: modeBouton
-                                readonly property bool choisi: formulaire.mode === modelData[0]
-                                height: 28
-                                width: contenuMode.implicitWidth + 24
-                                hoverEnabled: true
-                                focusPolicy: Qt.NoFocus
-                                onClicked: { formulaire.mode = modelData[0]; if (modelData[0] === "remplir") { formulaire.vider(); Qt.callLater(formulaire.premierChamp) } }
-                                background: Rectangle { radius: 8; color: modeBouton.choisi ? Couleurs.champ : "transparent"; border.width: modeBouton.choisi ? 0.5 : 0; border.color: Couleurs.bord }
-                                contentItem: Item {
-                                    Row {
-                                        id: contenuMode
-                                        anchors.centerIn: parent
-                                        spacing: 6
-                                        Picto { width: 14; height: 14; anchors.verticalCenter: parent.verticalCenter; trace: modelData[2]; encre: modeBouton.choisi ? fenetre.accentEncre : Couleurs.texte2 }
-                                        Text { anchors.verticalCenter: parent.verticalCenter; text: modelData[1]; font.pixelSize: 13; font.weight: modeBouton.choisi ? Font.DemiBold : Font.Normal; color: modeBouton.choisi ? fenetre.accentEncre : Couleurs.texte2 }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                ChoixVues {
+                    hauteur: 36
+                    taille: 13
+                    modele: [["remplir", "Remplir", "M4 20h4L18.5 9.5l-4-4L4 16z M12.5 7.5l4 4"], ["composer", "Composer", "M4 6h16 M4 12h16 M4 18h10 M18 15v6 M15 18h6"]]
+                    courant: formulaire.mode
+                    onChoisi: cle => cle === "remplir" ? formulaire.terminer() : (formulaire.mode = "composer")
                 }
                 Item { Layout.fillWidth: true }
                 Text {
@@ -387,10 +377,48 @@ Rectangle {
                     font.pixelSize: 13
                     color: Couleurs.texte2
                 }
+                // (Composer : ce qui est gardé, et Terminé)
+                Row {
+                    visible: formulaire.mode === "composer"
+                    spacing: 6
+                    Picto {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 14; height: 14
+                        trace: garder.running ? "M12 7v5l3 2 M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z" : "M5 12.5l4.5 4.5L19 7.5"
+                        encre: garder.running ? Couleurs.texte3 : fenetre.vertEncre
+                        trait: 2
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: garder.running ? "On garde…" : "Gardé dans le classeur"
+                        font.pixelSize: 13
+                        color: Couleurs.texte2
+                    }
+                }
                 Outil {
+                    visible: formulaire.mode === "remplir"
                     text: "Voir le tableau"
                     picto: "M4 5h16v14H4z M4 10h16 M10 5v14"
                     onClicked: fenetre.voirGrille()
+                }
+                QQC2.AbstractButton {
+                    id: boutonTermine
+                    visible: formulaire.mode === "composer"
+                    Layout.preferredHeight: 36
+                    leftPadding: 14
+                    rightPadding: 16
+                    hoverEnabled: true
+                    focusPolicy: Qt.NoFocus
+                    onClicked: formulaire.terminer()
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.delay: 500
+                    QQC2.ToolTip.text: "Garder les changements et revenir au formulaire à remplir"
+                    background: Rectangle { radius: 10; color: boutonTermine.down ? Qt.darker(fenetre.accent, 1.2) : boutonTermine.hovered ? Qt.darker(fenetre.accent, 1.1) : fenetre.accent }
+                    contentItem: Row {
+                        spacing: 7
+                        Picto { anchors.verticalCenter: parent.verticalCenter; width: 15; height: 15; trace: "M5 12.5l4.5 4.5L19 7.5"; encre: "#FFFFFF"; trait: 2.2 }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "Terminé"; font.pixelSize: 13; font.weight: Font.DemiBold; color: "#FFFFFF" }
+                    }
                 }
             }
 
@@ -614,7 +642,7 @@ Rectangle {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Text { Layout.fillWidth: true; text: "Colonne « " + carteQuestion.champ.col + " »"; font.pixelSize: 12; color: Couleurs.texte2 }
-                                    Outil { picto: "M7 7l10 10 M17 7L7 17"; aide: "Fermer"; onClicked: formulaire.choisi = -1 }
+                                    Outil { picto: "M7 7l10 10 M17 7L7 17"; aide: "Fermer cette question"; onClicked: formulaire.fermerQuestion() }
                                 }
                                 Champ {
                                     texte: carteQuestion.champ.question
@@ -728,6 +756,21 @@ Rectangle {
                                         aide: "Une question masquée n'est pas posée ; sa colonne reste dans le tableau"
                                         onClicked: formulaire.changer(carteQuestion.rang, "cache", !carteQuestion.champ.cache)
                                     }
+                                    QQC2.AbstractButton {
+                                        id: questionFaite
+                                        Layout.preferredHeight: 32
+                                        leftPadding: 12
+                                        rightPadding: 14
+                                        hoverEnabled: true
+                                        focusPolicy: Qt.NoFocus
+                                        onClicked: formulaire.fermerQuestion()
+                                        background: Rectangle { radius: 9; color: questionFaite.hovered ? Qt.darker(fenetre.accentFond, 1.15) : fenetre.accentFond }
+                                        contentItem: Row {
+                                            spacing: 6
+                                            Picto { anchors.verticalCenter: parent.verticalCenter; width: 14; height: 14; trace: "M5 12.5l4.5 4.5L19 7.5"; encre: fenetre.accentEncre; trait: 2.2 }
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Terminé"; font.pixelSize: 13; font.weight: Font.DemiBold; color: fenetre.accentEncre }
+                                        }
+                                    }
                                 }
                             }
                             readonly property int rang: index
@@ -801,7 +844,7 @@ Rectangle {
                 Text {
                     Layout.fillWidth: true
                     text: formulaire.mode === "composer"
-                          ? "Les changements sont gardés dans le classeur, avec le tableau."
+                          ? "Chaque changement est gardé dans le classeur, avec le tableau (Ctrl+S l'enregistre dans le fichier). Terminé revient au formulaire à remplir."
                           : "Les réponses vont dans le tableau « " + (formulaire.tableau ? formulaire.tableau.nom.replace(/_/g, " ") : "") + " »."
                     font.pixelSize: 12
                     color: Couleurs.texte2

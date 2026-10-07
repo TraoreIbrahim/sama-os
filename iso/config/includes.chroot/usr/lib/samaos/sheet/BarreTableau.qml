@@ -61,37 +61,12 @@ Rectangle {
             font.pixelSize: 12
             color: Couleurs.texte2
         }
-        // Grille ou fiches : le même tableau, vu autrement
-        Rectangle {
-            Layout.preferredHeight: 30
-            Layout.preferredWidth: vues.implicitWidth + 6
-            radius: 9
-            color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.25 : 0.06)
-            RowLayout {
-                id: vues
-                anchors.centerIn: parent
-                spacing: 2
-                Repeater {
-                    model: [["grille", "Grille", "M4 5h16v14H4z M4 10h16 M10 5v14"], ["fiches", "Fiches", "M4 5h7v6H4z M13 5h7v6h-7z M4 13h7v6H4z M13 13h7v6h-7z"],
-                            ["formulaire", "Formulaire", "M5 3h14v18H5z M8 8h8 M8 12h8 M8 16h5"]]
-                    delegate: QQC2.AbstractButton {
-                        id: vue
-                        readonly property bool choisie: fenetre.vue === modelData[0]
-                        implicitHeight: 24
-                        implicitWidth: contenuVue.implicitWidth + 18
-                        focusPolicy: Qt.NoFocus
-                        hoverEnabled: true
-                        onClicked: fenetre.voir(modelData[0], barre.t)
-                        background: Rectangle { radius: 7; color: vue.choisie ? Couleurs.champ : "transparent"; border.width: vue.choisie ? 0.5 : 0; border.color: Couleurs.bord }
-                        contentItem: RowLayout {
-                            id: contenuVue
-                            spacing: 5
-                            Picto { width: 13; height: 13; trace: modelData[2]; encre: vue.choisie ? fenetre.accentEncre : Couleurs.texte2 }
-                            Text { text: modelData[1]; font.pixelSize: 12; font.weight: vue.choisie ? Font.DemiBold : Font.Normal; color: vue.choisie ? fenetre.accentEncre : Couleurs.texte2 }
-                        }
-                    }
-                }
-            }
+        // Grille, fiches ou formulaire : le même tableau, vu autrement
+        ChoixVues {
+            modele: [["grille", "Grille", "M4 5h16v14H4z M4 10h16 M10 5v14"], ["fiches", "Fiches", "M4 5h7v6H4z M13 5h7v6h-7z M4 13h7v6H4z M13 13h7v6h-7z"],
+                     ["formulaire", "Formulaire", "M5 3h14v18H5z M8 8h8 M8 12h8 M8 16h5"]]
+            courant: fenetre.vue
+            onChoisi: cle => fenetre.voir(cle, barre.t)
         }
         Separateur {}
         Outil {

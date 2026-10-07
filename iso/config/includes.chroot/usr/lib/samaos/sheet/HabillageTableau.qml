@@ -394,10 +394,11 @@ Item {
             Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 2 * habillage.echelle
-                height: Math.min(28 * habillage.echelle, onglet.height - 2)
-                width: vues.implicitWidth + 4 * habillage.echelle
+                height: Math.min(30 * habillage.echelle, onglet.height - 2)
+                width: vues.implicitWidth + 8 * habillage.echelle
                 radius: 9 * habillage.echelle
-                color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.055)
+                // (opaque : les traits de la grille ne passent pas dessous)
+                color: Couleurs.sombre ? "#2A2F42" : "#F1F0EE"
                 Row {
                     id: vues
                     anchors.centerIn: parent
@@ -407,8 +408,10 @@ Item {
                         delegate: QQC2.AbstractButton {
                             id: vue
                             readonly property bool choisie: modelData[0] === "grille"
-                            height: Math.min(24 * habillage.echelle, onglet.height - 6)
-                            width: texteVue.implicitWidth + 20 * habillage.echelle
+                            height: Math.min(22 * habillage.echelle, onglet.height - 8)
+                            // (de l'air autour du mot ; la place du mot en gras est gardée)
+                            width: Math.ceil(grasVue.advanceWidth) + 28 * habillage.echelle
+                            TextMetrics { id: grasVue; font.pixelSize: Math.round(12 * habillage.echelle); font.weight: Font.DemiBold; text: modelData[1] }
                             hoverEnabled: true
                             focusPolicy: Qt.NoFocus
                             onClicked: if (!choisie) fenetre.voir(modelData[0], habillage.t)
