@@ -199,7 +199,7 @@ Rectangle {
                     Repeater {
                         model: {
                             if (!panneau.colonne || !panneau.colonne.calcul) return []
-                            var m = Fonctions.morceaux(panneau.colonne.formule)
+                            var m = Fonctions.morceaux(panneau.colonne.formule, panneau.t ? panneau.t.nom : "")
                             return m ? m.filter(function (x) { return x.texte !== "=" }) : [{ texte: panneau.colonne.formule, puce: false }]
                         }
                         delegate: Rectangle {

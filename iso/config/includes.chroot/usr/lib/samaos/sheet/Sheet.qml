@@ -373,7 +373,7 @@ Window {
                 // Dans un tableau, la formule se lit avec les noms des colonnes (un clic pour l'écrire telle quelle)
                 Item {
                     id: phrase
-                    readonly property var morceaux: champFormule.activeFocus ? null : Fonctions.morceaux(fenetre.doc.formule)
+                    readonly property var morceaux: champFormule.activeFocus ? null : Fonctions.morceaux(fenetre.doc.formule, fenetre.tableaux.courant ? fenetre.tableaux.courant.nom : "")
                     visible: morceaux !== null
                     Layout.fillWidth: true
                     Layout.fillHeight: true

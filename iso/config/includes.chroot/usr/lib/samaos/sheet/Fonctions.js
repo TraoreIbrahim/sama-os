@@ -85,15 +85,18 @@ function analyser(texte) {
 }
 
 // Références de tableau dans une formule (« Tontine[[#Cette ligne];[Part]] », « Tontine[Part] ») : morceaux de texte
-// et puces { texte, puce, detail } ; null s'il n'y en a pas
-function morceaux(formule) {
+// et puces { texte, puce, detail } ; null s'il n'y en a pas. tableau : celui de la case ; une colonne d'un autre
+// tableau garde son nom (« Mouvements › Quantité »)
+function morceaux(formule, tableau) {
     var re = /([A-Za-zÀ-ÿ_][A-Za-zÀ-ÿ0-9_.]*)\[(?:\[(#[^\]]*)\];)?\[?([^\[\]]*)\]?\]/g
     var res = [], debut = 0, m, trouve = false
     while ((m = re.exec(formule)) !== null) {
         trouve = true
         if (m.index > debut) res.push({ texte: formule.slice(debut, m.index), puce: false, detail: "" })
         var special = (m[2] || "").toLowerCase()
-        res.push({ texte: m[3], puce: true, detail: special.indexOf("ligne") >= 0 ? "" : special.indexOf("total") >= 0 ? "total" : "toute la colonne" })
+        var autre = tableau !== undefined && m[1] !== tableau
+        res.push({ texte: (autre ? m[1].replace(/_/g, " ") + " › " : "") + m[3], puce: true,
+                   detail: special.indexOf("ligne") >= 0 ? "" : special.indexOf("total") >= 0 ? "total" : "toute la colonne" })
         debut = re.lastIndex
     }
     if (!trouve) return null
