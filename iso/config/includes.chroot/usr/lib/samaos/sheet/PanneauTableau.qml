@@ -152,6 +152,13 @@ Rectangle {
                         onClicked: fenetre.voirFormulaire(panneau.t)
                     }
                     Outil {
+                        text: "Envoyer"
+                        picto: "M21 3L10 14 M21 3l-7 18-4-7-7-4z"
+                        aide: "Le tableau en image, à envoyer (sans les numéros de téléphone)"
+                        background: Rectangle { radius: 8; color: parent.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.07) : Couleurs.champ; border.width: 1; border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.12) }
+                        onClicked: fenetre.voirImage(panneau.t)
+                    }
+                    Outil {
                         text: "Ajouter une ligne"
                         picto: "M12 5v14 M5 12h14"
                         aide: "Une ligne de plus à la fin du tableau, avec ses formules"

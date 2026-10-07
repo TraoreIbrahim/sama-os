@@ -10,7 +10,7 @@ Rectangle {
     readonly property var tableaux: fenetre.tableaux
     readonly property var t: fenetre.tableauVu
     readonly property bool enFiches: fenetre.vue === "fiches"
-    readonly property bool enFormulaire: fenetre.vue === "formulaire"
+    readonly property bool enFormulaire: fenetre.vue === "formulaire" || fenetre.vue === "image"
     // (dans la grille, l'onglet posé au-dessus du tableau et son panneau la remplacent)
     readonly property bool utile: t !== null && (fenetre.vue !== "grille" || (!t.libre && !fenetre.panneauOuvert))
     implicitHeight: utile ? 38 : 0
@@ -64,7 +64,7 @@ Rectangle {
         // Grille, fiches ou formulaire : le même tableau, vu autrement
         ChoixVues {
             modele: [["grille", "Grille", "M4 5h16v14H4z M4 10h16 M10 5v14"], ["fiches", "Fiches", "M4 5h7v6H4z M13 5h7v6h-7z M4 13h7v6H4z M13 13h7v6h-7z"],
-                     ["formulaire", "Formulaire", "M5 3h14v18H5z M8 8h8 M8 12h8 M8 16h5"]]
+                     ["formulaire", "Formulaire", "M5 3h14v18H5z M8 8h8 M8 12h8 M8 16h5"], ["image", "Image", "M4 5h16v14H4z M4 16l5-5 4 4 3-3 4 4 M15.5 8.5a1.5 1.5 0 1 0 0 .1"]]
             courant: fenetre.vue
             onChoisi: cle => fenetre.voir(cle, barre.t)
         }
@@ -87,8 +87,8 @@ Rectangle {
         }
         Item { Layout.fillWidth: true }
         Text {
-            visible: fenetre.vue === "grille"
-            text: "Trier et filtrer : ▾ dans les titres"
+            visible: fenetre.vue === "grille" || fenetre.vue === "image"
+            text: fenetre.vue === "image" ? "Sama propose l'image d'après les colonnes ; vous pouvez en changer." : "Trier et filtrer : ▾ dans les titres"
             font.pixelSize: 12
             color: Couleurs.texte3
         }

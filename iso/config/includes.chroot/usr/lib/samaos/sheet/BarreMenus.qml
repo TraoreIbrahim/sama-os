@@ -48,6 +48,7 @@ Rectangle {
                 ElementMenu { cle: "enregistrer" }
                 ElementMenu { cle: "enregistrerSous" }
                 ElementMenu { cle: "pdf" }
+                ElementMenu { cle: "envoyer" }
                 TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "fermer" }
             }
@@ -135,6 +136,25 @@ Rectangle {
         }
         Item { Layout.fillWidth: true }
 
+        // Envoyer (maquettes) : le tableau en image, à partager
+        QQC2.AbstractButton {
+            id: boutonEnvoyer
+            Layout.preferredHeight: 30
+            leftPadding: 12
+            rightPadding: 14
+            hoverEnabled: true
+            focusPolicy: Qt.NoFocus
+            onClicked: fenetre.envoyer()
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 600
+            QQC2.ToolTip.text: "Le tableau en image, à envoyer (sans les numéros de téléphone)"
+            background: Rectangle { radius: 8; color: boutonEnvoyer.down ? Qt.darker(fenetre.accent, 1.2) : boutonEnvoyer.hovered ? Qt.darker(fenetre.accent, 1.1) : fenetre.accent }
+            contentItem: Row {
+                spacing: 6
+                Picto { anchors.verticalCenter: parent.verticalCenter; width: 14; height: 14; trace: "M21 3L10 14 M21 3l-7 18-4-7-7-4z"; encre: "#FFFFFF"; trait: 1.9 }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: "Envoyer"; font.pixelSize: 13; font.weight: Font.DemiBold; color: "#FFFFFF" }
+            }
+        }
         Outil {
             text: "Enregistrer"
             picto: "M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6"

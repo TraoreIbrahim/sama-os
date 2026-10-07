@@ -404,7 +404,7 @@ Item {
                     anchors.centerIn: parent
                     spacing: 2
                     Repeater {
-                        model: [["grille", "Grille"], ["fiches", "Fiches"], ["formulaire", "Formulaire"]]
+                        model: [["grille", "Grille"], ["fiches", "Fiches"], ["formulaire", "Formulaire"], ["image", "Image"]]
                         delegate: QQC2.AbstractButton {
                             id: vue
                             readonly property bool choisie: modelData[0] === "grille"

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaImage" script:language="StarBasic"><![CDATA[REM Sama Sheet : Envoyer (vue Image). Le tableau seul, en fichier Excel : ses titres, ses lignes et ses totaux (les
+REM valeurs, avec leurs formats : montants, dates), sans le reste du classeur ; les numéros de téléphone masqués si on
+REM le demande (« 07 •• •• •• 78 ») : un registre qui circule ne doit pas servir aux arnaqueurs.
+Option Explicit
+
+Function EstTelephone(s As String) As Boolean
+	Dim t As String
+	t = LCase(Trim(s))
+	EstTelephone = (InStr(t, "phone") > 0 Or InStr(t, "portable") > 0 Or InStr(t, "whatsapp") > 0 Or t = "tél" Or t = "tel" _
+	                Or Left(t, 4) = "tél " Or Left(t, 4) = "tel ")
+End Function
+
+Function Masquer(v As String) As String
+	Dim i As Long, c As String, ch As String
+	c = ""
+	For i = 1 To Len(v)
+		ch = Mid(v, i, 1)
+		If ch >= "0" And ch <= "9" Then c = c & ch
+	Next i
+	If Len(c) < 6 Then
+		Masquer = v
+	Else
+		Masquer = Left(c, 2) & " •• •• •• " & Right(c, 2)
+	End If
+End Function
+
+Function Copie(sNom As String, sChemin As String, sCacher As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, aD As Variant, oNouveau As Object, oF2 As Object
+	Dim aArgs(0) As New com.sun.star.beans.PropertyValue, aFiltre(0) As New com.sun.star.beans.PropertyValue
+	Dim c As Long, l As Long, nCols As Long, nLignes As Long, oFormat As Object, k As Long, bMasquee As Boolean, aLigne As Variant
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	aD = oF.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.EndRow).DataArray
+	nCols = a.EndColumn - a.StartColumn
+	nLignes = a.EndRow - a.StartRow
+	aArgs(0).Name = "Hidden"
+	aArgs(0).Value = True
+	oNouveau = StarDesktop.loadComponentFromURL("private:factory/scalc", "_blank", 0, aArgs())
+	oF2 = oNouveau.Sheets.getByIndex(0)
+	oF2.Name = Replace(sNom, "_", " ")
+	For c = 0 To nCols
+		bMasquee = sCacher = "1" And EstTelephone(CStr(aD(0)(c)))
+		If bMasquee Then
+			For l = 1 To nLignes
+				aLigne = aD(l)
+				If CStr(aLigne(c)) <> "" Then aLigne(c) = Masquer(CStr(aLigne(c)))
+				aD(l) = aLigne
+			Next l
+		End If
+	Next c
+	oF2.getCellRangeByPosition(0, 0, nCols, nLignes).DataArray = aD
+	' (les formats des colonnes : montants, dates… ; pas pour les numéros masqués, qui restent du texte)
+	For c = 0 To nCols
+		If Not (sCacher = "1" And EstTelephone(CStr(aD(0)(c)))) And nLignes >= 1 Then
+			oFormat = oDoc.NumberFormats.getByKey(oF.getCellByPosition(a.StartColumn + c, a.StartRow + 1).NumberFormat)
+			k = oNouveau.NumberFormats.queryKey(oFormat.FormatString, oFormat.Locale, False)
+			If k = -1 Then k = oNouveau.NumberFormats.addNew(oFormat.FormatString, oFormat.Locale)
+			oF2.getCellRangeByPosition(c, 1, c, nLignes).NumberFormat = k
+		End If
+	Next c
+	oF2.getCellRangeByPosition(0, 0, nCols, 0).CharWeight = com.sun.star.awt.FontWeight.BOLD
+	If oPlage.TotalsRow Then oF2.getCellRangeByPosition(0, nLignes, nCols, nLignes).CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oF2.Columns.OptimalWidth = True
+	aFiltre(0).Name = "FilterName"
+	aFiltre(0).Value = "Calc MS Excel 2007 XML"
+	oNouveau.storeToURL(ConvertToURL(sChemin), aFiltre())
+	oNouveau.close(True)
+	Copie = ""
+	Exit Function
+Erreur:
+	Copie = "!" & Error$
+	If Not IsNull(oNouveau) Then oNouveau.close(True)
+End Function
+]]></script:module>

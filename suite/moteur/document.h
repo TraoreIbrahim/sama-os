@@ -131,6 +131,11 @@ public:
     // Redessiner toute la feuille (après un changement que le moteur n'annonce pas : couleurs d'une règle changées par
     // une macro)
     Q_INVOKABLE void redessiner() { invalider(QRectF(), m_partie); }
+    // Pour Envoyer (la vue Image) : une image dans le presse-papiers ; une image en PDF (A4, en pages si elle est
+    // longue) ; un chemin libre dans un dossier (« Cotisations 7 oct.png », sinon « … (2).png »)
+    Q_INVOKABLE bool copierImage(const QString &chemin);
+    Q_INVOKABLE bool imageEnPdf(const QString &image, const QString &pdf, const QString &titre = QString());
+    Q_INVOKABLE QString cheminLibre(const QString &dossier, const QString &nom, const QString &extension) const;
     // Macro de Sama installée dans le moteur (« SamaTableaux.Creer ») avec des arguments texte ; la réponse arrive par
     // resultatScript(jeton, reussi, valeur). Rend le jeton.
     Q_INVOKABLE int script(const QString &fonction, const QVariantList &arguments = QVariantList());

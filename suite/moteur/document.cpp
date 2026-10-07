@@ -2,19 +2,24 @@
 #include "moteur.h"
 
 #include <QClipboard>
+#include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLineF>
 #include <QMimeData>
+#include <QPageSize>
+#include <QPainter>
+#include <QPdfWriter>
 #include <QQuickWindow>
 #include <QRegularExpression>
 #include <QSGSimpleTextureNode>
 #include <QSGTexture>
 #include <QThread>
 #include <QTimer>
-#include <QUrl>
 #include <QtMath>
+#include <QUrl>
 
 namespace {
 
@@ -377,6 +382,51 @@ void DocumentLO::planifier()
         }
     }
     update();
+}
+
+bool DocumentLO::copierImage(const QString &chemin)
+{
+    const QImage image(QUrl(chemin).isLocalFile() ? QUrl(chemin).toLocalFile() : chemin);
+    if (image.isNull()) return false;
+    QGuiApplication::clipboard()->setImage(image);
+    return true;
+}
+
+bool DocumentLO::imageEnPdf(const QString &image, const QString &pdf, const QString &titre)
+{
+    const QImage source(QUrl(image).isLocalFile() ? QUrl(image).toLocalFile() : image);
+    if (source.isNull()) return false;
+    QPdfWriter ecrivain(QUrl(pdf).isLocalFile() ? QUrl(pdf).toLocalFile() : pdf);
+    ecrivain.setPageSize(QPageSize(QPageSize::A4));
+    ecrivain.setPageMargins(QMarginsF(14, 14, 14, 14), QPageLayout::Millimeter);
+    ecrivain.setResolution(300);
+    ecrivain.setTitle(titre);
+    ecrivain.setCreator(QStringLiteral("Sama Sheet"));
+    QPainter peintre(&ecrivain);
+    if (!peintre.isActive()) return false;
+    peintre.setRenderHint(QPainter::SmoothPixmapTransform);
+    // (l'image prend la largeur de la page ; une image plus haute qu'une page continue sur la suivante)
+    const QRect page = peintre.viewport();
+    const qreal echelle = qreal(page.width()) / source.width();
+    const int hauteurParPage = qMax(1, int(page.height() / echelle));
+    for (int y = 0; y < source.height(); y += hauteurParPage) {
+        if (y > 0) ecrivain.newPage();
+        const QImage morceau = source.copy(0, y, source.width(), qMin(hauteurParPage, source.height() - y));
+        peintre.drawImage(QRectF(0, 0, page.width(), morceau.height() * echelle), morceau);
+    }
+    return peintre.end();
+}
+
+QString DocumentLO::cheminLibre(const QString &dossier, const QString &nom, const QString &extension) const
+{
+    const QString base = QUrl(dossier).isLocalFile() ? QUrl(dossier).toLocalFile() : dossier;
+    QDir().mkpath(base);
+    QString propre = nom;
+    propre.replace(QLatin1Char('/'), QLatin1Char('-'));
+    QString chemin = base + QLatin1Char('/') + propre + QLatin1Char('.') + extension;
+    for (int n = 2; QFileInfo::exists(chemin); ++n)
+        chemin = base + QLatin1Char('/') + propre + QStringLiteral(" (%1).").arg(n) + extension;
+    return chemin;
 }
 
 QColor DocumentLO::couleurAu(qreal x, qreal y) const

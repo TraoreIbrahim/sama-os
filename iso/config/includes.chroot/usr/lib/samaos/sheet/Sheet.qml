@@ -59,17 +59,34 @@ Window {
         vue = "formulaire"
         vueFormulaire.ouvrir(t)
     }
+    function voirImage(t) {
+        if (!t) return
+        nomFiches = t.nom
+        vue = "image"
+        vueImage.ouvrir(t)
+    }
     function voir(v, t) {
         if (v === "fiches") voirFiches(t)
         else if (v === "formulaire") voirFormulaire(t)
+        else if (v === "image") voirImage(t)
         else voirGrille()
     }
+    // Envoyer : l'image du tableau de la case courante (ou du premier de la feuille, ou du classeur)
+    // (juste après l'ouverture, les tableaux ne sont peut-être pas encore lus : on les relit, et on réessaie une fois)
+    function envoyer(reessai) {
+        var t = tableauVu || (tableaux.visibles.length ? tableaux.visibles[0] : null) || (tableaux.liste.length ? tableaux.liste[0] : null)
+        if (!t && !reessai) { tableaux.rafraichir(); envoyerPlusTard.restart(); return }
+        if (!t) { message.montrer("Envoyer montre un tableau en image : mettez d'abord vos données en tableau (Ctrl+T)"); return }
+        voirImage(t)
+    }
+    Timer { id: envoyerPlusTard; interval: 800; onTriggered: fenetre.envoyer(true) }
     function voirGrille() { vue = "grille"; doc.forceActiveFocus() }
     function nouvelleFiche() { vueFiches.nouvelle() }
     onTableauFichesChanged: {
         if (vue === "grille") return
         if (!tableauFiches) voirGrille()
         else if (vue === "fiches") vueFiches.tableau = tableauFiches
+        else if (vue === "image") vueImage.tableau = tableauFiches
         else vueFormulaire.tableau = tableauFiches
     }
     readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
@@ -349,6 +366,13 @@ Window {
 
         BarreTableau {
             Layout.fillWidth: true
+        }
+
+        VueImage {
+            id: vueImage
+            visible: fenetre.vue === "image"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
 
         Formulaire {

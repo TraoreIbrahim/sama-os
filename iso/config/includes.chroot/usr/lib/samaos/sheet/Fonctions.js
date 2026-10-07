@@ -164,3 +164,149 @@ function resume(d) {
                 : "<b>" + soldes + " " + (soldes > 1 ? noms : nom) + " sur " + n + "</b> " + (soldes > 1 ? "ont" : "a") + " tout " + participe
     return debut + " · il reste " + resteTexte + " à recevoir"
 }
+
+// ——— La vue Image (Envoyer) : les images qu'on peut tirer d'un tableau, d'après ses colonnes ———
+// Une image : { cle, nom (pour la choisir), titre (la phrase), sousTitre, legende: [[mot, couleur]],
+//               barres: [{ nom, court, parts: [{ v, c }], texte, encre }] }
+
+var LAGUNE = "#1F5E7A", OCRE = "#E2A62B", VERT = "#2F6B57", ENCRE = "#1E2740"
+
+function estTelephone(nom) { return /t[ée]l[ée]?phone|^t[ée]l\b|portable|whatsapp/i.test(String(nom)) }
+// « 07 12 34 56 78 » → « 07 •• •• •• 78 »
+function masquer(v) {
+    var c = String(v).replace(/\D/g, "")
+    return c.length < 6 ? String(v) : c.slice(0, 2) + " •• •• •• " + c.slice(-2)
+}
+// « Aminata Diabaté » → « Aminata D. » (l'aperçu du téléphone)
+function court(nom) {
+    var m = String(nom || "").trim().split(/\s+/)
+    return m.length > 1 ? m[0] + " " + m[1].charAt(0) + "." : m[0]
+}
+function sommeDe(liste, f) { var s = 0; for (var i = 0; i < liste.length; i++) s += f(liste[i]); return s }
+
+function images(d) {
+    var res = []
+    if (!d || !d.colonnes || !d.colonnes.length) return res
+    var cols = d.colonnes
+    var lignes = d.lignes.filter(function (r) { return !r.vide && r.v[0] })
+    if (!lignes.length) return res
+    var nom = String(cols[0].nom || "").toLowerCase()
+    if (/^(nom|pr[ée]nom)/.test(nom) || !nom) nom = "personne"
+    var noms = /[sxz]$/.test(nom) ? nom : nom + "s"
+    var Nom = nom.charAt(0).toUpperCase() + nom.slice(1)
+    function en(x, montant) { return enChiffres(x) + (montant ? " F" : "") }
+
+    // Un tableau de versements (Reste = Part − Versé)
+    var p = progression(cols)
+    var versements = p !== null && (/vers|pay|r[ée]gl|rembours|cotis|acompte|re[çc]u/i.test(cols[p.verse].nom)
+                                    || /reste|d[ûu]$|solde|impay|[àa] payer|manque/i.test(cols[p.reste].nom))
+    if (versements) {
+        var montant = cols[p.reste].genre === "montant" || cols[p.verse].genre === "montant"
+        var nomVerse = cols[p.verse].nom, nomReste = cols[p.reste].nom
+        var participe = /vers/i.test(nomVerse) ? "versé" : /pay/i.test(nomVerse) ? "payé" : /rembours/i.test(nomVerse) ? "remboursé" : "réglé"
+        var dus = [], soldes = []
+        for (var i = 0; i < lignes.length; i++) {
+            var e = { r: lignes[i], v: lignes[i].n[p.verse] || 0, x: lignes[i].n[p.reste] || 0 }
+            if (e.x > 0) dus.push(e); else soldes.push(e)
+        }
+        dus.sort(function (a, b) { return b.x - a.x })
+        var reste = sommeDe(dus, function (e) { return e.x })
+        res.push({
+            cle: "membres",
+            nom: Nom + " par " + nom,
+            titre: dus.length ? "Il reste " + en(reste, montant) + " à recevoir, chez " + dus.length + " " + (dus.length > 1 ? noms : nom) + "."
+                              : "Tout est " + participe + " : plus rien à recevoir.",
+            sousTitre: nomVerse + " et " + nomReste.toLowerCase() + ", " + nom + " par " + nom + " · d'après les colonnes " + nomVerse + " et " + nomReste,
+            legende: [[nomVerse, LAGUNE], [nomReste, OCRE]],
+            barres: dus.concat(soldes).map(function (e) {
+                return { nom: e.r.v[0], court: court(e.r.v[0]), parts: [{ v: Math.max(0, e.v), c: LAGUNE }, { v: Math.max(0, e.x), c: OCRE }],
+                         texte: e.x > 0 ? nomReste.toLowerCase() + " " + en(e.x, montant) : "soldé", encre: e.x > 0 ? ENCRE : VERT }
+            })
+        })
+        res.push({
+            cle: "solde",
+            nom: "Soldé ou pas : " + soldes.length + " et " + dus.length,
+            titre: soldes.length + " " + (soldes.length > 1 ? noms : nom) + " sur " + lignes.length + " " + (soldes.length > 1 ? "ont" : "a") + " tout " + participe + ".",
+            sousTitre: dus.length ? "Il reste " + en(reste, montant) + " à recevoir · d'après la colonne " + nomReste : "Plus rien à recevoir · d'après la colonne " + nomReste,
+            legende: [],
+            barres: [{ nom: "Tout " + participe, court: "Tout " + participe, parts: [{ v: soldes.length, c: VERT }], texte: String(soldes.length), encre: VERT },
+                     { nom: "Doivent encore", court: "Doivent encore", parts: [{ v: dus.length, c: OCRE }],
+                       texte: dus.length + (dus.length ? " · " + en(reste, montant) : ""), encre: ENCRE }]
+        })
+        // Jour après jour (s'il y a une colonne de dates)
+        var dj = -1
+        for (var k = 0; k < cols.length; k++) if (cols[k].genre === "date") { dj = k; break }
+        if (dj >= 0) {
+            var jours = {}, ordre = []
+            for (var m = 0; m < lignes.length; m++) {
+                var jour = lignes[m].n[dj]
+                if (jour === null) continue
+                if (!(jour in jours)) { jours[jour] = { texte: lignes[m].v[dj], v: 0 }; ordre.push(jour) }
+                jours[jour].v += lignes[m].n[p.verse] || 0
+            }
+            ordre.sort(function (a, b) { return a - b })
+            if (ordre.length) {
+                var recu = sommeDe(ordre, function (j) { return jours[j].v })
+                res.push({
+                    cle: "jours",
+                    nom: cols[p.verse].nom + " jour après jour",
+                    titre: en(recu, montant) + " reçus en " + ordre.length + " jour" + (ordre.length > 1 ? "s" : "") + ".",
+                    sousTitre: "Ce qui a été " + participe + ", jour après jour · d'après les colonnes " + cols[dj].nom + " et " + nomVerse,
+                    legende: [],
+                    barres: ordre.map(function (j) {
+                        return { nom: jours[j].texte, court: jours[j].texte, parts: [{ v: jours[j].v, c: LAGUNE }], texte: en(jours[j].v, montant), encre: ENCRE }
+                    })
+                })
+            }
+        }
+    }
+
+    // Une colonne de nombres, ligne par ligne (le stock de chaque article…)
+    if (!versements) {
+        for (var c = 1; c < cols.length; c++) {
+            var col = cols[c]
+            if (!col.nombre || col.genre === "date" || col.genre === "heure") continue
+            var vals = lignes.filter(function (r) { return r.n[c] !== null }).map(function (r) { return { r: r, x: r.n[c] } })
+            if (!vals.length) continue
+            vals.sort(function (a, b) { return b.x - a.x })
+            var enMontant = col.genre === "montant"
+            res.push({
+                cle: "valeurs:" + c,
+                nom: col.nom + " par " + nom,
+                titre: col.nom + " : " + en(sommeDe(vals, function (e) { return e.x }), enMontant) + " en tout.",
+                sousTitre: vals[0].r.v[0] + " en tête, avec " + vals[0].r.v[c] + " · d'après la colonne " + col.nom,
+                legende: [],
+                barres: vals.map(function (e) {
+                    return { nom: e.r.v[0], court: court(e.r.v[0]), parts: [{ v: Math.max(0, e.x), c: LAGUNE }], texte: e.r.v[c], encre: ENCRE }
+                })
+            })
+        }
+    }
+
+    // La répartition d'une colonne à choix (Mobile money, Espèces…)
+    for (var q = 1; q < cols.length; q++) {
+        var cq = cols[q]
+        if (cq.nombre || cq.calcul || estTelephone(cq.nom) || cq.genre === "date") continue
+        var comptes = {}, valeurs = [], n = 0
+        for (var w = 0; w < lignes.length; w++) {
+            var val = lignes[w].v[q]
+            if (!val) continue
+            n++
+            if (!(val in comptes)) { comptes[val] = 0; valeurs.push(val) }
+            comptes[val]++
+        }
+        if (n < 2 || valeurs.length < 2 || valeurs.length > 8) continue
+        valeurs.sort(function (a, b) { return comptes[b] - comptes[a] })
+        res.push({
+            cle: "repartition:" + q,
+            nom: "Répartition : " + cq.nom,
+            titre: valeurs[0] + " en tête : " + comptes[valeurs[0]] + " sur " + n + ".",
+            sousTitre: cq.nom + ", " + noms + " par réponse · d'après la colonne " + cq.nom,
+            legende: [],
+            barres: valeurs.map(function (v) {
+                return { nom: v, court: v, parts: [{ v: comptes[v], c: LAGUNE }], texte: String(comptes[v]), encre: ENCRE }
+            })
+        })
+    }
+    return res
+}

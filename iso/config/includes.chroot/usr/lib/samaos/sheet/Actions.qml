@@ -79,6 +79,7 @@ QtObject {
         c("enregistrer", "Enregistrer", "Fichier", "sauver sauvegarder", "Ctrl+S", function () { fenetre.enregistrer() }),
         c("enregistrerSous", "Enregistrer sous…", "Fichier", "copie autre nom format ods csv", "Ctrl+Maj+S", function () { fenetre.ouvrirDialogue("enregistrer") }),
         c("pdf", "Exporter en PDF…", "Fichier", "imprimer pdf envoyer", "", function () { fenetre.ouvrirDialogue("pdf") }),
+        c("envoyer", "Envoyer en image…", "Fichier", "envoyer partager image bilan whatsapp photo pdf", "", function () { fenetre.envoyer() }),
         c("fermer", "Fermer", "Fichier", "quitter", "Ctrl+W", function () { fenetre.close() }),
 
         c("annuler", "Annuler", "Édition", "défaire retour", "Ctrl+Z", function () { uno(".uno:Undo", reparer) }, function () { return peutAnnuler || doc.etats[".uno:Undo"] === "enabled" }),
@@ -168,6 +169,7 @@ QtObject {
         enregistrerSous: "M5 4h11l3 3v4 M5 4v16h6 M8 4v5h7V4 M17 14v7 M13.5 17.5h7",
         pdf: "M6 3h8l4 4v14H6z M14 3v4h4 M9 13h6 M9 17h4",
         fermer: "M7 7l10 10 M17 7L7 17",
+        envoyer: "M21 3L10 14 M21 3l-7 18-4-7-7-4z",
         annuler: "M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3",
         retablir: "M15 14l5-5-5-5 M20 9H10a6 6 0 0 0 0 12h3",
         couper: "M6 4a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z M6 15a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z M8.2 7.8L20 16 M8.2 16.2L20 8",
@@ -235,6 +237,7 @@ QtObject {
         modeles: "Cotisations, stock, facture, budget…",
         enregistrer: "Compatible Excel (.xlsx)",
         pdf: "Pour imprimer ou pour envoyer",
+        envoyer: "Un bilan à envoyer, sans les numéros",
         collerValeurs: "Sans les formules ni la mise en forme",
         effacer: "La case reste, son contenu part",
         formules: "Les calculs à la place des résultats",
