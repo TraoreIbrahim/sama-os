@@ -121,6 +121,7 @@ Rectangle {
                 ElementMenu { cle: "tableau" }
                 ElementMenu { cle: "fiches" }
                 ElementMenu { cle: "formulaire" }
+                ElementMenu { cle: "resumer" }
                 ElementMenu { cle: "ligneTableau" }
                 ElementMenu { cle: "totauxTableau" }
                 TitreMenu { text: "" ; implicitHeight: 9 }

@@ -160,6 +160,13 @@ Rectangle {
                         onClicked: fenetre.voirImage(panneau.t)
                     }
                     Outil {
+                        text: "Résumer"
+                        picto: "M4 5h16v14H4z M4 10h16 M10 10v9 M13 14h4"
+                        aide: "Une ligne par article, par mois… : la somme, le nombre, sur une nouvelle feuille"
+                        background: Rectangle { radius: 8; color: parent.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.07) : Couleurs.champ; border.width: 1; border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.12) }
+                        onClicked: fenetre.resumer(panneau.t)
+                    }
+                    Outil {
                         text: "Ajouter une ligne"
                         picto: "M12 5v14 M5 12h14"
                         aide: "Une ligne de plus à la fin du tableau, avec ses formules"

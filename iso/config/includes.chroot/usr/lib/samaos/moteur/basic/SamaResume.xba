@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaResume" script:language="StarBasic"><![CDATA[REM Sama Sheet : résumer un tableau (comme un tableau croisé d'Excel, en plus simple). Une feuille « Résumé » porte un
+REM tableau : une ligne par valeur d'une colonne (chaque article ; chaque mois pour une date), la somme, le nombre de
+REM lignes ou la moyenne d'une autre colonne, éventuellement séparée en colonnes par les valeurs d'une troisième (Entrée,
+REM Sortie) et leur Total. Des formules SOMME.SI.ENS vers le tableau, qu'Excel relit : les nombres suivent le tableau.
+REM Quand le tableau a de nouvelles valeurs (un nouvel article), Sama refait les lignes du résumé en revenant sur sa
+REM feuille. La définition est gardée dans le classeur (« Sama.resume.Resume_Mouvements »).
+Option Explicit
+
+' Les valeurs différentes d'une colonne d'un tableau (pour une date : le premier jour de chaque mois), triées, sans les
+' vides ; bDate dit si la colonne est faite de dates
+Function Categories(oDoc As Object, sSource As String, sCol As String, aCat() As Variant, bDate As Boolean) As Long
+	Dim oP As Object, a As Object, oF As Object, c As Long, l As Long, l2 As Long, n As Long, i As Long, j As Long
+	Dim v As Variant, oCase As Object, nType As Long, bTrouve As Boolean, t As Variant
+	oP = oDoc.DatabaseRanges.getByName(sSource)
+	a = oP.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	c = ColonneDe(oF, a, sCol)
+	l2 = a.EndRow
+	If oP.TotalsRow Then l2 = l2 - 1
+	bDate = False
+	n = 0
+	For l = a.StartRow + 1 To l2
+		oCase = oF.getCellByPosition(c, l)
+		If oCase.Type <> com.sun.star.table.CellContentType.EMPTY And oCase.String <> "" Then
+			If oCase.Type = com.sun.star.table.CellContentType.VALUE Then
+				nType = oDoc.NumberFormats.getByKey(oCase.NumberFormat).Type
+				If (nType And com.sun.star.util.NumberFormat.DATE) <> 0 Then bDate = True
+			End If
+			If bDate And oCase.Type = com.sun.star.table.CellContentType.VALUE Then
+				v = CDbl(DateSerial(Year(oCase.Value), Month(oCase.Value), 1))
+			Else
+				v = oCase.String
+			End If
+			bTrouve = False
+			For i = 0 To n - 1
+				If VarType(aCat(i)) = VarType(v) Then
+					If aCat(i) = v Then
+						bTrouve = True
+						Exit For
+					End If
+				End If
+			Next i
+			If Not bTrouve Then
+				ReDim Preserve aCat(n) As Variant
+				aCat(n) = v
+				n = n + 1
+			End If
+		End If
+	Next l
+	' (tri : les mois dans l'ordre, les textes de A à Z)
+	For i = 1 To n - 1
+		t = aCat(i)
+		j = i - 1
+		Do While j >= 0
+			If Not Avant(t, aCat(j)) Then Exit Do
+			aCat(j + 1) = aCat(j)
+			j = j - 1
+		Loop
+		aCat(j + 1) = t
+	Next i
+	Categories = n
+End Function
+
+Private Function Avant(x As Variant, y As Variant) As Boolean
+	If VarType(x) = VarType(y) And VarType(x) <> 8 Then
+		Avant = (x < y)
+	Else
+		Avant = (StrComp(LCase(CStr(x)), LCase(CStr(y))) < 0)
+	End If
+End Function
+
+' Le critère d'une ligne du résumé, dans une formule : « Src[Article];Res[[#This Row];[Article]] », ou pour un mois
+' « Src[Date];">="&Res[[#This Row];[Mois]];Src[Date];"<"&EDATE(Res[[#This Row];[Mois]];1) »
+Private Function Critere(sSource As String, sPar As String, sRes As String, sTitre As String, bDate As Boolean) As String
+	Dim sLigne As String
+	sLigne = sRes & "[[#This Row];[" & NomColonne(sTitre) & "]]"
+	If bDate Then
+		Critere = sSource & "[" & NomColonne(sPar) & "];"">=""&" & sLigne & ";" & sSource & "[" & NomColonne(sPar) & "];""<""&EDATE(" & sLigne & ";1)"
+	Else
+		Critere = sSource & "[" & NomColonne(sPar) & "];" & sLigne
+	End If
+End Function
+
+' La formule d'une case du résumé (sSep, sValSep : la colonne et la valeur qui séparent, ou "")
+Private Function Formule(sSource As String, sPar As String, sCalcul As String, sVal As String, sSep As String, sValSep As String, sRes As String, sTitre As String, bDate As Boolean) As String
+	Dim sCrit As String
+	sCrit = Critere(sSource, sPar, sRes, sTitre, bDate)
+	If sSep <> "" Then sCrit = sCrit & ";" & sSource & "[" & NomColonne(sSep) & "];""" & Replace(sValSep, """", """""") & """"
+	Select Case sCalcul
+	Case "nombre"
+		Formule = "=COUNTIFS(" & sCrit & ")"
+	Case "moyenne"
+		Formule = "=IFERROR(AVERAGEIFS(" & sSource & "[" & NomColonne(sVal) & "];" & sCrit & ");"""")"
+	Case Else
+		Formule = "=SUMIFS(" & sSource & "[" & NomColonne(sVal) & "];" & sCrit & ")"
+	End Select
+End Function
+
+' Écrit le tableau du résumé sur la feuille oF, à partir de la ligne l0 (ses titres) ; rend "" ou « !message »
+Private Function Construire(oDoc As Object, oF As Object, l0 As Long, sRes As String, sSource As String, sPar As String, sCalcul As String, sVal As String, sSep As String) As String
+	Dim aCat() As Variant, n As Long, bDate As Boolean, aSep() As Variant, nSep As Long, bDateSep As Boolean, i As Long, k As Long
+	Dim sTitre As String, aTitres() As String, nCols As Long, a As New com.sun.star.table.CellRangeAddress, sGenre As String
+	Dim oCase As Object, nFormatSource As Long, oPS As Object, aZoneSource As Object, oFS As Object, cV As Long
+	n = Categories(oDoc, sSource, sPar, aCat(), bDate)
+	nSep = 0
+	If sSep <> "" Then
+		nSep = Categories(oDoc, sSource, sSep, aSep(), bDateSep)
+		If nSep > 12 Then
+			Construire = "!La colonne " & sSep & " a trop de valeurs différentes pour séparer le résumé (12 au plus)"
+			Exit Function
+		End If
+	End If
+	sTitre = IIf(bDate, "Mois", sPar)
+	' Les titres : la catégorie, une colonne par valeur qui sépare et Total, ou le calcul
+	nCols = 0
+	ReDim aTitres(nSep + 1) As String
+	aTitres(0) = sTitre
+	nCols = 1
+	If nSep > 0 Then
+		For k = 0 To nSep - 1
+			aTitres(nCols) = CStr(aSep(k))
+			nCols = nCols + 1
+		Next k
+		aTitres(nCols) = "Total"
+		nCols = nCols + 1
+	Else
+		aTitres(nCols) = IIf(sCalcul = "nombre", "Nombre de lignes", IIf(sCalcul = "moyenne", "Moyenne " & sVal, sVal))
+		nCols = nCols + 1
+	End If
+	For k = 0 To nCols - 1
+		oF.getCellByPosition(k, l0).String = aTitres(k)
+	Next k
+	For i = 0 To n - 1
+		oCase = oF.getCellByPosition(0, l0 + 1 + i)
+		If bDate Then oCase.Value = aCat(i) Else oCase.String = CStr(aCat(i))
+	Next i
+	If n = 0 Then n = 1
+	a.Sheet = oF.RangeAddress.Sheet
+	a.StartColumn = 0
+	a.StartRow = l0
+	a.EndColumn = nCols - 1
+	a.EndRow = l0 + n
+	Nouveau(oF, a, sRes)
+	' Les formules (le nom du tableau du résumé existe maintenant)
+	For i = 0 To n - 1
+		If nSep > 0 Then
+			For k = 0 To nSep - 1
+				oF.getCellByPosition(1 + k, l0 + 1 + i).Formula = Formule(sSource, sPar, sCalcul, sVal, sSep, CStr(aSep(k)), sRes, sTitre, bDate)
+			Next k
+			oF.getCellByPosition(nCols - 1, l0 + 1 + i).Formula = Formule(sSource, sPar, sCalcul, sVal, "", "", sRes, sTitre, bDate)
+		Else
+			oF.getCellByPosition(1, l0 + 1 + i).Formula = Formule(sSource, sPar, sCalcul, sVal, "", "", sRes, sTitre, bDate)
+		End If
+	Next i
+	' Les formats : le mois en clair, les nombres comme ceux du tableau
+	If bDate Then oF.getCellRangeByPosition(0, l0 + 1, 0, l0 + n).NumberFormat = FormatCode("MMMM AAAA")
+	sGenre = ""
+	If sCalcul <> "nombre" And sVal <> "" Then
+		oPS = oDoc.DatabaseRanges.getByName(sSource)
+		aZoneSource = oPS.DataArea
+		oFS = oDoc.Sheets.getByIndex(aZoneSource.Sheet)
+		cV = ColonneDe(oFS, aZoneSource, sVal)
+		If cV >= 0 And aZoneSource.EndRow > aZoneSource.StartRow Then
+			nFormatSource = oFS.getCellByPosition(cV, aZoneSource.StartRow + 1).NumberFormat
+			oF.getCellRangeByPosition(1, l0 + 1, nCols - 1, l0 + n).NumberFormat = nFormatSource
+		End If
+	End If
+	' La ligne des totaux (sauf pour une moyenne)
+	If sCalcul <> "moyenne" Then
+		For k = 1 To nCols - 1
+			Totaliser(sRes, aTitres(k), "somme")
+		Next k
+	End If
+	oF.Columns.getByIndex(0).Width = 5200
+	For k = 1 To nCols - 1
+		oF.Columns.getByIndex(k).Width = 3000
+	Next k
+	Construire = ""
+End Function
+
+' Résume le tableau sSource : une ligne par valeur de sPar ; sCalcul (somme, nombre, moyenne) de sVal ; séparé par les
+' valeurs de sSep (ou ""). Sur une nouvelle feuille « Résumé ». Rend la feuille et la case de départ (« Résumé.A4 »).
+Function Creer(sSource As String, sPar As String, sCalcul As String, sVal As String, sSep As String) As String
+	Dim oDoc As Object, sFeuille As String, i As Long, oF As Object, sRes As String, s As String, bContexte As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	If Not oDoc.DatabaseRanges.hasByName(sSource) Then
+		Creer = "!Le tableau " & sSource & " n'existe plus"
+		Exit Function
+	End If
+	oDoc.UndoManager.enterUndoContext("Résumer " & Replace(sSource, "_", " "))
+	bContexte = True
+	sFeuille = "Résumé"
+	i = 2
+	Do While oDoc.Sheets.hasByName(sFeuille)
+		sFeuille = "Résumé (" & i & ")"
+		i = i + 1
+	Loop
+	oDoc.Sheets.insertNewByName(sFeuille, oDoc.Sheets.Count)
+	oF = oDoc.Sheets.getByName(sFeuille)
+	sRes = "Resume_" & sSource
+	i = 2
+	Do While oDoc.DatabaseRanges.hasByName(sRes)
+		sRes = "Resume_" & sSource & "_" & i
+		i = i + 1
+	Loop
+	oF.getCellByPosition(0, 0).String = "Résumé de " & Replace(sSource, "_", " ")
+	oF.getCellByPosition(0, 0).CharHeight = 18
+	oF.getCellByPosition(0, 0).CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oF.getCellByPosition(0, 0).CharColor = Encre()
+	oF.getCellByPosition(0, 1).String = Phrase(sPar, sCalcul, sVal, sSep) & " Les nombres suivent le tableau ; Sama ajoute les nouvelles lignes."
+	oF.getCellByPosition(0, 1).CharColor = RGB(102, 94, 84)
+	oF.Rows.getByIndex(2).Height = 900
+	s = Construire(oDoc, oF, 3, sRes, sSource, sPar, sCalcul, sVal, sSep)
+	If s <> "" Then
+		oDoc.UndoManager.leaveUndoContext()
+		bContexte = False
+		oDoc.UndoManager.undo()
+		Creer = s
+		Exit Function
+	End If
+	Regler(sRes, "resume", sSource & Chr(31) & sPar & Chr(31) & sCalcul & Chr(31) & sVal & Chr(31) & sSep)
+	oDoc.UndoManager.leaveUndoContext()
+	Creer = sFeuille & ".A4"
+	Exit Function
+Erreur:
+	Creer = "!" & Error$
+	If bContexte Then oDoc.UndoManager.leaveUndoContext()
+End Function
+
+' « Par Article : la somme de Quantite, séparée par Sens. »
+Function Phrase(sPar As String, sCalcul As String, sVal As String, sSep As String) As String
+	Dim s As String
+	s = "Par " & sPar & " : "
+	If sCalcul = "nombre" Then
+		s = s & "le nombre de lignes"
+	ElseIf sCalcul = "moyenne" Then
+		s = s & "la moyenne de " & sVal
+	Else
+		s = s & "la somme de " & sVal
+	End If
+	If sSep <> "" Then s = s & ", séparée par " & sSep
+	Phrase = s & "."
+End Function
+
+' Les résumés d'une feuille (sF : à partir de 0) qui ont de nouvelles lignes ou colonnes à prendre (un nouvel article) :
+' Sama refait leurs lignes. Rend le nombre de résumés refaits.
+Function MettreAJourFeuille(sF As String) As String
+	Dim oDoc As Object, i As Long, oP As Object, sDef As String, aD As Variant, a As Object, oF As Object, n As Long
+	Dim aCat() As Variant, nCat As Long, bDate As Boolean, aSep() As Variant, nSep As Long, bDateSep As Boolean, k As Long
+	Dim bChange As Boolean, nCols As Long, l2 As Long, sNoms() As String, nNoms As Long, s As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	n = 0
+	nNoms = 0
+	For i = 0 To oDoc.DatabaseRanges.Count - 1
+		oP = oDoc.DatabaseRanges.getByIndex(i)
+		If oP.DataArea.Sheet = CLng(sF) And Left(oP.Name, 7) = "Resume_" Then
+			ReDim Preserve sNoms(nNoms) As String
+			sNoms(nNoms) = oP.Name
+			nNoms = nNoms + 1
+		End If
+	Next i
+	For i = 0 To nNoms - 1
+		sDef = Reglage("resume", sNoms(i))
+		aD = Split(sDef & Chr(31) & Chr(31) & Chr(31) & Chr(31), Chr(31))
+		If sDef <> "" And oDoc.DatabaseRanges.hasByName(aD(0)) Then
+			oP = oDoc.DatabaseRanges.getByName(sNoms(i))
+			a = oP.DataArea
+			oF = oDoc.Sheets.getByIndex(a.Sheet)
+			l2 = a.EndRow
+			If oP.TotalsRow Then l2 = l2 - 1
+			' (les lignes et les colonnes que le résumé devrait avoir, comparées à celles qu'il a)
+			nCat = Categories(oDoc, aD(0), aD(1), aCat(), bDate)
+			bChange = (nCat <> l2 - a.StartRow And Not (nCat = 0 And l2 - a.StartRow = 1))
+			For k = 0 To nCat - 1
+				If bChange Then Exit For
+				If bDate Then
+					bChange = (oF.getCellByPosition(a.StartColumn, a.StartRow + 1 + k).Value <> aCat(k))
+				Else
+					bChange = (oF.getCellByPosition(a.StartColumn, a.StartRow + 1 + k).String <> CStr(aCat(k)))
+				End If
+			Next k
+			If aD(4) <> "" And Not bChange Then
+				nSep = Categories(oDoc, aD(0), aD(4), aSep(), bDateSep)
+				nCols = a.EndColumn - a.StartColumn + 1
+				bChange = (nCols <> nSep + 2)
+				For k = 0 To nSep - 1
+					If bChange Then Exit For
+					bChange = (oF.getCellByPosition(a.StartColumn + 1 + k, a.StartRow).String <> CStr(aSep(k)))
+				Next k
+			End If
+			If bChange Then
+				oDoc.UndoManager.enterUndoContext("Mettre à jour le résumé")
+				oDoc.DatabaseRanges.removeByName(sNoms(i))
+				oF.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.EndRow).clearContents(1023)
+				s = Construire(oDoc, oF, a.StartRow, sNoms(i), aD(0), aD(1), aD(2), aD(3), aD(4))
+				oDoc.UndoManager.leaveUndoContext()
+				n = n + 1
+			End If
+		End If
+	Next i
+	MettreAJourFeuille = CStr(n)
+	Exit Function
+Erreur:
+	MettreAJourFeuille = "!" & Error$
+End Function
+]]></script:module>

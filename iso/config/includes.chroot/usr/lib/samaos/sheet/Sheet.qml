@@ -730,13 +730,23 @@ Window {
     }
     Connections {
         target: fenetre.doc
-        function onPartiesChanged() { fenetre.relireRegles() }
+        function onPartiesChanged() { fenetre.relireRegles(); fenetre.verifierResumes() }
         function onRevisionChanged() { if (fenetre.reglesSurFeuille > 0) repeindre.restart() }
     }
     Timer {
         id: repeindre
         interval: 350
         onTriggered: { if (fenetre.doc.curseurTexteVisible) restart(); else fenetre.doc.redessiner() }
+    }
+
+    // ——— Résumer un tableau (une feuille Résumé, qui suit le tableau) ———
+    ResumerTableau { id: resumerTableau }
+    function resumer(t) { resumerTableau.ouvrir(t || tableaux.courant) }
+    // (en revenant sur la feuille d'un résumé : ses lignes suivent les nouvelles valeurs du tableau, un nouvel article)
+    function verifierResumes() {
+        var f = doc.partie
+        if (!tableaux.liste.some(function (t) { return t.feuille === f && t.nom.indexOf("Resume_") === 0 })) return
+        tableaux.appeler("SamaResume.MettreAJourFeuille", [String(f)], function (ok, v) { if (ok && Number(v) > 0) tableaux.rafraichir() })
     }
 
     // ——— Les messages du moteur (une valeur refusée par la liste de la case, une question) ———
