@@ -101,6 +101,47 @@ function morceaux(formule) {
     return res
 }
 
+// ——— Les plages d'une formule, en couleur (pendant qu'on l'écrit) ———
+
+// Les couleurs des plages, dans l'ordre où la formule les cite (le moteur fait de même dans la grille)
+var COULEURS_REFS = ["#1F5E7A", "#C27C0E", "#B5532F", "#2F6B57", "#6B4E9B", "#A8426A", "#3D7FA6", "#7A6A1E"];
+
+// « =SOMME(D4:D8)*$B$2 » → [{ texte, ref: rang ou -1 }] (les textes entre guillemets et les noms de fonctions ne
+// sont pas des plages) ; null s'il n'y a pas de plage
+function references(formule) {
+    if (!formule || formule.charAt(0) !== "=") return null;
+    var re = /(?:\$?'[^']+'\.|\$?[A-Za-zÀ-ÿ_][\wÀ-ÿ]*\.)?\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?|\$?[A-Z]{1,3}:\$?[A-Z]{1,3}|\$?\d+:\$?\d+/g;
+    var res = [], debut = 0, rang = 0, i = 0;
+    while (i < formule.length) {
+        var ch = formule.charAt(i);
+        if (ch === '"') {                                  // (un texte : sauté jusqu'au guillemet fermant)
+            var fin = formule.indexOf('"', i + 1);
+            i = fin < 0 ? formule.length : fin + 1;
+            continue;
+        }
+        var avant = i > 0 ? formule.charAt(i - 1) : "";
+        if (/[A-Za-z0-9_.À-ÿ]/.test(avant)) { i++; continue; }
+        re.lastIndex = i;
+        var m = re.exec(formule);
+        if (m && m.index === i) {
+            var apres = formule.charAt(i + m[0].length);
+            if (apres !== "(" && !/[A-Za-z0-9_À-ÿ]/.test(apres)) {
+                if (i > debut) res.push({ texte: formule.slice(debut, i), ref: -1 });
+                res.push({ texte: m[0], ref: rang++ });
+                i += m[0].length;
+                debut = i;
+                continue;
+            }
+        }
+        i++;
+    }
+    if (!rang) return null;
+    if (debut < formule.length) res.push({ texte: formule.slice(debut), ref: -1 });
+    return res;
+}
+
+function couleurRef(rang) { return COULEURS_REFS[rang % COULEURS_REFS.length]; }
+
 // ——— Tableaux : ce qui reste à payer, et le résumé de la barre d'état ———
 
 // Colonne calculée « A − B » (Reste = Part − Versé) : { reste, du, verse } (rangs des colonnes), ou null

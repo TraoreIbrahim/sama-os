@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import Sama.Moteur
 import "../reglages"
+import "Fonctions.js" as Fonctions
 
 Item {
     id: grille
@@ -54,7 +55,38 @@ Item {
     // (les mêmes, par lettres et par numéro)
     readonly property var parLettres: { var m = {}; for (var i = 0; i < colonnes.length; i++) m[colonnes[i].texte] = colonnes[i]; return m }
     readonly property var parNumero: { var m = {}; for (var i = 0; i < lignes.length; i++) m[lignes[i].texte] = lignes[i]; return m }
+    // Les plages de la formule en cours, sur cette feuille : [{ x, y, w, h, couleur }] (pixels du document), d'après les
+    // en-têtes visibles (une plage qui dépasse de l'écran est coupée au bord)
+    readonly property var plagesFormule: {
+        var morceaux = Fonctions.references(fenetre.formuleEnCours)
+        if (!morceaux) return []
+        var res = [], feuille = document.nomsParties[document.partie] || ""
+        for (var i = 0; i < morceaux.length; i++) {
+            var m = morceaux[i]
+            if (m.ref < 0) continue
+            var t = m.texte.replace(/\$/g, ""), k = t.lastIndexOf(".")
+            if (k >= 0) {
+                if (t.slice(0, k).replace(/^'|'$/g, "") !== feuille) continue
+                t = t.slice(k + 1)
+            }
+            var bouts = t.split(":").map(function (b) { var x = /^([A-Z]*)(\d*)$/.exec(b); return x ? { c: x[1] ? numeroColonne(x[1]) : 0, l: x[2] ? Number(x[2]) : 0 } : { c: 0, l: 0 } })
+            var a = bouts[0], b = bouts.length > 1 ? bouts[1] : bouts[0]
+            var c1 = Math.min(a.c, b.c), c2 = Math.max(a.c, b.c), l1 = Math.min(a.l, b.l), l2 = Math.max(a.l, b.l)
+            var cols = colonnes.filter(function (x) { var n = numeroColonne(x.texte); return x.fin > x.debut && (c1 === 0 || (n >= c1 && n <= c2)) })
+            var lgs = lignes.filter(function (x) { var n = Number(x.texte); return x.fin > x.debut && (l1 === 0 || (n >= l1 && n <= l2)) })
+            if (!cols.length || !lgs.length) continue
+            var gx = cols[0].debut, dx = cols[cols.length - 1].fin, hy = lgs[0].debut, by = lgs[lgs.length - 1].fin
+            res.push({ x: gx, y: hy, w: dx - gx, h: by - hy, couleur: Fonctions.couleurRef(m.ref) })
+        }
+        return res
+    }
     function ouvrirFiltre(t, colonne, bouton) {
+        if (!bouton) {
+            // (sans bouton : sous le titre de la colonne)
+            var b = parLettres[fenetre.tableaux.lettres(t.c1 + colonne)]
+            filtreColonne.ouvrirPour(t, colonne, b ? Math.max(0, largeurEntetes + b.fin - document.vueX - 300) : 40, hauteurEntetes + 4)
+            return
+        }
         var p = bouton.mapToItem(grille, 0, bouton.height + 2)
         filtreColonne.ouvrirPour(t, colonne, Math.max(0, p.x + bouton.width - 300), p.y)
     }
@@ -378,6 +410,23 @@ Item {
                 color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.1)
                 border.width: 1
                 border.color: Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.55)
+            }
+        }
+        // Pendant la saisie d'une formule : les plages qu'elle cite, chacune de sa couleur, la même que dans la barre de
+        // formule (maquette « La grille libre »)
+        Repeater {
+            model: grille.plagesFormule
+            delegate: Rectangle {
+                required property var modelData
+                readonly property color teinte: modelData.couleur
+                x: modelData.x - document.vueX
+                y: modelData.y - document.vueY
+                width: modelData.w
+                height: modelData.h
+                color: Qt.rgba(teinte.r, teinte.g, teinte.b, 0.1)
+                border.width: 2
+                border.color: teinte
+                radius: 2
             }
         }
         // Curseur de cellule (caché quand un graphique est choisi)

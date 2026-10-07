@@ -88,6 +88,16 @@ Window {
     }
     Timer { id: envoyerPlusTard; interval: 800; onTriggered: fenetre.envoyer(true) }
     function voirGrille() { vue = "grille"; doc.forceActiveFocus() }
+    // La formule qu'on est en train d'écrire (dans la case ou dans la barre de formule) : la grille colore ses plages
+    readonly property string formuleEnCours: champFormule.activeFocus ? champFormule.text : doc.curseurTexteVisible ? doc.formule : ""
+    // Filtrer (barre d'outils) : dans un tableau, le filtre de la colonne de la case ; ailleurs, les cases deviennent un
+    // tableau (Ctrl+T), avec un ▾ sur chaque titre
+    function filtrer(bouton) {
+        var t = tableaux.courant
+        if (vue !== "grille") voirGrille()
+        if (t) grille.ouvrirFiltre(t, doc.colonne - t.c1, bouton)
+        else tableaux.creer()
+    }
     // Imprimer : l'aperçu des pages et les réglages, à la place de la grille
     function imprimer() {
         if (doc.etat !== DocumentLO.Pret) return
@@ -381,9 +391,26 @@ Window {
                         onClicked: { champFormule.forceActiveFocus(); champFormule.cursorPosition = champFormule.text.length }
                     }
                 }
+                // Pendant qu'on écrit une formule dans la case : ses plages en couleur, comme dans la grille
+                Text {
+                    id: formuleEnCouleur
+                    readonly property var morceaux: fenetre.doc.curseurTexteVisible && !champFormule.activeFocus && !phrase.visible
+                                                    ? Fonctions.references(fenetre.formuleEnCours) : null
+                    visible: morceaux !== null
+                    Layout.fillWidth: true
+                    textFormat: Text.StyledText
+                    font.pixelSize: 13
+                    font.features: { "tnum": 1 }
+                    color: Couleurs.texte
+                    elide: Text.ElideRight
+                    text: !morceaux ? "" : morceaux.map(function (m) {
+                        var t = m.texte.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                        return m.ref < 0 ? t : "<font color=\"" + Fonctions.couleurRef(m.ref) + "\"><b>" + t + "</b></font>"
+                    }).join("")
+                }
                 TextInput {
                     id: champFormule
-                    visible: !phrase.visible
+                    visible: !phrase.visible && !formuleEnCouleur.visible
                     Layout.fillWidth: true
                     verticalAlignment: TextInput.AlignVCenter
                     // (suit la case courante, sauf pendant qu'on y écrit ; pas de liaison, que la saisie romprait)
@@ -615,8 +642,22 @@ Window {
     // ——— Aide des fonctions pendant la saisie d'une formule (barre de formule ou case) ———
     AideFonction {
         id: aideFonction
-        x: 104
-        y: barreFormule.y + barreFormule.height + 6
+        // (sous la barre de formule quand on y écrit ; sous la case quand on écrit dans la case, comme la maquette)
+        // (pendant la saisie, le moteur ne donne plus la case : on part du curseur de saisie, au début de la case)
+        property int colonneSaisie: -1
+        Connections {
+            target: fenetre.doc
+            function onCurseurChanged() { if (fenetre.doc.colonne >= 0) aideFonction.colonneSaisie = fenetre.doc.colonne }
+        }
+        readonly property var bandeCase: colonneSaisie >= 0 ? grille.parLettres[fenetre.tableaux.lettres(colonneSaisie)] || null : null
+        readonly property bool dansLaCase: !champFormule.activeFocus && fenetre.doc.curseurTexteVisible && fenetre.doc.curseurTexte.height > 0
+        readonly property point coin: dansLaCase ? grille.mapToItem(fenetre.contentItem,
+                                                                    grille.largeurEntetes + (bandeCase ? bandeCase.debut : fenetre.doc.curseurTexte.x) - fenetre.doc.vueX,
+                                                                    grille.hauteurEntetes + fenetre.doc.curseurTexte.y + fenetre.doc.curseurTexte.height + 4 - fenetre.doc.vueY)
+                                              : Qt.point(0, 0)
+        x: dansLaCase ? Math.max(8, Math.min(coin.x, fenetre.width - width - 8)) : 104
+        y: dansLaCase ? (coin.y + height + 12 < fenetre.height ? coin.y + 6 : coin.y - fenetre.doc.curseurTexte.height - height - 14)
+                      : barreFormule.y + barreFormule.height + 6
         z: 10
         texte: champFormule.activeFocus ? champFormule.text.slice(0, champFormule.cursorPosition)
                : fenetre.doc.curseurTexteVisible ? fenetre.doc.formule : ""

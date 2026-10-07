@@ -18,6 +18,13 @@ Rectangle {
     function suivante() { choisie = Math.min(choisie + 1, analyse.propositions.length - 1) }
     function precedente() { choisie = Math.max(choisie - 1, 0) }
     onAnalyseChanged: choisie = 0
+    // Le nom de la fonction dans Excel (le fichier .xlsx l'enregistre ainsi ; Excel en anglais l'affiche ainsi)
+    readonly property var noms: ({ "SOMME": "SUM", "MOYENNE": "AVERAGE", "NB": "COUNT", "NBVAL": "COUNTA", "SI": "IF", "ET": "AND", "OU": "OR",
+                                   "ARRONDI": "ROUND", "ARRONDI.SUP": "ROUNDUP", "ARRONDI.INF": "ROUNDDOWN", "SOMME.SI": "SUMIF", "NB.SI": "COUNTIF",
+                                   "MOYENNE.SI": "AVERAGEIF", "RECHERCHEV": "VLOOKUP", "SOMMEPROD": "SUMPRODUCT", "PRODUIT": "PRODUCT", "ENT": "INT",
+                                   "RANG": "RANK", "AUJOURDHUI": "TODAY", "MAINTENANT": "NOW", "ANNEE": "YEAR", "MOIS": "MONTH", "JOUR": "DAY",
+                                   "CONCATENER": "CONCATENATE", "GAUCHE": "LEFT", "DROITE": "RIGHT", "NBCAR": "LEN", "MAJUSCULE": "UPPER",
+                                   "MINUSCULE": "LOWER", "SIERREUR": "IFERROR" })
 
     // Signature : SOMME(<b>nombre1</b> ; [nombre2] ; …)
     function signature(f, n) {
@@ -96,6 +103,15 @@ Rectangle {
             text: aide.fonction ? "Exemple : " + aide.fonction.exemple : ""
             font.pixelSize: 12
             color: fenetre.accentEncre
+            wrapMode: Text.Wrap
+        }
+        Text {
+            visible: !aide.proposer && aide.fonction !== null
+            Layout.fillWidth: true
+            text: !aide.fonction ? "" : aide.noms[aide.fonction.nom] ? "Excel en anglais la lira comme " + aide.noms[aide.fonction.nom] + "."
+                  : "Même nom dans Excel en anglais."
+            font.pixelSize: 12
+            color: Couleurs.texte3
             wrapMode: Text.Wrap
         }
     }

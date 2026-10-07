@@ -79,7 +79,7 @@ Rectangle {
         RowLayout {
             id: outils
             height: defileur.height
-            spacing: 8
+            spacing: 5
 
             Groupe {
                 Outil { picto: "M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3"; aide: "Annuler (Ctrl+Z)"; enabled: actions.peutAnnuler || doc.etats[".uno:Undo"] === "enabled"; onClicked: actions.lancer("annuler") }
@@ -88,7 +88,7 @@ Rectangle {
                 Trait {}
                 Liste {
                     id: choixZoom
-                    largeur: 76
+                    largeur: 70
                     text: Math.round(doc.zoom * 100) + " %"
                     aide: "Zoom"
                     onClicked: menuZoom.popup(choixZoom, 0, choixZoom.height + 4)
@@ -253,12 +253,25 @@ Rectangle {
                 }
                 Outil { picto: "M4 6h16 M4 12h13a3 3 0 0 1 0 6h-4 M15 16l-2 2 2 2 M4 18h5"; aide: "Renvoyer à la ligne (texte long sur plusieurs lignes)"; actif: fenetre.actif(".uno:WrapText"); onClicked: actions.lancer("retourLigne") }
                 Trait {}
+                // (maquette « En-tête Sheet » : commentaire, graphique, filtrer)
+                Outil {
+                    picto: "M4 5h16v11H9l-5 4z M12 8v5 M9.5 10.5h5"
+                    aide: "Commentaire (Ctrl+Alt+M)"
+                    onClicked: actions.lancer("commentaire")
+                }
                 Outil {
                     picto: "M4 20V11 M10 20V5 M16 20v-6 M3 20h18"
                     aide: "Graphique, à partir des cellules choisies"
                     ouvert: choixGraphique.opened
                     onClicked: choixGraphique.open()
                     ChoixGraphique { id: choixGraphique; onChoisi: type => doc.insererGraphique(type) }
+                }
+                Outil {
+                    id: boutonFiltrer
+                    picto: "M4 5h16l-6 7.5V18l-4 2v-7.5z"
+                    actif: fenetre.tableaux.courant !== null && fenetre.tableaux.courant.filtres.length > 0
+                    aide: fenetre.tableaux.courant ? "Filtrer la colonne de la case" : "Filtrer : met les cases en tableau, avec un ▾ sur chaque titre"
+                    onClicked: fenetre.filtrer(boutonFiltrer)
                 }
                 Outil {
                     id: calculs
@@ -280,7 +293,8 @@ Rectangle {
             // Mettre en tableau (hors d'un tableau ; dedans, sa barre apparaît sous la formule)
             Outil {
                 visible: fenetre.tableaux.courant === null
-                text: "Tableau"
+                // (une fenêtre étroite : l'icône seule, le nom en bulle)
+                text: defileur.width >= 1230 ? "Tableau" : ""
                 picto: "M4 5h16v14H4z M4 10h16 M10 5v14"
                 aide: "Mettre en tableau : titres, filtres et ligne des totaux ; enregistré comme un tableau Excel (Ctrl+T)"
                 background: Rectangle { radius: 8; color: Couleurs.champ; border.width: 0.5; border.color: parent.hovered ? fenetre.accent : Couleurs.bord }
