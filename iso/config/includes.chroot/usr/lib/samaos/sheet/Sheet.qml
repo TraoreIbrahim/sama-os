@@ -46,16 +46,32 @@ Window {
         for (var i = 0; i < tableaux.liste.length; i++) if (tableaux.liste[i].nom === nomFiches) return tableaux.liste[i]
         return null
     }
-    readonly property var tableauVu: vue === "fiches" ? tableauFiches : tableaux.courant
+    readonly property var tableauVu: vue !== "grille" ? tableauFiches : tableaux.courant
     function voirFiches(t) {
         if (!t) return
         nomFiches = t.nom
         vue = "fiches"
         vueFiches.ouvrir(t)
     }
+    function voirFormulaire(t) {
+        if (!t) return
+        nomFiches = t.nom
+        vue = "formulaire"
+        vueFormulaire.ouvrir(t)
+    }
+    function voir(v, t) {
+        if (v === "fiches") voirFiches(t)
+        else if (v === "formulaire") voirFormulaire(t)
+        else voirGrille()
+    }
     function voirGrille() { vue = "grille"; doc.forceActiveFocus() }
     function nouvelleFiche() { vueFiches.nouvelle() }
-    onTableauFichesChanged: if (vue === "fiches") { if (tableauFiches) vueFiches.tableau = tableauFiches; else voirGrille() }
+    onTableauFichesChanged: {
+        if (vue === "grille") return
+        if (!tableauFiches) voirGrille()
+        else if (vue === "fiches") vueFiches.tableau = tableauFiches
+        else vueFormulaire.tableau = tableauFiches
+    }
     readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
     property bool fermetureDemandee: false
     readonly property alias actions: lesActions
@@ -333,6 +349,13 @@ Window {
 
         BarreTableau {
             Layout.fillWidth: true
+        }
+
+        Formulaire {
+            id: vueFormulaire
+            visible: fenetre.vue === "formulaire"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
 
         Fiches {

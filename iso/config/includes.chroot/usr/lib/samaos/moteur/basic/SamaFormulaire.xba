@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaFormulaire" script:language="StarBasic"><![CDATA[REM Sama Sheet : le formulaire d'un tableau. Sa définition (questions, aides, genres, choix, obligatoire) est gardée
+REM dans les propriétés du classeur (SamaTableaux.Regler, « Sama.formulaire.<Tableau> ») ; ici, ce qui écrit dans le
+REM tableau : une réponse (une ligne de plus, en une seule action à annuler) et une question de plus (une colonne).
+Option Explicit
+
+Const TOUT_CONTENU = 23        ' valeurs, dates, textes, formules (les constantes d'un module ne se voient pas des autres)
+
+' Une erreur au milieu : ce qui était déjà fait est défait (l'action qu'on vient d'ouvrir, et elle seule)
+Sub Defaire(oDoc As Object, sTitre As String)
+	oDoc.UndoManager.leaveUndoContext()
+	If oDoc.UndoManager.isUndoPossible() Then
+		If oDoc.UndoManager.getCurrentUndoActionTitle() = sTitre Then oDoc.UndoManager.undo()
+	End If
+End Sub
+
+' Une réponse : sColonnes, sGenres, sValeurs séparés par Chr(31). Genres : texte, telephone, choix, nombre, montant,
+' date (aaaa-mm-jj). La première ligne vide du tableau la reçoit, sinon une ligne de plus. Rend son numéro de ligne.
+Function Ajouter(sNom As String, sColonnes As String, sGenres As String, sValeurs As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, oC As Object, aCols As Variant, aGenres As Variant
+	Dim aVals As Variant, l As Long, l2 As Long, r As Long, i As Long, c As Long, v As String, bAnnuler As Boolean
+	Dim sAdr As String, nType As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	aCols = Split(sColonnes, Chr(31))
+	aGenres = Split(sGenres, Chr(31))
+	aVals = Split(sValeurs, Chr(31))
+	oDoc.UndoManager.enterUndoContext("Réponse du formulaire")
+	bAnnuler = True
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	' (la première ligne vide : sans valeur saisie, les formules ne comptent pas)
+	r = -1
+	For l = a.StartRow + 1 To l2
+		If LigneVide(oF, a, l) Then
+			r = l
+			Exit For
+		End If
+	Next l
+	If r < 0 Then
+		sAdr = AjouterLigne(sNom)
+		If Left(sAdr, 1) = "!" Then Error 1
+		a = oPlage.DataArea
+		r = oF.getCellRangeByName(Mid(sAdr, InStr(sAdr, ".") + 1)).CellAddress.Row
+	End If
+	For i = 0 To UBound(aCols)
+		c = ColonneDe(oF, a, aCols(i))
+		v = ""
+		If i <= UBound(aVals) Then v = aVals(i)
+		If c >= 0 And v <> "" Then
+			oC = oF.getCellByPosition(c, r)
+			Select Case aGenres(i)
+			Case "nombre", "montant"
+				oC.Value = Val(v)
+			Case "date"
+				oC.Value = DateSerial(Val(Left(v, 4)), Val(Mid(v, 6, 2)), Val(Mid(v, 9, 2)))
+				' (une colonne sans format de date : la date courte de Sama)
+				nType = oDoc.NumberFormats.getByKey(oC.NumberFormat).Type
+				If (nType And com.sun.star.util.NumberFormat.DATE) = 0 Then oC.NumberFormat = FormatCode("D MMM")
+			Case Else
+				oC.String = v
+			End Select
+		End If
+	Next i
+	oDoc.UndoManager.leaveUndoContext()
+	Ajouter = CStr(r + 1)
+	Exit Function
+Erreur:
+	Ajouter = "!" & Error$
+	If bAnnuler Then Defaire(oDoc, "Réponse du formulaire")
+End Function
+
+Function LigneVide(oF As Object, a As Object, l As Long) As Boolean
+	Dim c As Long, oC As Object
+	LigneVide = True
+	For c = a.StartColumn To a.EndColumn
+		oC = oF.getCellByPosition(c, l)
+		If oC.Type <> com.sun.star.table.CellContentType.EMPTY And oC.Type <> com.sun.star.table.CellContentType.FORMULA Then
+			LigneVide = False
+			Exit Function
+		End If
+	Next c
+End Function
+
+' Une question de plus : une colonne au bout du tableau, avec son titre (et l'allure des autres titres)
+Function AjouterColonne(sNom As String, sTitre As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, oZone As Object, c As Long, bAnnuler As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	If Trim(sTitre) = "" Then
+		AjouterColonne = "!Donnez un titre à la question."
+		Exit Function
+	End If
+	If ColonneDe(oF, a, Trim(sTitre)) >= 0 Then
+		AjouterColonne = "!Le tableau a déjà une colonne « " & Trim(sTitre) & " »."
+		Exit Function
+	End If
+	oDoc.UndoManager.enterUndoContext("Ajouter une question")
+	bAnnuler = True
+	c = a.EndColumn + 1
+	oZone = oF.getCellRangeByPosition(c, a.StartRow, c, a.EndRow)
+	If Not EstVide(oZone) Then oF.insertCells(oZone.RangeAddress, com.sun.star.sheet.CellInsertMode.RIGHT)
+	' (la mise en forme de la colonne d'à côté : titre, cases, total)
+	oF.copyRange(oF.getCellByPosition(c, a.StartRow).CellAddress, oF.getCellRangeByPosition(a.EndColumn, a.StartRow, a.EndColumn, a.EndRow).RangeAddress)
+	oF.getCellRangeByPosition(c, a.StartRow, c, a.EndRow).clearContents(TOUT_CONTENU)
+	oF.getCellByPosition(c, a.StartRow).String = Trim(sTitre)
+	oF.Columns.getByIndex(c).Width = oF.Columns.getByIndex(a.EndColumn).Width
+	a.EndColumn = c
+	oPlage.setDataArea(a)
+	oDoc.UndoManager.leaveUndoContext()
+	AjouterColonne = Trim(sTitre)
+	Exit Function
+Erreur:
+	AjouterColonne = "!" & Error$
+	If bAnnuler Then Defaire(oDoc, "Ajouter une question")
+End Function
+]]></script:module>

@@ -155,6 +155,13 @@ Rectangle {
                         onClicked: fenetre.voirFiches(panneau.t)
                     }
                     Outil {
+                        text: "Formulaire"
+                        picto: "M5 3h14v18H5z M8 8h8 M8 12h8 M8 16h5"
+                        aide: "Une page claire pour saisir une ligne de plus, question après question"
+                        background: Rectangle { radius: 8; color: parent.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.07) : Couleurs.champ; border.width: 1; border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.12) }
+                        onClicked: fenetre.voirFormulaire(panneau.t)
+                    }
+                    Outil {
                         text: "Ajouter une ligne"
                         picto: "M12 5v14 M5 12h14"
                         aide: "Une ligne de plus à la fin du tableau, avec ses formules"

@@ -413,7 +413,7 @@ Item {
                     anchors.centerIn: parent
                     spacing: 2
                     Repeater {
-                        model: [["grille", "Grille"], ["fiches", "Fiches"]]
+                        model: [["grille", "Grille"], ["fiches", "Fiches"], ["formulaire", "Formulaire"]]
                         delegate: QQC2.AbstractButton {
                             id: vue
                             readonly property bool choisie: modelData[0] === "grille"
@@ -421,7 +421,7 @@ Item {
                             width: texteVue.implicitWidth + 20 * habillage.echelle
                             hoverEnabled: true
                             focusPolicy: Qt.NoFocus
-                            onClicked: if (!choisie) fenetre.voirFiches(habillage.t)
+                            onClicked: if (!choisie) fenetre.voir(modelData[0], habillage.t)
                             background: Rectangle {
                                 radius: 7 * habillage.echelle
                                 color: vue.choisie ? Couleurs.champ : vue.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.06) : "transparent"
