@@ -16,6 +16,8 @@ Rectangle {
 
     signal grilleVierge()
     signal modele(string cle, string nom)
+    // (un modèle en préparation : son nom ; les cartes attendent, un second clic ne le referait pas)
+    property string preparation: ""
     signal ouvrir(string chemin)
 
     readonly property var modeles: [
@@ -199,6 +201,7 @@ Rectangle {
                         texte: "Des colonnes nommées, des filtres et une ligne des totaux. Ctrl+T en fait autant dans une grille."
                         indice: "Tableau"
                         grille: false
+                        enabled: accueil.preparation === ""
                         onClicked: accueil.modele("tableau", "Nouveau tableau")
                     }
                 }
@@ -209,6 +212,12 @@ Rectangle {
                     Layout.rightMargin: 44
                     spacing: 6
                     Text { text: "Partir d'un modèle"; font.pixelSize: 15; font.weight: Font.DemiBold; color: Couleurs.texte; Layout.rightMargin: 10 }
+                    Text {
+                        visible: accueil.preparation !== ""
+                        text: "Préparation de « " + accueil.preparation + " »…"
+                        font.pixelSize: 13
+                        color: fenetre.accentEncre
+                    }
                     Item { Layout.fillWidth: true }
                     Repeater {
                         model: ["Tous", "Commerce", "Association", "École", "Maison"]
@@ -240,6 +249,8 @@ Rectangle {
                             Layout.preferredHeight: 128
                             hoverEnabled: true
                             focusPolicy: Qt.NoFocus
+                            enabled: accueil.preparation === ""
+                            opacity: enabled || accueil.preparation === modelData.nom ? 1 : 0.5
                             onClicked: accueil.modele(modelData.cle, modelData.nom)
                             background: Rectangle { radius: 14; color: Couleurs.champ; border.width: carte.hovered ? 1.5 : 0.5; border.color: carte.hovered ? fenetre.accent : Couleurs.bord }
                             contentItem: ColumnLayout {

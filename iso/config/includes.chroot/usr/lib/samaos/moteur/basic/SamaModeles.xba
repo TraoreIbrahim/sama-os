@@ -207,6 +207,11 @@ Function Remplir(sModele As String) As String
 	Dim m As Long, mz As Long, d As Long, oArticles As Object, sGarde As String
 	On Error GoTo Erreur
 	oF = ThisComponent.Sheets.getByIndex(0)
+	' (un modèle ne se pose que sur un classeur vierge : jamais par-dessus ce qu'il a déjà)
+	If ThisComponent.Sheets.Count > 1 Or ThisComponent.DatabaseRanges.Count > 0 Or Not EstVide(oF) Then
+		Remplir = "!Ce classeur n'est plus vierge : le modèle s'ouvre dans un classeur neuf (Fichier › Nouveau à partir d'un modèle)"
+		Exit Function
+	End If
 	sDepart = "A1"
 	m = FormatMontant(False)
 	mz = FormatMontant(True)

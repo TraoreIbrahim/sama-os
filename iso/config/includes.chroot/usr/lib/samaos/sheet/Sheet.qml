@@ -153,9 +153,14 @@ Window {
                              + commande.q("--unit=app-samaos\\x2dsheet@" + Date.now() + ".service") + " sama-sheet " + commande.q(c))
     }
     // Un modèle de l'accueil, rempli par le moteur dans le classeur vierge (dès qu'il est prêt)
+    // (un seul à la fois : le modèle de stock prend deux secondes, un second clic le referait sur le même classeur)
+    property string modeleEnCours: ""
     function appliquerModele(cle, nom) {
+        if (modeleEnCours) return
+        modeleEnCours = nom
         if (doc.etat !== DocumentLO.Pret) { modeleEnAttente = [cle, nom]; return }
         tableaux.appeler("SamaModeles.Remplir", [cle], function (ok, v) {
+            modeleEnCours = ""
             if (!tableaux.verifier(ok, v)) return
             accueilOuvert = false
             nomPropose = nom
@@ -274,6 +279,7 @@ Window {
             if (fenetre.doc.etat === DocumentLO.Pret && fenetre.modeleEnAttente) {
                 var m = fenetre.modeleEnAttente
                 fenetre.modeleEnAttente = null
+                fenetre.modeleEnCours = ""
                 fenetre.appliquerModele(m[0], m[1])
             }
         }
@@ -658,6 +664,7 @@ Window {
         visible: fenetre.accueilOuvert
         onVisibleChanged: if (visible) forceActiveFocus()
         onGrilleVierge: fenetre.fermerAccueil()
+        preparation: fenetre.modeleEnCours
         onModele: (cle, nom) => fenetre.appliquerModele(cle, nom)
         onOuvrir: chemin => fenetre.ouvrirFichier(chemin)
     }
