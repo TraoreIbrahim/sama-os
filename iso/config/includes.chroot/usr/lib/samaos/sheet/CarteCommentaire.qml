@@ -1,6 +1,6 @@
-// Un commentaire, en carte (maquette « Docs · Blocs », marge des commentaires) : le trait ocre à gauche, les initiales,
-// le nom et le moment, le texte. Pour la case courante : Modifier, et Résolu (le commentaire est retiré ; Ctrl+Z le
-// rend). Dans la bulle de la grille comme dans le panneau des commentaires.
+// Un commentaire, en carte (maquette « Docs · Blocs », marge des commentaires) : les initiales, le nom et le moment,
+// le texte. Pour la case courante : Modifier, et Résolu (le commentaire est retiré ; Ctrl+Z le rend). Dans la bulle
+// de la grille comme dans le panneau des commentaires.
 import QtQuick
 import QtQuick.Layouts
 import "../reglages"
@@ -20,15 +20,6 @@ Rectangle {
     color: Couleurs.champ
     border.width: carte.choisie ? 1.5 : 1
     border.color: carte.choisie ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
-    // (le trait ocre, dans l'arrondi)
-    Rectangle {
-        x: carte.border.width
-        y: 8
-        width: 3
-        height: parent.height - 16
-        radius: 1.5
-        color: "#E2A62B"
-    }
     TapHandler { onTapped: carte.clique() }
 
     ColumnLayout {

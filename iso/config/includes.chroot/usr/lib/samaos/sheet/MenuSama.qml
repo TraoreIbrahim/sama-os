@@ -8,10 +8,11 @@ QQC2.Menu {
     id: menu
     padding: 8
     topPadding: 6
-    implicitWidth: 344
+    property int largeur: 344
+    implicitWidth: largeur
     delegate: ElementMenu {}
     background: Item {
-        implicitWidth: 344
+        implicitWidth: menu.largeur
         Rectangle { anchors.fill: parent; anchors.topMargin: 4; anchors.margins: -2; radius: 16; color: Qt.rgba(40 / 255, 30 / 255, 20 / 255, 0.05) }
         Rectangle { anchors.fill: parent; anchors.topMargin: 1; anchors.margins: -1; radius: 15; color: Qt.rgba(40 / 255, 30 / 255, 20 / 255, 0.07) }
         Rectangle { anchors.fill: parent; radius: 14; color: Couleurs.champ; border.width: 0.5; border.color: Couleurs.bord }

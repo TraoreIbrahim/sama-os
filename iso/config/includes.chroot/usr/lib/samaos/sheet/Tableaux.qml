@@ -144,6 +144,13 @@ Item {
             rafraichir()
         })
     }
+    // Ne garder que les lignes qui ont la valeur de cette case (c, l : à partir de 0)
+    function filtrerSur(t, c, l) {
+        appeler("FiltrerSur", [t.nom, String(c), String(l)], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+    }
+    function toutAfficher(t) {
+        appeler("ToutAfficher", [t.nom], function (ok, v) { if (verifier(ok, v)) rafraichir() })
+    }
     // gardees : valeurs à garder ; null : plus de filtre sur cette colonne
     function filtrer(t, colonne, gardees) {
         appeler("Filtrer", [t.nom, String(colonne), gardees ? gardees.join("\n") : "", gardees ? "0" : "1"],

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaFeuilles" script:language="StarBasic"><![CDATA[REM Sama Sheet : les feuilles du classeur (le menu de l'onglet). Dupliquer, déplacer, supprimer ; chaque opération
+REM s'annule par Ctrl+Z (le moteur les enregistre). sIndex : la place de la feuille, à partir de 0.
+Option Explicit
+
+' La copie juste après la feuille, nommée « Ventes (2) » (ou le premier numéro libre) ; rend sa place
+Function Dupliquer(sIndex As String) As String
+	Dim oFeuilles As Object, sNom As String, n As Long, i As Long
+	On Error GoTo Erreur
+	oFeuilles = ThisComponent.Sheets
+	n = CLng(sIndex)
+	sNom = oFeuilles.getByIndex(n).Name
+	i = 2
+	Do While oFeuilles.hasByName(sNom & " (" & i & ")")
+		i = i + 1
+	Loop
+	oFeuilles.copyByName(sNom, sNom & " (" & i & ")", n + 1)
+	Dupliquer = CStr(n + 1)
+	Exit Function
+Erreur:
+	Dupliquer = "!" & Error$
+End Function
+
+' sSens : -1 (vers la gauche) ou 1 (vers la droite) ; rend la nouvelle place
+Function Deplacer(sIndex As String, sSens As String) As String
+	Dim oFeuilles As Object, n As Long, d As Long
+	On Error GoTo Erreur
+	oFeuilles = ThisComponent.Sheets
+	n = CLng(sIndex)
+	d = CLng(sSens)
+	If n + d < 0 Or n + d >= oFeuilles.Count Then
+		Deplacer = CStr(n)
+		Exit Function
+	End If
+	' (moveByName place la feuille devant celle de cette place)
+	If d < 0 Then
+		oFeuilles.moveByName(oFeuilles.getByIndex(n).Name, n + d)
+	Else
+		oFeuilles.moveByName(oFeuilles.getByIndex(n).Name, n + d + 1)
+	End If
+	Deplacer = CStr(n + d)
+	Exit Function
+Erreur:
+	Deplacer = "!" & Error$
+End Function
+
+Function Supprimer(sIndex As String) As String
+	Dim oFeuilles As Object
+	On Error GoTo Erreur
+	oFeuilles = ThisComponent.Sheets
+	If oFeuilles.Count <= 1 Then
+		Supprimer = "!Un classeur garde au moins une feuille"
+		Exit Function
+	End If
+	oFeuilles.removeByName(oFeuilles.getByIndex(CLng(sIndex)).Name)
+	Supprimer = ""
+	Exit Function
+Erreur:
+	Supprimer = "!" & Error$
+End Function
+]]></script:module>

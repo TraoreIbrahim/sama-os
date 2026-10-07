@@ -35,10 +35,13 @@ const char *const REGLAGES[][3] = {
 };
 
 // Éléments ajoutés à des ensembles : le jeu de couleurs « Sama » (celui du moteur, « automatique », ne se change pas),
-// avec les traits de la grille très légers (#EFEFEE, ceux des maquettes) ; le reste garde les couleurs par défaut.
+// avec les traits de la grille très légers (#EFEFEE, ceux des maquettes), et sans les pointillés bleus là où des lignes
+// ou des colonnes sont masquées (un filtre en masque : Excel ne les montre pas, l'« automatique » non plus) ; le reste
+// garde les couleurs par défaut.
 const char *const NOEUDS[][3] = {
     {"/org.openoffice.Office.UI/ColorScheme/ColorSchemes", "Sama",
-     "<node oor:name=\"CalcGrid\"><prop oor:name=\"Light\"><value>15724526</value></prop></node>"},
+     "<node oor:name=\"CalcGrid\"><prop oor:name=\"Light\"><value>15724526</value></prop></node>"
+     "<node oor:name=\"CalcHiddenColRow\"><prop oor:name=\"IsVisible\"><value>false</value></prop></node>"},
 };
 
 // Macros de Sama (tableaux…) : les modules Basic de SAMA_MOTEUR_BASIC (par défaut /usr/lib/samaos/moteur/basic) sont

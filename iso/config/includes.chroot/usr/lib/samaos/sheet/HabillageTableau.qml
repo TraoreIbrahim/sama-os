@@ -346,8 +346,11 @@ Item {
             Text { text: "Total"; font.pointSize: 10 * habillage.echelle; font.weight: Font.Bold; color: habillage.encre; anchors.baseline: compte.baseline }
             Text {
                 id: compte
-                readonly property int n: habillage.donnees.lignes.filter(function (r) { return !r.vide }).length
+                // (avec un filtre : celles qu'on voit, « · 3 membres sur 5 »)
+                readonly property int tous: habillage.donnees.lignes.filter(function (r) { return !r.vide }).length
+                readonly property int n: habillage.donnees.lignes.filter(function (r) { return !r.vide && !r.cachee }).length
                 text: "· " + n + " " + (n > 1 ? habillage.pluriel(habillage.t.colonnes[0]) : String(habillage.t.colonnes[0] || "ligne").toLowerCase())
+                      + (n < tous ? " sur " + tous : "")
                 font.pointSize: 9 * habillage.echelle
                 color: habillage.encre
             }

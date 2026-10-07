@@ -9,7 +9,9 @@ QQC2.MenuItem {
     id: element
     property string cle: ""
     readonly property var commande: cle ? fenetre.actions.trouver(cle) : null
-    readonly property string detail: cle ? (fenetre.actions.details[cle] || "") : ""
+    // (bref : sans la ligne d'explication, dans les menus du clic droit)
+    property bool bref: false
+    readonly property string detail: cle && !bref ? (fenetre.actions.details[cle] || "") : ""
     readonly property string raccourci: commande ? commande.raccourci : ""
     property string picto: cle ? (fenetre.actions.pictos[cle] || "") : ""
     // (le choix en cours, dans une liste de choix)

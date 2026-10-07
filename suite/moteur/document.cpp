@@ -627,6 +627,13 @@ void DocumentLO::annonce(int type, const QByteArray &charge)
     case LOK_CALLBACK_COMMENT:
         emit commentairesChanges();
         break;
+    // (le menu du moteur, après un clic droit : Sama montre le sien à la place)
+    case LOK_CALLBACK_CONTEXT_MENU:
+        if (m_menuAttendu) {
+            m_menuAttendu = false;
+            emit menuDemande(m_clicDroit.x(), m_clicDroit.y());
+        }
+        break;
     case LOK_CALLBACK_DOCUMENT_SIZE_CHANGED:
     case LOK_CALLBACK_SET_PART:
         relirePartiesEtTaille();
@@ -1089,6 +1096,10 @@ void DocumentLO::mousePressEvent(QMouseEvent *e)
         if (m_poignee < 0 && o.contains(p)) m_poignee = 8;
         if (m_poignee >= 0) emit objetTenuChanged();
     }
+    if (e->button() == Qt::RightButton) {
+        m_clicDroit = e->position();
+        m_menuAttendu = true;
+    }
     souris(LOK_MOUSEEVENT_MOUSEBUTTONDOWN, e, 1);
     e->accept();
     emit pointeurAppuye();
@@ -1108,6 +1119,14 @@ void DocumentLO::mouseReleaseEvent(QMouseEvent *e)
         emit objetTenuChanged();
     }
     if (e->button() == Qt::LeftButton) emit pointeurRelache(e->position().x(), e->position().y());
+    // (si le moteur n'a pas de menu pour cet endroit, Sama ouvre quand même le sien)
+    if (e->button() == Qt::RightButton) {
+        QTimer::singleShot(400, this, [this] {
+            if (!m_menuAttendu) return;
+            m_menuAttendu = false;
+            emit menuDemande(m_clicDroit.x(), m_clicDroit.y());
+        });
+    }
 }
 
 void DocumentLO::mouseDoubleClickEvent(QMouseEvent *e)

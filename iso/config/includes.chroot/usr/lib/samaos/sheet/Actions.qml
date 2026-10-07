@@ -91,6 +91,12 @@ QtObject {
         c("effacer", "Effacer le contenu", "Édition", "vider supprimer", "Suppr", function () { doc.touche(1286) }),
         c("supprimerLigne", "Supprimer la ligne", "Édition", "enlever ligne", "", function () { uno(".uno:DeleteRows") }),
         c("supprimerColonne", "Supprimer la colonne", "Édition", "enlever colonne", "", function () { uno(".uno:DeleteColumns") }),
+        c("retirerCommentaire", "Retirer le commentaire", "Édition", "supprimer effacer commentaire note", "", function () { var k = fenetre.commentaires.courant; if (k) fenetre.commentaires.supprimer(k.id) }, function () { return fenetre.commentaires.courant !== null }),
+        c("renommerFeuille", "Renommer la feuille", "Édition", "nom onglet page", "", function () { fenetre.renommerFeuille(doc.partie) }),
+        c("dupliquerFeuille", "Dupliquer la feuille", "Édition", "copier onglet page copie", "", function () { fenetre.dupliquerFeuille(doc.partie) }),
+        c("feuilleGauche", "Déplacer la feuille à gauche", "Édition", "onglet ordre", "", function () { fenetre.deplacerFeuille(doc.partie, -1) }, function () { return doc.partie > 0 }),
+        c("feuilleDroite", "Déplacer la feuille à droite", "Édition", "onglet ordre", "", function () { fenetre.deplacerFeuille(doc.partie, 1) }, function () { return doc.partie < doc.nomsParties.length - 1 }),
+        c("supprimerFeuille", "Supprimer la feuille", "Édition", "enlever onglet page", "", function () { fenetre.supprimerFeuille(doc.partie) }, function () { return doc.nomsParties.length > 1 }),
         c("toutSelectionner", "Tout sélectionner", "Édition", "", "Ctrl+A", function () { uno(".uno:SelectAll") }),
 
         c("formules", "Afficher les formules", "Affichage", "voir calculs", "", function () { uno(".uno:ToggleFormula") }),
@@ -100,6 +106,10 @@ QtObject {
         c("zoomPlus", "Agrandir", "Affichage", "zoom plus gros", "Ctrl++", function () { doc.zoom = doc.zoom * 1.1 }),
         c("zoomMoins", "Réduire", "Affichage", "zoom plus petit", "Ctrl+-", function () { doc.zoom = doc.zoom / 1.1 }),
         c("zoom100", "Taille réelle (100 %)", "Affichage", "zoom", "Ctrl+0", function () { doc.zoom = 1 }),
+        c("masquerColonne", "Masquer la colonne", "Affichage", "cacher colonne", "", function () { uno(".uno:HideColumn") }),
+        c("masquerLigne", "Masquer la ligne", "Affichage", "cacher ligne", "", function () { uno(".uno:HideRow") }),
+        c("afficherColonnes", "Afficher les colonnes masquées", "Affichage", "montrer colonnes cachées", "", function () { grille.afficherMasquees(true) }, function () { return grille.colonnesMasquees.length > 0 }),
+        c("afficherLignes", "Afficher les lignes masquées", "Affichage", "montrer lignes cachées", "", function () { grille.afficherMasquees(false) }, function () { return grille.lignesMasquees.length > 0 }),
         c("commentaires", "Tous les commentaires", "Affichage", "notes remarques panneau liste", "", function () { fenetre.voirCommentaires(true) }),
 
         c("ligneAvant", "Ligne au-dessus", "Insertion", "ajouter insérer ligne", "", function () { uno(".uno:InsertRowsBefore") }),
@@ -145,6 +155,7 @@ QtObject {
         c("retourLigne", "Renvoyer à la ligne", "Format", "texte long plusieurs lignes", "", function () { uno(".uno:WrapText") }),
         c("fusionner", "Fusionner les cases", "Format", "regrouper", "", function () { uno(".uno:ToggleMergeCells") }),
         c("largeur", "Ajuster la largeur des colonnes", "Format", "colonne trop étroite ###", "", function () { uno(".uno:SetOptimalColumnWidthDirect") }),
+        c("hauteur", "Ajuster la hauteur des lignes", "Format", "ligne texte coupé", "", function () { uno(".uno:SetOptimalRowHeight", { aExtraHeight: { type: "unsigned short", value: 0 } }) }),
         c("pinceau", "Reproduire la mise en forme", "Format", "pinceau copier format", "", function () { uno(".uno:FormatPaintbrush") }),
         c("effacerFormat", "Effacer la mise en forme", "Format", "enlever style normal", "Ctrl+M", function () { uno(".uno:ResetAttributes") }),
 
@@ -197,6 +208,17 @@ QtObject {
         graphique: "M4 20V11 M10 20V5 M16 20v-6 M3 20h18",
         date: "M4 6h16v14H4z M4 10h16 M8 3v5 M16 3v5 M8 13.5h3v3H8z",
         commentaire: "M4 5h16v11H9l-5 4z M12 8v5 M9.5 10.5h5",
+        retirerCommentaire: "M4 5h16v11H9l-5 4z M9.5 10.5h5",
+        renommerFeuille: "M4 20h4L18.5 9.5l-4-4L4 16z M12.5 7.5l4 4",
+        dupliquerFeuille: "M8 8h11v12H8z M5 16V4h11",
+        feuilleGauche: "M15 6l-6 6 6 6",
+        feuilleDroite: "M9 6l6 6-6 6",
+        supprimerFeuille: "M5 7h14 M10 7V5h4v2 M7 7l1 12h8l1-12",
+        masquerColonne: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z M4 20L20 4",
+        masquerLigne: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z M4 20L20 4",
+        afficherColonnes: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z",
+        afficherLignes: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z",
+        hauteur: "M4 4h16 M4 20h16 M12 7.5v9 M9.5 10L12 7.5l2.5 2.5 M9.5 14l2.5 2.5 2.5-2.5",
         commentaires: "M4 5h16v11H9l-5 4z",
         grColonnes: "M6 20v-7 M12 20V6 M18 20v-10",
         grBarres: "M4 6h9 M4 12h15 M4 18h6",
@@ -265,6 +287,8 @@ QtObject {
         formatStandard: "Automatique", nombreFormat: "1 000", fcfa: "50 000 F", pourcentage: "12 %", dateFormat: "06/10/26",
         heureFormat: "14:30", decimalesPlus: ",00 +", decimalesMoins: ",0 −",
         couleurTexte: "Texte", remplissage: "Remplissage", bordures: "Bordures",
+        feuilleGauche: "À gauche", feuilleDroite: "À droite",
+        collerValeurs: "Valeurs", effacer: "Contenu", effacerFormat: "Format", supprimerLigne: "La ligne", supprimerColonne: "La colonne",
         annuler: "Annuler", retablir: "Rétablir", couper: "Couper", copier: "Copier", coller: "Coller"
     })
 

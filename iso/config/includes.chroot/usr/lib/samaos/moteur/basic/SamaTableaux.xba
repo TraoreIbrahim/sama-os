@@ -394,7 +394,9 @@ Function Lignes(sNom As String) As String
 			If oCase.Type <> com.sun.star.table.CellContentType.EMPTY And oCase.Type <> com.sun.star.table.CellContentType.FORMULA Then bVide = False
 		Next c
 		If s <> "" Then s = s & ","
-		s = s & "{""l"":" & l & ",""v"":[" & sV & "],""n"":[" & sN & "],""vide"":" & IIf(bVide, "true", "false") & "}"
+		' (cachee : un filtre, ou la personne, a masqué la ligne)
+		s = s & "{""l"":" & l & ",""v"":[" & sV & "],""n"":[" & sN & "],""vide"":" & IIf(bVide, "true", "false") _
+		      & ",""cachee"":" & IIf(oFeuille.Rows.getByIndex(l).IsVisible, "false", "true") & "}"
 	Next l
 	Lignes = "{""colonnes"":[" & sCols & "],""lignes"":[" & s & "]}"
 	Exit Function
@@ -537,13 +539,56 @@ Function Filtrer(sNom As String, sCol As String, sGardees As String, sTout As St
 	End If
 	oDesc.ContainsHeader = True
 	oDesc.FilterFields3 = aNouveaux
-	oPlage.refresh()
+	Appliquer(oDoc, oPlage, oDesc, n = 0)
 	' (le moteur filtre aussi la ligne des totaux : elle reste visible, comme dans Excel)
 	If oPlage.TotalsRow Then oDoc.Sheets.getByIndex(oPlage.DataArea.Sheet).Rows.getByIndex(oPlage.DataArea.EndRow).IsVisible = True
 	Filtrer = ""
 	Exit Function
 Erreur:
 	Filtrer = "!" & Error$
+End Function
+
+' Filtre le tableau sur la valeur d'une case (clic droit › Filtrer : seulement « Espèces ») ; sC, sL : la case, à
+' partir de 0
+Function FiltrerSur(sNom As String, sC As String, sL As String) As String
+	Dim oDoc As Object, a As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	a = oDoc.DatabaseRanges.getByName(sNom).DataArea
+	FiltrerSur = Filtrer(sNom, CStr(CLng(sC) - a.StartColumn), oDoc.Sheets.getByIndex(a.Sheet).getCellByPosition(CLng(sC), CLng(sL)).String, "0")
+	Exit Function
+Erreur:
+	FiltrerSur = "!" & Error$
+End Function
+
+' Applique le filtre du tableau. Sans plus aucun champ, « refresh » ne fait rien (le moteur ne refiltre pas un
+' tableau sans filtre) et les lignes resteraient cachées : le filtre vide est alors appliqué aux cases, ce qui les
+' montre toutes
+Sub Appliquer(oDoc As Object, oPlage As Object, oDesc As Object, bAucun As Boolean)
+	Dim a As Object
+	If bAucun Then
+		a = oPlage.DataArea
+		oDoc.Sheets.getByIndex(a.Sheet).getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.EndRow).filter(oDesc)
+	Else
+		oPlage.refresh()
+	End If
+End Sub
+
+' Plus aucun filtre : toutes les lignes du tableau reviennent
+Function ToutAfficher(sNom As String) As String
+	Dim oDoc As Object, oPlage As Object, oDesc As Object
+	Dim aAucun() As New com.sun.star.sheet.TableFilterField3
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	oDesc = oPlage.getFilterDescriptor()
+	oDesc.ContainsHeader = True
+	oDesc.FilterFields3 = aAucun
+	Appliquer(oDoc, oPlage, oDesc, True)
+	ToutAfficher = ""
+	Exit Function
+Erreur:
+	ToutAfficher = "!" & Error$
 End Function
 
 ' ——— Le panneau du tableau ———

@@ -100,6 +100,7 @@ Window {
     property bool fermetureDemandee: false
     readonly property alias actions: lesActions
     Actions { id: lesActions; doc: fenetre.doc; fenetre: fenetre }
+    MenusContextuels { id: menusContextuels }
     readonly property alias commentaires: lesCommentaires
     Commentaires { id: lesCommentaires; doc: fenetre.doc }
     readonly property alias tableaux: lesTableaux
@@ -157,6 +158,30 @@ Window {
         a.Index = { type: "long", value: doc.nomsParties.length + 1 }
         doc.commande(".uno:Insert", a)
     }
+    // Le menu de l'onglet : renommer (l'onglet devient un champ), dupliquer, déplacer, supprimer (Ctrl+Z les annule)
+    signal renommerFeuille(int index)
+    function dupliquerFeuille(i) {
+        tableaux.appeler("SamaFeuilles.Dupliquer", [String(i)], function (ok, v) {
+            if (!tableaux.verifier(ok, v)) return
+            allerFeuillePlusTard(Number(v))
+            message.montrer("Feuille dupliquée")
+        })
+    }
+    function deplacerFeuille(i, sens) {
+        tableaux.appeler("SamaFeuilles.Deplacer", [String(i), String(sens)], function (ok, v) {
+            if (tableaux.verifier(ok, v)) allerFeuillePlusTard(Number(v))
+        })
+    }
+    function supprimerFeuille(i) {
+        var nom = doc.nomsParties[i] || ""
+        tableaux.appeler("SamaFeuilles.Supprimer", [String(i)], function (ok, v) {
+            if (tableaux.verifier(ok, v)) message.montrer("« " + nom + " » supprimée · Ctrl+Z pour la retrouver")
+        })
+    }
+    // (le moteur annonce les feuilles changées un peu après : on y va ensuite)
+    property int feuilleVoulue: -1
+    function allerFeuillePlusTard(i) { feuilleVoulue = i; allerFeuille.restart() }
+    Timer { id: allerFeuille; interval: 250; onTriggered: { if (fenetre.feuilleVoulue >= 0) fenetre.doc.allerPartie(fenetre.feuilleVoulue); fenetre.feuilleVoulue = -1 } }
     // Commencer une formule dans la barre de formule (« =MOYENNE() », le curseur entre les parenthèses)
     function commencerFormule(t) {
         champFormule.text = t
@@ -452,9 +477,19 @@ Window {
                         property bool edition: false
                         Layout.preferredHeight: 24
                         Layout.preferredWidth: (edition ? champNom.implicitWidth + 30 : nom.implicitWidth + 24)
-                        acceptedButtons: Qt.LeftButton
-                        onClicked: fenetre.doc.allerPartie(index)
-                        onDoubleClicked: { fenetre.doc.allerPartie(index); edition = true; champNom.text = modelData; champNom.forceActiveFocus(); champNom.selectAll() }
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: m => {
+                            fenetre.doc.allerPartie(index)
+                            if (m.button === Qt.RightButton) menusContextuels.feuille(ongletFeuille, m.x, m.y)
+                        }
+                        onDoubleClicked: m => { if (m.button === Qt.LeftButton) renommer() }
+                        function renommer() { fenetre.doc.allerPartie(index); edition = true; champNom.text = modelData; champNom.forceActiveFocus(); champNom.selectAll() }
+                        // (depuis un menu : une fois le menu refermé, sinon il reprend le clavier)
+                        Connections {
+                            target: fenetre
+                            function onRenommerFeuille(i) { if (i === index) renommerApres.restart() }
+                        }
+                        Timer { id: renommerApres; interval: 120; onTriggered: ongletFeuille.renommer() }
                         Rectangle {
                             anchors.fill: parent
                             radius: 7

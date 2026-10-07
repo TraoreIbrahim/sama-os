@@ -170,6 +170,8 @@ signals:
     void doubleClique();
     void clavierUtilise();
     void survole(qreal x, qreal y);
+    // Clic droit : le moteur a choisi la case (ou garde la sélection qu'on a cliquée) ; Sama ouvre son menu là
+    void menuDemande(qreal x, qreal y);
     void dialogueValide();
     // Un commentaire ajouté, changé ou retiré (le moteur ne les dessine pas : Sama les montre)
     void commentairesChanges();
@@ -248,5 +250,7 @@ private:
     QHash<QByteArray, QQueue<int>> m_scriptsEnAttente;   // par adresse de macro, dans l'ordre des appels
     bool m_survolEnvoye = false;
     QPointF m_survolSuivant;
+    QPointF m_clicDroit;                 // (où le menu s'ouvrira, quand le moteur aura choisi la case)
+    bool m_menuAttendu = false;
     bool m_survolAttend = false;
 };

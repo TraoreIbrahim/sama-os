@@ -98,6 +98,59 @@ Item {
         if (avant) document.allerA(avant)
         document.forceActiveFocus()
     }
+    // Colonnes et lignes masquées (parmi celles qu'on voit : largeur nulle dans les en-têtes) ; pas les lignes qu'un
+    // filtre de tableau cache, que le ▾ du tableau rend
+    function filtree(n) {
+        var v = fenetre.tableaux.visibles
+        for (var i = 0; i < v.length; i++) if (v[i].filtres.length > 0 && n - 1 > v[i].l1 && n - 1 <= v[i].l2) return true
+        return false
+    }
+    readonly property var colonnesMasquees: colonnes.filter(function (b) { return b.fin <= b.debut })
+    readonly property var lignesMasquees: lignes.filter(function (b) { return b.fin <= b.debut && !grille.filtree(Number(b.texte)) })
+    // Rendre une colonne ou une ligne masquée (« B:B », « 6:6 »), ou toutes celles qu'on voit
+    function afficher(adresse, commande) {
+        document.allerA(adresse)
+        fenetre.actions.uno(commande)
+        document.forceActiveFocus()
+    }
+    function afficherMasquees(colonne) {
+        var avant = document.adresse.replace(/\$/g, ""), liste = colonne ? colonnesMasquees : lignesMasquees
+        for (var i = 0; i < liste.length; i++) {
+            document.allerA(liste[i].texte + ":" + liste[i].texte)
+            fenetre.actions.uno(colonne ? ".uno:ShowColumn" : ".uno:ShowRow")
+        }
+        if (avant) document.allerA(avant)
+        document.forceActiveFocus()
+    }
+    component Masquee: MouseArea {
+        id: masquee
+        property bool colonne: true
+        property string aide: ""
+        // (au-dessus du bord à tirer de la colonne voisine)
+        z: 1
+        width: colonne ? 9 : 0
+        height: colonne ? 0 : 9
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        QQC2.ToolTip.visible: containsMouse
+        QQC2.ToolTip.delay: 400
+        QQC2.ToolTip.text: aide
+        Rectangle {
+            anchors.centerIn: parent
+            width: masquee.colonne ? 4 : parent.width - 8
+            height: masquee.colonne ? parent.height - 8 : 4
+            color: "transparent"
+            border.width: 0
+            Rectangle { width: masquee.colonne ? 1.5 : parent.width; height: masquee.colonne ? parent.height : 1.5; color: masquee.containsMouse ? fenetre.accent : Couleurs.texte3 }
+            Rectangle {
+                x: masquee.colonne ? parent.width - 1.5 : 0
+                y: masquee.colonne ? 0 : parent.height - 1.5
+                width: masquee.colonne ? 1.5 : parent.width
+                height: masquee.colonne ? parent.height : 1.5
+                color: masquee.containsMouse ? fenetre.accent : Couleurs.texte3
+            }
+        }
+    }
     function mesure(px) {
         var cm = px / document.zoom * 2.54 / 96
         return cm.toFixed(cm < 10 ? 2 : 1).replace(".", ",") + " cm"
@@ -123,12 +176,21 @@ Item {
         Repeater {
             model: grille.colonnes
             delegate: MouseArea {
+                id: enteteColonne
                 readonly property bool courante: grille.colonneChoisie(modelData.texte)
                 x: modelData.debut - document.vueX
                 width: modelData.fin - modelData.debut
                 height: parent.height
                 visible: width > 0
-                onClicked: { document.allerA(modelData.texte + ":" + modelData.texte); document.forceActiveFocus() }
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: m => {
+                    // (clic droit : la colonne est choisie, sauf si elle fait déjà partie des colonnes choisies)
+                    var n = grille.numeroColonne(modelData.texte)
+                    if (m.button === Qt.LeftButton || !grille.plage.colonnesEntieres || n < grille.plage.c1 || n > grille.plage.c2)
+                        document.allerA(modelData.texte + ":" + modelData.texte)
+                    document.forceActiveFocus()
+                    if (m.button === Qt.RightButton) menusContextuels.colonne(enteteColonne, m.x, m.y)
+                }
                 Rectangle { anchors.fill: parent; color: parent.courante ? grille.fondEnteteActif : "transparent" }
                 Text {
                     anchors.centerIn: parent
@@ -141,6 +203,17 @@ Item {
             }
         }
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: grille.trait }
+        // Colonnes masquées : deux traits à leur place ; un clic les rend
+        Repeater {
+            model: grille.colonnesMasquees
+            delegate: Masquee {
+                colonne: true
+                x: modelData.debut - document.vueX - width / 2
+                height: parent.height
+                aide: "Colonne " + modelData.texte + " masquée · cliquer pour l'afficher"
+                onClicked: grille.afficher(modelData.texte + ":" + modelData.texte, ".uno:ShowColumn")
+            }
+        }
         // Bords des colonnes, à tirer
         Repeater {
             model: grille.colonnes
@@ -172,12 +245,20 @@ Item {
         Repeater {
             model: grille.lignes
             delegate: MouseArea {
+                id: enteteLigne
                 readonly property bool courante: grille.ligneChoisie(modelData.texte)
                 y: modelData.debut - document.vueY
                 height: modelData.fin - modelData.debut
                 width: parent.width
                 visible: height > 0
-                onClicked: { document.allerA(modelData.texte + ":" + modelData.texte); document.forceActiveFocus() }
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: m => {
+                    var n = Number(modelData.texte)
+                    if (m.button === Qt.LeftButton || !grille.plage.lignesEntieres || n < grille.plage.l1 || n > grille.plage.l2)
+                        document.allerA(modelData.texte + ":" + modelData.texte)
+                    document.forceActiveFocus()
+                    if (m.button === Qt.RightButton) menusContextuels.ligne(enteteLigne, m.x, m.y)
+                }
                 Rectangle { anchors.fill: parent; color: parent.courante ? grille.fondEnteteActif : "transparent" }
                 Text {
                     anchors.centerIn: parent
@@ -190,6 +271,16 @@ Item {
             }
         }
         Rectangle { anchors.right: parent.right; width: 0.5; height: parent.height; color: grille.trait }
+        Repeater {
+            model: grille.lignesMasquees
+            delegate: Masquee {
+                colonne: false
+                y: modelData.debut - document.vueY - height / 2
+                width: parent.width
+                aide: "Ligne " + modelData.texte + " masquée · cliquer pour l'afficher"
+                onClicked: grille.afficher(modelData.texte + ":" + modelData.texte, ".uno:ShowRow")
+            }
+        }
         // Bords des lignes, à tirer
         Repeater {
             model: grille.lignes
@@ -258,6 +349,8 @@ Item {
             id: document
             anchors.fill: parent
             focus: true
+            // (clic droit : le moteur a choisi la case, Sama ouvre son menu)
+            onMenuDemande: (x, y) => menusContextuels.cases(document, x, y)
         }
 
         // Les tableaux visibles, habillés comme dans la maquette (titres, bandes, initiales, pastilles, onglet)

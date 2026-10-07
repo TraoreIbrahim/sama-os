@@ -136,7 +136,6 @@ Item {
             color: Couleurs.champ
             border.width: 1
             border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
-            Rectangle { x: 1; y: 8; width: 3; height: parent.height - 16; radius: 1.5; color: "#E2A62B" }
             ColumnLayout {
                 id: colonneRedaction
                 x: 14
