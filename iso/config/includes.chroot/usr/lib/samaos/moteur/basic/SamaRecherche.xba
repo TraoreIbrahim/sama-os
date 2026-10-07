@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaRecherche" script:language="StarBasic"><![CDATA[REM Sama Sheet : rechercher et remplacer (Ctrl+F, Ctrl+H). Sama écrit le motif (une expression régulière : les
+REM accents et les espaces des montants y sont déjà pris en compte, « kone » trouve « Koné », « 50 000 » trouve
+REM « 50 000 F »). On cherche dans ce qu'on voit : les textes par le moteur ; les nombres, les dates et les résultats
+REM des formules d'après leur affichage (« 50 000 F », « 3 oct »), que le moteur ne regarde pas. Ou dans les formules.
+REM Remplacer ne touche qu'aux textes (pas aux formules, sauf si l'on cherche dans les formules).
+Option Explicit
+
+Function Descripteur(oCherche As Object, sMotif As String, sCasse As String, sEntiere As String, sFormules As String) As Object
+	Dim d As Object
+	d = oCherche.createReplaceDescriptor()
+	d.SearchString = sMotif
+	d.SearchRegularExpression = True
+	d.SearchCaseSensitive = (sCasse = "1")
+	' (dans le tableur, « mots entiers » veut dire : la case entière)
+	d.SearchWords = (sEntiere = "1")
+	d.SearchByRow = True
+	' (0 : les formules et ce qui est écrit ; 1 : les valeurs)
+	d.SearchType = IIf(sFormules = "1", 0, 1)
+	Descripteur = d
+End Function
+
+' Le même motif, pour un texte quelconque (ce qu'affiche une case)
+Function Chercheur(sMotif As String, sCasse As String, sEntiere As String) As Object
+	Dim oT As Object, o As New com.sun.star.util.SearchOptions2, oLangue As New com.sun.star.lang.Locale
+	oT = createUnoService("com.sun.star.util.TextSearch2")
+	o.AlgorithmType2 = com.sun.star.util.SearchAlgorithms2.REGEXP
+	o.searchString = IIf(sEntiere = "1", "^(?:" & sMotif & ")$", sMotif)
+	oLangue.Language = "fr"
+	o.Locale = oLangue
+	If sCasse <> "1" Then o.transliterateFlags = com.sun.star.i18n.TransliterationModules.IGNORE_CASE
+	oT.setOptions2(o)
+	Chercheur = oT
+End Function
+
+Function Trouve(oT As Object, s As String) As Boolean
+	Dim r As Object
+	If s = "" Then
+		Trouve = False
+		Exit Function
+	End If
+	r = oT.searchForward(s, 0, Len(s))
+	Trouve = (r.subRegExpressions > 0)
+End Function
+
+' Les cases trouvées : {"total": n, "cases": [{"f": feuille, "c": colonne, "l": ligne, "v": ce qu'on voit}]}
+' (sToutes = "1" : toutes les feuilles ; au plus sMax cases décrites)
+Function Chercher(sMotif As String, sCasse As String, sEntiere As String, sFormules As String, sToutes As String, sMax As String) As String
+	Dim oDoc As Object, oFeuille As Object, d As Object, oTrouves As Object, oPlage As Object, a As Object, oCase As Object
+	Dim oT As Object, oAutres As Object, oCases As Object, i As Long, j As Long, c As Long, l As Long, n As Long, nMax As Long
+	Dim s As String, sV As String, nPremiere As Long, nDerniere As Long, bGarder As Boolean, nGenres As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	nMax = CLng(sMax)
+	If sToutes = "1" Then
+		nPremiere = 0
+		nDerniere = oDoc.Sheets.Count - 1
+	Else
+		nPremiere = oDoc.CurrentController.ActiveSheet.RangeAddress.Sheet
+		nDerniere = nPremiere
+	End If
+	If sFormules <> "1" Then oT = Chercheur(sMotif, sCasse, sEntiere)
+	nGenres = com.sun.star.sheet.CellFlags.VALUE + com.sun.star.sheet.CellFlags.DATETIME + com.sun.star.sheet.CellFlags.FORMULA
+	s = ""
+	n = 0
+	For i = nPremiere To nDerniere
+		oFeuille = oDoc.Sheets.getByIndex(i)
+		' Les textes (ou, dans les formules, tout ce qui est écrit), par le moteur
+		d = Descripteur(oFeuille, sMotif, sCasse, sEntiere, sFormules)
+		oTrouves = oFeuille.findAll(d)
+		If Not IsNull(oTrouves) Then
+			For j = 0 To oTrouves.Count - 1
+				oPlage = oTrouves.getByIndex(j)
+				a = oPlage.RangeAddress
+				For l = a.StartRow To a.EndRow
+					For c = a.StartColumn To a.EndColumn
+						oCase = oFeuille.getCellByPosition(c, l)
+						bGarder = (sFormules = "1" Or oCase.Type = com.sun.star.table.CellContentType.TEXT)
+						If bGarder Then
+							n = n + 1
+							If n <= nMax Then s = Decrite(s, i, c, l, oCase.String)
+						End If
+					Next c
+				Next l
+			Next j
+		End If
+		' Les nombres, les dates, les résultats des formules : d'après ce qu'ils affichent
+		If sFormules <> "1" Then
+			oAutres = oFeuille.queryContentCells(nGenres)
+			If oAutres.Count > 0 Then
+				oCases = oAutres.Cells.createEnumeration()
+				Do While oCases.hasMoreElements()
+					oCase = oCases.nextElement()
+					sV = oCase.String
+					If Trouve(oT, sV) Then
+						n = n + 1
+						a = oCase.CellAddress
+						If n <= nMax Then s = Decrite(s, i, a.Column, a.Row, sV)
+					End If
+				Loop
+			End If
+		End If
+	Next i
+	Chercher = "{""total"":" & n & ",""cases"":[" & s & "]}"
+	Exit Function
+Erreur:
+	Chercher = "!" & Error$
+End Function
+
+Function Decrite(s As String, f As Long, c As Long, l As Long, sV As String) As String
+	If Len(sV) > 80 Then sV = Left(sV, 79) & "…"
+	Decrite = s & IIf(s = "", "", ",") & "{""f"":" & f & ",""c"":" & c & ",""l"":" & l & ",""v"":" & Texte(sV) & "}"
+End Function
+
+' Remplace, dans une case (sC, sL : à partir de 0, sur la feuille sF) ou partout (sC = "-1") ; rend le nombre de
+' cases changées. Hors des formules, seuls les textes changent. Un Ctrl+Z annule tout l'appel.
+Function Remplacer(sMotif As String, sPar As String, sCasse As String, sEntiere As String, sFormules As String, sToutes As String, _
+                   sF As String, sC As String, sL As String) As String
+	Dim oDoc As Object, oFeuille As Object, d As Object, oTrouves As Object, oPlage As Object, a As Object, oCase As Object
+	Dim i As Long, j As Long, c As Long, l As Long, n As Long, nPremiere As Long, nDerniere As Long, bContexte As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	n = 0
+	oDoc.UndoManager.enterUndoContext("Remplacer")
+	bContexte = True
+	If CLng(sC) >= 0 Then
+		oCase = oDoc.Sheets.getByIndex(CLng(sF)).getCellByPosition(CLng(sC), CLng(sL))
+		If sFormules = "1" Or oCase.Type = com.sun.star.table.CellContentType.TEXT Then
+			d = Descripteur(oCase, sMotif, sCasse, sEntiere, "1")
+			d.ReplaceString = sPar
+			If oCase.replaceAll(d) > 0 Then n = 1
+		End If
+	Else
+		If sToutes = "1" Then
+			nPremiere = 0
+			nDerniere = oDoc.Sheets.Count - 1
+		Else
+			nPremiere = oDoc.CurrentController.ActiveSheet.RangeAddress.Sheet
+			nDerniere = nPremiere
+		End If
+		For i = nPremiere To nDerniere
+			oFeuille = oDoc.Sheets.getByIndex(i)
+			d = Descripteur(oFeuille, sMotif, sCasse, sEntiere, "1")
+			d.ReplaceString = sPar
+			If sFormules = "1" Then
+				n = n + oFeuille.replaceAll(d)
+			Else
+				' (case par case : seulement les textes, jamais une formule)
+				oTrouves = oFeuille.findAll(d)
+				If Not IsNull(oTrouves) Then
+					For j = 0 To oTrouves.Count - 1
+						oPlage = oTrouves.getByIndex(j)
+						a = oPlage.RangeAddress
+						For l = a.StartRow To a.EndRow
+							For c = a.StartColumn To a.EndColumn
+								oCase = oFeuille.getCellByPosition(c, l)
+								If oCase.Type = com.sun.star.table.CellContentType.TEXT Then
+									If oCase.replaceAll(d) > 0 Then n = n + 1
+								End If
+							Next c
+						Next l
+					Next j
+				End If
+			End If
+		Next i
+	End If
+	oDoc.UndoManager.leaveUndoContext()
+	Remplacer = CStr(n)
+	Exit Function
+Erreur:
+	Remplacer = "!" & Error$
+	If bContexte Then oDoc.UndoManager.leaveUndoContext()
+End Function
+]]></script:module>

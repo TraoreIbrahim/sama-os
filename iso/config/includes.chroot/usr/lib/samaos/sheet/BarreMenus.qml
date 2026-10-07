@@ -64,6 +64,9 @@ Rectangle {
                 ElementMenu { cle: "supprimerColonne" }
                 TitreMenu { text: "" ; implicitHeight: 9 }
                 ElementMenu { cle: "toutSelectionner" }
+                TitreMenu { text: "Rechercher" }
+                ElementMenu { cle: "rechercher" }
+                ElementMenu { cle: "remplacer" }
             }
             MenuSama {
                 id: menuAffichage

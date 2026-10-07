@@ -287,6 +287,8 @@ Window {
     Shortcut { sequences: ["Ctrl+K", "Alt+/", "Alt+Shift+/"]; onActivated: barreMenus.recherche.ouvrir() }
     // Analyse rapide (comme Excel)
     Shortcut { sequence: "Ctrl+Alt+M"; enabled: !fenetre.accueilOuvert; onActivated: { if (fenetre.vue !== "grille") fenetre.voirGrille(); fenetre.commentaires.demanderEcriture() } }
+    Shortcut { sequence: "Ctrl+F"; enabled: !fenetre.accueilOuvert; onActivated: grille.recherche.ouvrir(false) }
+    Shortcut { sequence: "Ctrl+H"; enabled: !fenetre.accueilOuvert; onActivated: grille.recherche.ouvrir(true) }
     Shortcut { sequence: StandardKey.Print; enabled: !fenetre.accueilOuvert; onActivated: fenetre.imprimer() }
     Shortcut { sequence: "Ctrl+Q"; enabled: fenetre.vue === "grille" && !fenetre.accueilOuvert; onActivated: grille.analyse.ouvrir() }
     Shortcut { sequence: "F1"; onActivated: fenetre.ouvrirAide() }
@@ -406,6 +408,11 @@ Window {
                 }
             }
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: Couleurs.bord }
+        }
+
+        BarreRecherche {
+            Layout.fillWidth: true
+            Layout.preferredHeight: implicitHeight
         }
 
         BarreTableau {
