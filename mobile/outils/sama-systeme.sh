@@ -34,7 +34,7 @@ redemarrer() {
 
 echo "• Construction de l'Accueil et de l'animation"
 python3 "$MOBILE/outils/droits-reglages.py" >/dev/null
-(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease :sugu:assembleRelease :mail:assembleRelease)
+(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease :sugu:assembleRelease :mail:assembleRelease :clavier:assembleRelease)
 [ -f "$ANIM" ] || python3 "$MOBILE/systeme/animation/fabriquer.py"
 "$MOBILE/systeme/surcouche-android/fabriquer.sh" >/dev/null
 "$MOBILE/systeme/surcouche-systemui/fabriquer.sh" >/dev/null
@@ -73,7 +73,8 @@ $ADB push "$MOBILE/systeme/privapp-permissions-samaos.xml" /system/etc/permissio
 $ADB shell mkdir -p /system/etc/default-permissions
 $ADB push "$MOBILE/systeme/default-permissions-samaos.xml" /system/etc/default-permissions/ >/dev/null
 $ADB push "$ANIM" /product/media/bootanimation.zip >/dev/null
-# Les réglages de constructeur de Sama : pas d'écran « Passage à … » d'Android, Pouls dans chaque Espace.
+# Les réglages de constructeur de Sama : pas d'écran « Passage à … » d'Android, Pouls dans chaque Espace,
+# loupe du texte ronde.
 $ADB push "$MOBILE/systeme/build/SamaAndroid.apk" /product/overlay/SamaAndroid.apk >/dev/null
 $ADB shell chmod 644 /product/overlay/SamaAndroid.apk
 # Cinq appuis sur le bouton marche : SystemUI lance le SOS des Réglages de Sama.
@@ -116,7 +117,7 @@ $ADB shell pm grant africa.samaos.sugu android.permission.POST_NOTIFICATIONS
 echo "• Applis de Sama : Téléphone, Contacts, Messages, Horloge, Calculatrice, Notes"
 # Signées avec la clé de la plateforme, installées comme des applis ordinaires ; Android leur confie
 # ensuite les appels (rôle DIALER) et les SMS (rôle SMS).
-for appli in telephone contacts messages horloge calculatrice notes agenda fichiers photos dictaphone lecteur griot mail; do
+for appli in telephone contacts messages horloge calculatrice notes agenda fichiers photos dictaphone lecteur griot mail clavier; do
     $ADB install -r "$MOBILE/$appli/build/outputs/apk/release/$appli-release.apk" >/dev/null
 done
 for droit in CALL_PHONE READ_CALL_LOG WRITE_CALL_LOG READ_CONTACTS READ_PHONE_STATE READ_PHONE_NUMBERS POST_NOTIFICATIONS; do
@@ -125,6 +126,13 @@ done
 for droit in READ_CONTACTS WRITE_CONTACTS READ_PHONE_STATE CALL_PHONE; do
     $ADB shell pm grant africa.samaos.contacts android.permission.$droit
 done
+# Le clavier de Sama devient le clavier du téléphone. Sur l'émulateur, le clavier du Mac compte comme un
+# clavier physique : on demande à Android de montrer quand même le clavier à l'écran.
+$ADB shell ime enable africa.samaos.clavier/.Clavier >/dev/null
+$ADB shell ime set africa.samaos.clavier/.Clavier >/dev/null
+# Un seul clavier : celui d'Android reste installé (« ime enable » le remet), mais n'ajoute plus le globe sous le clavier.
+$ADB shell ime disable com.android.inputmethod.latin/.LatinIME >/dev/null 2>&1 || true
+$ADB shell settings put secure show_ime_with_hard_keyboard 1
 # Mail : reconnaître les expéditeurs connus, prévenir des nouveaux mails.
 for droit in READ_CONTACTS POST_NOTIFICATIONS; do
     $ADB shell pm grant africa.samaos.mail android.permission.$droit

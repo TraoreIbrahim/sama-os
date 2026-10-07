@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le clavier de Sama : ses langues, et ses réglages (dans les Réglages de Sama). -->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="africa.samaos.clavier.VersReglages"
+    android:supportsSwitchingToNextInputMethod="true">
+    <subtype android:label="Français" android:imeSubtypeLocale="fr_FR" android:languageTag="fr-FR" android:imeSubtypeMode="keyboard" />
+    <subtype android:label="Julakan" android:imeSubtypeLocale="dyu" android:languageTag="dyu" android:imeSubtypeMode="keyboard" />
+    <subtype android:label="English" android:imeSubtypeLocale="en_US" android:languageTag="en-US" android:imeSubtypeMode="keyboard" />
+</input-method>

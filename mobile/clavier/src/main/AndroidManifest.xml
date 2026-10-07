@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Pas d'accès à Internet : ce qui est tapé reste sur le téléphone. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Le nombre de mots appris, pour les Réglages (jamais les mots). -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <application
+        android:icon="@mipmap/ic_appli"
+        android:label="Clavier de Sama"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Appli">
+
+        <service
+            android:name=".Clavier"
+            android:exported="true"
+            android:label="Clavier de Sama"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/methode" />
+        </service>
+
+        <!-- « Réglages du clavier » : la page Clavier des Réglages de Sama. -->
+        <activity
+            android:name=".VersReglages"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    </application>
+</manifest>

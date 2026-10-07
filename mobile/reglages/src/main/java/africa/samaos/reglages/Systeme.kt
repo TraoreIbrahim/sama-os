@@ -201,9 +201,48 @@ fun PageLangues(nav: Nav) {
 fun PageClavier(nav: Nav) {
     val c = LocalContext.current
     var version by remember { mutableIntStateOf(0) }
+    var oublier by remember { mutableStateOf(false) }
     PageReglages(titre = "Clavier", retour = nav.retour) {
         val v = version
         val defaut = if (v >= 0) MoteurSysteme.clavierParDefaut(c) else null
+        // Le clavier de Sama (maquette l3-clavier) : ses langues, la saisie, les mots appris.
+        if (defaut == MoteurClavier.SAMA) {
+            section("Langues de saisie", cle = "langues") {
+                val choisies = remember(v) { MoteurClavier.langues(c) }
+                MoteurClavier.LANGUES.forEach { (code, nom, detail) ->
+                    val oui = code in choisies
+                    Ligne(nom, detail = detail, icone = Icones.CLAVIER, fin = Fin.Inter(oui), actif = !oui || choisies.size > 1) {
+                        MoteurClavier.reglerLangue(c, code, !oui)
+                        version++
+                    }
+                }
+                Explication("Avec plusieurs langues, un appui long sur l'espace passe de l'une à l'autre. Le julakan garde l'AZERTY, avec ɛ ɔ ɲ ŋ et les tons au-dessus des lettres.")
+            }
+            section("Saisie", cle = "saisie") {
+                listOf(
+                    Triple("propositions", "Suggestions de mots", "Les mots courants et ceux que vous tapez souvent"),
+                    Triple("correction", "Correction automatique", "Seulement les accents oubliés : « tres » devient « très » ; effacer juste après rend le mot tapé"),
+                    Triple("vibration", "Vibration des touches", null),
+                ).forEach { (cle, nom, detail) ->
+                    val oui = remember(v) { MoteurClavier.option(c, cle) }
+                    Ligne(nom, detail = detail, fin = Fin.Inter(oui)) {
+                        MoteurClavier.reglerOption(c, cle, !oui)
+                        version++
+                    }
+                }
+            }
+            section(cle = "mots") {
+                val n = remember(v) { MoteurClavier.mots(c) }
+                Ligne("Dictionnaire personnel", detail = "Les mots que vous tapez, pour vous les proposer", icone = Icones.DOCUMENT, fin = Fin.Valeur(if (n == 0) "Aucun mot" else "$n mot${if (n > 1) "s" else ""}"))
+                if (n > 0) Ligne("Oublier les mots appris", icone = Icones.CORBEILLE, fin = Fin.Rien) { oublier = true }
+                Explication("Le clavier de Sama n'a pas accès à Internet : ce que vous tapez reste sur ce téléphone. Il ne retient et ne propose rien dans un mot de passe ou un code.")
+                if (oublier) Confirmation("Le clavier oubliera les mots qu'il a appris. Les mots courants restent.", "Oublier", annuler = { oublier = false }) {
+                    MoteurClavier.effacer(c)
+                    oublier = false
+                    version++
+                }
+            }
+        }
         section("Claviers", cle = "claviers") {
             MoteurSysteme.claviers(c).forEach { im ->
                 Ligne(im.loadLabel(c.packageManager).toString(), image = MoteurApplis.icone(c, im.packageName, 32), fin = Fin.Choix(im.id == defaut)) {
@@ -213,7 +252,7 @@ fun PageClavier(nav: Nav) {
             }
         }
         section(cle = "plus") {
-            Ligne("Langues et réglages du clavier", icone = Icones.CLAVIER) { nav.android(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
+            Ligne("Réglages d'Android pour les claviers", icone = Icones.CLAVIER) { nav.android(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
         }
     }
 }

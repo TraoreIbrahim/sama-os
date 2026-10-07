@@ -42,5 +42,6 @@ include(":griot")
 include(":appareil")
 include(":sugu")
 include(":mail")
+include(":clavier")
 // Appli d'essai pour l'émulateur (lecture, message avec réponse) ; jamais installée ailleurs.
 include(":essais")

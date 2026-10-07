@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La loupe du texte (le curseur ou une poignée de sélection qu'on tire) : un grand cercle, comme le verre d'une
+         loupe, qui grossit vraiment, dans toutes les applis. Posée assez haut pour laisser voir la ligne sous le
+         doigt. Le style est remplacé en entier, d'où les sept réglages. -->
+    <style name="Widget.Magnifier" parent="@android:style/Widget">
+        <item name="*android:magnifierWidth">96dp</item>
+        <item name="*android:magnifierHeight">96dp</item>
+        <item name="*android:magnifierZoom">1.75</item>
+        <item name="*android:magnifierElevation">4dp</item>
+        <item name="*android:magnifierVerticalOffset">-66dp</item>
+        <item name="*android:magnifierHorizontalOffset">0dp</item>
+        <item name="*android:magnifierColorOverlay">#0effffff</item>
+    </style>
+
+    <!-- Android arrondit les coins de sa loupe du rayon des dialogues lu dans ce thème-ci : 48dp, la moitié de la
+         loupe, en fait un cercle. Les dialogues ont leurs propres thèmes (Theme.DeviceDefault.Dialog…) et gardent
+         28dp, comme ceux de Sama. Le thème d'origine n'a rien d'autre que son parent. -->
+    <style name="Theme.DeviceDefault" parent="@*android:style/Theme.DeviceDefaultBase">
+        <item name="android:dialogCornerRadius">48dp</item>
+    </style>
+</resources>
