@@ -44,6 +44,14 @@ Item {
     onSourisDedansChanged: if (!sourisDedans) oublierSurvol.restart()
     property bool surBulle: false
     Timer { id: oublierSurvol; interval: 350; onTriggered: if (!grilleCom.surBulle) grilleCom.survol = null }
+    // (la liste relue après une réponse ou un changement : la bulle survolée montre le commentaire à jour)
+    Connections {
+        target: grilleCom.com
+        function onListeChanged() {
+            var s = grilleCom.survol
+            if (s) grilleCom.survol = grilleCom.com.parId(s.id)
+        }
+    }
     Connections {
         target: grilleCom.moteur
         function onSurvole(x, y) {

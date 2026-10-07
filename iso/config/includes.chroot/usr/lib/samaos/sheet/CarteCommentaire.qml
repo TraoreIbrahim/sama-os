@@ -1,13 +1,14 @@
 // Un commentaire, en carte (maquette « Docs · Blocs », marge des commentaires) : les initiales, le nom et le moment,
-// le texte. Pour la case courante : Modifier, et Résolu (le commentaire est retiré ; Ctrl+Z le rend). Dans la bulle
-// de la grille comme dans le panneau des commentaires.
+// le texte, puis ses réponses. Pour la case courante : Modifier, Résolu (le commentaire est retiré ; Ctrl+Z le rend),
+// et Répondre… (Entrée l'ajoute). Dans la bulle de la grille comme dans le panneau des commentaires.
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import "../reglages"
 
 Rectangle {
     id: carte
-    property var k: null                 // { id, tab, auteur, date, texte, c, l }
+    property var k: null                 // { id, tab, auteur, date, texte, reponses, c, l }
     property string lieu: ""             // (dans le panneau : « B3 », ou « B3 · Feuille 2 »)
     property bool actions: false
     property bool choisie: false
@@ -20,7 +21,13 @@ Rectangle {
     color: Couleurs.champ
     border.width: carte.choisie ? 1.5 : 1
     border.color: carte.choisie ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.1)
-    TapHandler { onTapped: carte.clique() }
+    // (un clic sur la carte mène à la case ; pas un clic dans le champ de la réponse)
+    TapHandler {
+        onTapped: (point, bouton) => {
+            if (champReponse.visible && champReponse.contains(champReponse.mapFromItem(carte, point.position))) return
+            carte.clique()
+        }
+    }
 
     ColumnLayout {
         id: contenu
@@ -90,6 +97,92 @@ Rectangle {
             lineHeightMode: Text.FixedHeight
             color: Couleurs.texte
             wrapMode: Text.Wrap
+        }
+
+        // Les réponses : les initiales, le nom et le moment, le texte
+        Repeater {
+            model: carte.k && carte.k.reponses ? carte.k.reponses : []
+            delegate: RowLayout {
+                id: reponse
+                required property var modelData
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                spacing: 8
+                Rectangle {
+                    Layout.alignment: Qt.AlignTop
+                    Layout.preferredWidth: 22
+                    Layout.preferredHeight: 22
+                    radius: 11
+                    color: Couleurs.sombre ? Qt.rgba(1, 1, 1, 0.1) : "#F0E7DB"
+                    Text {
+                        anchors.centerIn: parent
+                        text: carte.com.initiales(reponse.modelData.auteur)
+                        font.pixelSize: 9
+                        font.weight: Font.Bold
+                        color: Couleurs.texte2
+                    }
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Text {
+                            Layout.maximumWidth: parent.width * 0.6
+                            text: reponse.modelData.auteur
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            color: Couleurs.texte
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: carte.com.quand(reponse.modelData.date)
+                            font.pixelSize: 11
+                            color: Couleurs.texte2
+                            elide: Text.ElideRight
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: reponse.modelData.texte
+                        font.pixelSize: 13
+                        lineHeight: 18
+                        lineHeightMode: Text.FixedHeight
+                        color: Couleurs.texte
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
+        }
+
+        // Répondre (maquette « Docs · Blocs ») : Entrée l'ajoute, Échap l'oublie
+        QQC2.TextField {
+            id: champReponse
+            visible: carte.actions && carte.k !== null
+            Layout.fillWidth: true
+            Layout.preferredHeight: 32
+            placeholderText: "Répondre…"
+            placeholderTextColor: Couleurs.texte3
+            font.pixelSize: 13
+            color: Couleurs.texte
+            leftPadding: 10
+            rightPadding: 10
+            maximumLength: 500
+            background: Rectangle {
+                radius: 8
+                color: Couleurs.fond
+                border.width: champReponse.activeFocus ? 1.5 : 1
+                border.color: champReponse.activeFocus ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.14)
+            }
+            onAccepted: {
+                if (!text.trim()) return
+                carte.com.repondre(carte.k.id, text)
+                text = ""
+                fenetre.doc.forceActiveFocus()
+            }
+            Keys.onEscapePressed: { text = ""; fenetre.doc.forceActiveFocus() }
         }
     }
 }

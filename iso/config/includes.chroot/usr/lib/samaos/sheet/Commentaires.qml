@@ -1,15 +1,20 @@
 // Les commentaires du classeur (des notes du moteur, que le .xlsx garde et qu'Excel montre) : leur liste, celui de la
-// case courante, et ce qu'on en fait (ajouter, changer, retirer). Chacun est signé du nom de la personne et daté. Le
-// moteur ne les dessine pas : la grille montre leurs marques et leurs bulles, le panneau les liste tous.
+// case courante, et ce qu'on en fait (ajouter, changer, répondre, retirer). Chacun est signé du nom de la personne et
+// daté. Le moteur ne les dessine pas : la grille montre leurs marques et leurs bulles, le panneau les liste tous.
+// Les réponses (maquette « Docs · Blocs » : « Répondre… ») sont écrites dans la note, une ligne chacune, que Excel
+// montre telle quelle : « ↳ Ibrahim Traoré, 07/10/2026 20:50 : Vu, merci. » ; le commentaire garde son auteur et sa
+// date.
 import QtQuick
 import Sama.Moteur
+import "../reglages"
 
 Item {
     id: commentaires
     visible: false
     required property var doc
 
-    // [{ id, tab, auteur, date, texte, c, l }] (c, l : colonne et ligne, à partir de 0)
+    // [{ id, tab, auteur, date, texte, reponses: [{ auteur, date, texte }], c, l }] (c, l : colonne et ligne, à partir
+    // de 0 ; texte : sans les réponses)
     property var liste: []
     readonly property var surFeuille: liste.filter(function (k) { return k.tab === doc.partie })
     function deCase(c, l) {
@@ -31,14 +36,58 @@ Item {
             if (commande !== ".uno:ViewAnnotations" || !reponse || !reponse.comments) return
             commentaires.liste = reponse.comments.map(function (k) {
                 var p = String(k.cellRange || k.cellPos || "").split(/[\s,]+/).map(Number)
-                return { id: String(k.id), tab: Number(k.tab), auteur: k.author || "", date: k.dateTime || "", texte: k.text || "", c: p[0], l: p[1] }
+                var t = commentaires.decouper(k.text)
+                return { id: String(k.id), tab: Number(k.tab), auteur: k.author || "", date: k.dateTime || "", texte: t.texte, reponses: t.reponses, c: p[0], l: p[1] }
             })
         }
     }
 
     function chaine(v) { return { type: "string", value: String(v) } }
     function ajouter(texte) { doc.commande(".uno:InsertAnnotation", { Text: chaine(texte) }); relire.restart() }
-    function modifier(id, texte) { doc.commande(".uno:EditAnnotation", { Id: chaine(id), Text: chaine(texte) }); relire.restart() }
+    // (le texte change ; ses réponses restent)
+    function modifier(id, texte) { doc.commande(".uno:EditAnnotation", { Id: chaine(id), Text: chaine(texte + lignes(parId(id))) }); relire.restart() }
+    // Une réponse, signée du nom de la personne et datée ; le commentaire garde son auteur et sa date (Ctrl+Z la retire)
+    function repondre(id, texte) {
+        var k = parId(id), t = String(texte || "").trim().replace(/\s*\n\s*/g, " ")
+        if (!k || !t) return
+        var r = { auteur: nomPersonne || "Moi", date: maintenant(), texte: t }
+        doc.commande(".uno:EditAnnotation", { Id: chaine(id), Text: chaine(k.texte + lignes({ reponses: k.reponses.concat([r]) })),
+                                              Author: chaine(k.auteur), Date: chaine(k.date) })
+        relire.restart()
+    }
+    function parId(id) {
+        for (var i = 0; i < liste.length; i++) if (liste[i].id === id) return liste[i]
+        return null
+    }
+
+    // ——— Les réponses, dans le texte de la note ———
+    function decouper(texte) {
+        var forme = /^↳ (.+?), (\d{1,2}\/\d{1,2}\/\d{2,4} \d{1,2}:\d{2}) : (.*)$/
+        var texteSeul = [], reponses = []
+        String(texte || "").split(/\r?\n/).forEach(function (l) {
+            var m = forme.exec(l)
+            if (m) reponses.push({ auteur: m[1], date: m[2], texte: m[3] })
+            else if (reponses.length) reponses[reponses.length - 1].texte += "\n" + l
+            else texteSeul.push(l)
+        })
+        return { texte: texteSeul.join("\n"), reponses: reponses }
+    }
+    function lignes(k) {
+        return k && k.reponses && k.reponses.length
+               ? "\n" + k.reponses.map(function (r) { return "↳ " + r.auteur + ", " + r.date + " : " + r.texte.replace(/\n/g, " ") }).join("\n") : ""
+    }
+    function maintenant() {
+        var d = new Date()
+        function z(n) { return (n < 10 ? "0" : "") + n }
+        return z(d.getDate()) + "/" + z(d.getMonth() + 1) + "/" + d.getFullYear() + " " + z(d.getHours()) + ":" + z(d.getMinutes())
+    }
+    // Le nom de la personne (le nom complet du compte, sinon son identifiant), comme le moteur en signe les commentaires
+    property string nomPersonne: ""
+    Commande { id: commande }
+    Component.onCompleted: commande.lancer("getent passwd \"$(id -un)\"", function (sortie) {
+        var p = sortie.trim().split(":")
+        commentaires.nomPersonne = (p[4] || "").split(",")[0].trim() || p[0] || ""
+    })
     function supprimer(id) { doc.commande(".uno:DeleteNote", { Id: chaine(id) }); relire.restart() }
 
     // ——— Pour les montrer ———
