@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaVersements" script:language="StarBasic"><![CDATA[REM Sama Sheet : les versements d'un tableau de cotisations (maquette « Le tableau en fiches »). Pour garder chaque
+REM versement, une feuille « Versements » porte un tableau (Membre, Date, Moyen, Montant : une ligne par versement) ; la
+REM colonne Versé du tableau en fait la somme (SOMME.SI, qu'Excel lit tel quel). La fiche les liste et en ajoute ; la
+REM date et le moyen du dernier versement restent écrits dans le tableau. Chaque opération s'annule d'un Ctrl+Z.
+Option Explicit
+
+' Le tableau des versements d'un tableau (réglage du classeur « Sama.versements.Nom »), s'il existe encore
+Function Lie(sNom As String) As String
+	Dim s As String
+	s = Reglage("versements", sNom)
+	If s <> "" And ThisComponent.DatabaseRanges.hasByName(s) Then Lie = s Else Lie = ""
+End Function
+
+' Crée la feuille et le tableau des versements : une ligne par membre qui a déjà versé (sa date, son moyen) ; puis Versé
+' devient la somme de ses versements. sMembre, sVerse, sDate, sMoyen : les noms des colonnes (sDate, sMoyen : "" s'il n'y
+' en a pas). Rend le nom du tableau des versements.
+Function Creer(sNom As String, sMembre As String, sVerse As String, sDate As String, sMoyen As String) As String
+	Dim oDoc As Object, oPlage As Object, a As Object, oF As Object, oV As Object, aV As New com.sun.star.table.CellRangeAddress
+	Dim cM As Long, cV As Long, cD As Long, cMo As Long, l As Long, l2 As Long, r As Long, k As Long, i As Long
+	Dim sT As String, sFeuille As String, bContexte As Boolean, aTitres() As String, nCols As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oPlage = oDoc.DatabaseRanges.getByName(sNom)
+	a = oPlage.DataArea
+	oF = oDoc.Sheets.getByIndex(a.Sheet)
+	cM = ColonneDe(oF, a, sMembre)
+	cV = ColonneDe(oF, a, sVerse)
+	cD = -1
+	cMo = -1
+	If sDate <> "" Then cD = ColonneDe(oF, a, sDate)
+	If sMoyen <> "" Then cMo = ColonneDe(oF, a, sMoyen)
+	If cM < 0 Or cV < 0 Then
+		Creer = "!Les colonnes du tableau ont changé"
+		Exit Function
+	End If
+	sT = "Versements_" & sNom
+	If oDoc.DatabaseRanges.hasByName(sT) Then
+		Creer = sT
+		Exit Function
+	End If
+	l2 = a.EndRow
+	If oPlage.TotalsRow Then l2 = l2 - 1
+	oDoc.UndoManager.enterUndoContext("Garder chaque versement")
+	bContexte = True
+	' La feuille, après les autres
+	sFeuille = "Versements"
+	i = 2
+	Do While oDoc.Sheets.hasByName(sFeuille)
+		sFeuille = "Versements (" & i & ")"
+		i = i + 1
+	Loop
+	oDoc.Sheets.insertNewByName(sFeuille, oDoc.Sheets.Count)
+	oV = oDoc.Sheets.getByName(sFeuille)
+	oV.getCellByPosition(0, 0).String = "Versements"
+	oV.getCellByPosition(0, 0).CharHeight = 18
+	oV.getCellByPosition(0, 0).CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oV.getCellByPosition(0, 0).CharColor = Encre()
+	oV.getCellByPosition(0, 1).String = "Chaque versement sur une ligne : la colonne " & sVerse & " de « " & Replace(sNom, "_", " ") & " » en fait la somme."
+	oV.getCellByPosition(0, 1).CharColor = RGB(102, 94, 84)
+	' (la ligne libre au-dessus du tableau, où se pose son onglet, comme dans les modèles)
+	oV.Rows.getByIndex(2).Height = 900
+	' Les titres : le membre, la date, le moyen, le montant
+	nCols = 0
+	ReDim aTitres(3) As String
+	aTitres(nCols) = sMembre : nCols = nCols + 1
+	If cD >= 0 Then aTitres(nCols) = sDate : nCols = nCols + 1
+	If cMo >= 0 Then aTitres(nCols) = sMoyen : nCols = nCols + 1
+	aTitres(nCols) = "Montant" : nCols = nCols + 1
+	For k = 0 To nCols - 1
+		oV.getCellByPosition(k, 3).String = aTitres(k)
+	Next k
+	' Une ligne par membre qui a déjà versé
+	r = 4
+	For l = a.StartRow + 1 To l2
+		If oF.getCellByPosition(cV, l).Value > 0 And oF.getCellByPosition(cM, l).String <> "" Then
+			k = 0
+			oV.getCellByPosition(k, r).String = oF.getCellByPosition(cM, l).String : k = k + 1
+			If cD >= 0 Then
+				If oF.getCellByPosition(cD, l).Type = com.sun.star.table.CellContentType.VALUE Then oV.getCellByPosition(k, r).Value = oF.getCellByPosition(cD, l).Value
+				k = k + 1
+			End If
+			If cMo >= 0 Then oV.getCellByPosition(k, r).String = oF.getCellByPosition(cMo, l).String : k = k + 1
+			oV.getCellByPosition(k, r).Value = oF.getCellByPosition(cV, l).Value
+			r = r + 1
+		End If
+	Next l
+	If r = 4 Then r = 5
+	aV.Sheet = oV.RangeAddress.Sheet
+	aV.StartColumn = 0
+	aV.StartRow = 3
+	aV.EndColumn = nCols - 1
+	aV.EndRow = r - 1
+	Nouveau(oV, aV, sT)
+	FormaterColonne(sT, "Montant", "montant")
+	If cD >= 0 Then FormaterColonne(sT, sDate, "date")
+	oV.Columns.getByIndex(0).Width = 5200
+	For k = 1 To nCols - 1
+		oV.Columns.getByIndex(k).Width = 3200
+	Next k
+	' Versé devient la somme des versements du membre
+	For l = a.StartRow + 1 To l2
+		oF.getCellByPosition(cV, l).Formula = "=SUMIF(" & sT & "[" & sMembre & "];" & sNom & "[[#This Row];[" & sMembre & "]];" & sT & "[Montant])"
+	Next l
+	Regler(sNom, "versements", sT)
+	' (les colonnes de la date et du moyen, pour les versements suivants)
+	Regler(sNom, "versements.colonnes", IIf(cD >= 0, sDate, "") & Chr(31) & IIf(cMo >= 0, sMoyen, ""))
+	oDoc.UndoManager.leaveUndoContext()
+	Creer = sT
+	Exit Function
+Erreur:
+	Creer = "!" & Error$
+	If bContexte Then oDoc.UndoManager.leaveUndoContext()
+End Function
+
+' Un versement de plus pour le membre de la ligne sL (à partir de 0) du tableau sNom : sDate « 2026-10-07 », sMoyen,
+' sMontant ; la date et le moyen du dernier versement s'écrivent aussi dans le tableau
+Function Ajouter(sNom As String, sL As String, sDate As String, sMoyen As String, sMontant As String) As String
+	Dim oDoc As Object, sT As String, oPlage As Object, a As Object, oV As Object, am As Object, oF As Object
+	Dim l As Long, r As Long, cM As Long, cD As Long, cMo As Long, cMt As Long, cMain As Long, bContexte As Boolean
+	Dim sMembre As String, dDate As Double, c As Long, aCols As Variant, sColDate As String, sColMoyen As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	sT = Lie(sNom)
+	If sT = "" Then
+		Ajouter = "!Pas de tableau des versements pour ce tableau"
+		Exit Function
+	End If
+	am = oDoc.DatabaseRanges.getByName(sNom).DataArea
+	oF = oDoc.Sheets.getByIndex(am.Sheet)
+	oPlage = oDoc.DatabaseRanges.getByName(sT)
+	a = oPlage.DataArea
+	oV = oDoc.Sheets.getByIndex(a.Sheet)
+	cM = a.StartColumn
+	cMain = ColonneDe(oF, am, oV.getCellByPosition(cM, a.StartRow).String)
+	If cMain < 0 Then cMain = am.StartColumn
+	sMembre = oF.getCellByPosition(cMain, CLng(sL)).String
+	cMt = ColonneDe(oV, a, "Montant")
+	aCols = Split(Reglage("versements.colonnes", sNom) & Chr(31), Chr(31))
+	sColDate = aCols(0)
+	sColMoyen = aCols(1)
+	cD = -1
+	cMo = -1
+	If sColDate <> "" Then cD = ColonneDe(oV, a, sColDate)
+	If sColMoyen <> "" Then cMo = ColonneDe(oV, a, sColMoyen)
+	If sDate <> "" Then dDate = DateSerial(CInt(Left(sDate, 4)), CInt(Mid(sDate, 6, 2)), CInt(Mid(sDate, 9, 2)))
+	oDoc.UndoManager.enterUndoContext("Ajouter un versement")
+	bContexte = True
+	' La première ligne vide du tableau des versements, sinon une ligne de plus
+	r = -1
+	For l = a.StartRow + 1 To a.EndRow
+		If EstVide(oV.getCellRangeByPosition(a.StartColumn, l, a.EndColumn, l)) Then
+			r = l
+			Exit For
+		End If
+	Next l
+	If r < 0 Then
+		AjouterLigne(sT)
+		a = oPlage.DataArea
+		r = a.EndRow
+	End If
+	oV.getCellByPosition(cM, r).String = sMembre
+	If cD >= 0 And sDate <> "" Then oV.getCellByPosition(cD, r).Value = dDate
+	If cMo >= 0 Then oV.getCellByPosition(cMo, r).String = sMoyen
+	oV.getCellByPosition(cMt, r).Value = Val(sMontant)
+	' (dans le tableau : la date et le moyen du dernier versement)
+	If cD >= 0 And sDate <> "" Then
+		c = ColonneDe(oF, am, sColDate)
+		If c >= 0 Then oF.getCellByPosition(c, CLng(sL)).Value = dDate
+	End If
+	If cMo >= 0 And sMoyen <> "" Then
+		c = ColonneDe(oF, am, sColMoyen)
+		If c >= 0 Then oF.getCellByPosition(c, CLng(sL)).String = sMoyen
+	End If
+	oDoc.UndoManager.leaveUndoContext()
+	Ajouter = ""
+	Exit Function
+Erreur:
+	Ajouter = "!" & Error$
+	If bContexte Then oDoc.UndoManager.leaveUndoContext()
+End Function
+
+' Retire le versement de la ligne sLigne (à partir de 0) de la feuille des versements
+Function Retirer(sNom As String, sLigne As String) As String
+	Dim oDoc As Object, sT As String, a As Object, oV As Object, l As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	sT = Lie(sNom)
+	If sT = "" Then
+		Retirer = "!Pas de tableau des versements pour ce tableau"
+		Exit Function
+	End If
+	a = oDoc.DatabaseRanges.getByName(sT).DataArea
+	oV = oDoc.Sheets.getByIndex(a.Sheet)
+	l = CLng(sLigne)
+	If l <= a.StartRow Or l > a.EndRow Then
+		Retirer = "!Ce versement n'est plus là"
+		Exit Function
+	End If
+	oDoc.UndoManager.enterUndoContext("Retirer un versement")
+	' (la dernière ligne du tableau reste, vide)
+	If a.EndRow - a.StartRow > 1 Then
+		oV.Rows.removeByIndex(l, 1)
+	Else
+		oV.getCellRangeByPosition(a.StartColumn, l, a.EndColumn, l).clearContents(7)
+	End If
+	oDoc.UndoManager.leaveUndoContext()
+	' (la somme des versements ne se recalcule pas d'elle-même quand une ligne de son tableau s'en va)
+	oDoc.calculateAll()
+	Retirer = ""
+	Exit Function
+Erreur:
+	Retirer = "!" & Error$
+End Function
+]]></script:module>

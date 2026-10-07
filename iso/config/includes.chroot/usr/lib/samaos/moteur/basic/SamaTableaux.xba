@@ -87,6 +87,7 @@ Function Decrire() As String
 			s = s & "{""nom"":" & Texte(oPlage.Name) & ",""feuille"":" & a.Sheet & ",""c1"":" & a.StartColumn & ",""l1"":" & a.StartRow _
 			      & ",""libre"":" & IIf(bLibre, "true", "false") & ",""style"":" & Texte(StyleDe(oFeuille, a)) _
 			      & ",""ocre"":" & IIf(Reglage("ocre", oPlage.Name) = "non", "false", "true") _
+			      & ",""versements"":" & Texte(Lie(oPlage.Name)) _
 			      & ",""c2"":" & a.EndColumn & ",""l2"":" & a.EndRow & ",""totaux"":" & IIf(oPlage.TotalsRow, "true", "false") _
 			      & ",""colonnes"":[" & sCols & "],""filtres"":[" & sFiltres & "]}"
 		End If

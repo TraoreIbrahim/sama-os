@@ -1,7 +1,7 @@
 // Le tableau en fiches (maquette « Sheet · Le tableau en fiches ») : une carte par ligne, et la fiche ouverte à droite
 // pour saisir sans se tromper de case. Quand une colonne calculée vaut « A − B » (Reste = Part − Versé), la carte
-// montre ce qui est versé sur ce qui est dû, et la fiche prépare un rappel. Les numéros de téléphone restent masqués
-// tant qu'on ne demande pas à les voir.
+// montre ce qui est versé sur ce qui est dû, la fiche liste les versements (date, moyen, montant ; Ajouter un
+// versement) et prépare un rappel. Les numéros de téléphone restent masqués tant qu'on ne demande pas à les voir.
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -38,6 +38,92 @@ Rectangle {
         if (!mots.length) return "?"
         return (mots[0].charAt(0) + (mots.length > 1 ? mots[1].charAt(0) : "")).toUpperCase()
     }
+    // ——— Les versements : la colonne Versé, avec la date et le moyen, montrés comme une liste de versements ———
+    // (sans tableau des versements : ce qui est écrit dans la ligne ; avec, chacun des versements du membre)
+    readonly property var cols: donnees.colonnes
+    readonly property int colVerse: progression ? progression.verse : -1
+    readonly property int colDate: {
+        if (!progression) return -1
+        for (var i = 1; i < cols.length; i++) if (cols[i].genre === "date" && i !== colVerse) return i
+        return -1
+    }
+    readonly property int colMoyen: {
+        if (!progression) return -1
+        for (var i = 1; i < cols.length; i++) if (/moyen|mode|paiement|via|canal/i.test(cols[i].nom) && cols[i].genre !== "date" && !cols[i].nombre) return i
+        return -1
+    }
+    readonly property string tableVersements: tableau && tableau.versements ? tableau.versements : ""
+    property var versements: null
+    function lireVersements() {
+        var t = tableVersements
+        if (!t) { versements = null; return }
+        tableaux.appeler("Lignes", [t], function (ok, v) {
+            if (!ok || !v || v.charAt(0) !== "{" || fiches.tableVersements !== t) return
+            try { fiches.versements = JSON.parse(v) } catch (e) { }
+        })
+    }
+    readonly property var entrees: {
+        if (!fiche || colVerse < 0) return []
+        if (tableVersements && versements) {
+            var vc = versements.colonnes, iMontant = -1, iDate = -1, iMoyen = -1
+            for (var k = 1; k < vc.length; k++) {
+                if (vc[k].nom === "Montant") iMontant = k
+                else if (colDate >= 0 && vc[k].nom === cols[colDate].nom) iDate = k
+                else if (colMoyen >= 0 && vc[k].nom === cols[colMoyen].nom) iMoyen = k
+            }
+            var nom = fiche.v[0]
+            return versements.lignes.filter(function (l) { return !l.vide && nom && l.v[0] === nom }).map(function (l) {
+                return { date: iDate >= 0 ? l.v[iDate] : "", jour: iDate >= 0 ? l.n[iDate] : 0, moyen: iMoyen >= 0 ? l.v[iMoyen] : "", montant: iMontant >= 0 ? l.v[iMontant] : "", ligne: l.l }
+            }).sort(function (a, b) { return (a.jour || 0) - (b.jour || 0) })
+        }
+        if (fiche.n[colVerse] > 0)
+            return [{ date: colDate >= 0 ? fiche.v[colDate] : "", jour: 0, moyen: colMoyen >= 0 ? fiche.v[colMoyen] : "", montant: fiche.v[colVerse], ligne: -1 }]
+        return []
+    }
+    // (les moyens déjà écrits dans le tableau : Espèces, Mobile money…)
+    readonly property var moyens: {
+        if (colMoyen < 0) return []
+        var vus = {}, res = []
+        donnees.lignes.forEach(function (l) { var v = l.v[colMoyen]; if (v && !vus[v]) { vus[v] = true; res.push(v) } })
+        return res
+    }
+    property bool ajoutOuvert: false
+    property string moyenNouveau: ""
+    onChoisieChanged: ajoutOuvert = false
+    function ouvrirAjout() {
+        moyenNouveau = colMoyen >= 0 && fiche ? (fiche.v[colMoyen] || moyens[0] || "") : ""
+        ajoutOuvert = true
+    }
+    function ajouterVersement(texteMontant, texteDate) {
+        var montant = Number(String(texteMontant).replace(/[\s\u00a0\u202fF]/g, "").replace(",", "."))
+        if (!(montant > 0)) { message.montrer("Un montant, par exemple 20 000"); return }
+        var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(texteDate).trim())
+        if (colDate >= 0 && !m) { message.montrer("Une date comme 07/10/2026"); return }
+        var iso = m ? m[3] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[1]).slice(-2) : ""
+        var ligne = fiche.l, nom = tableau.nom
+        function ajouter() {
+            tableaux.appeler("SamaVersements.Ajouter", [nom, String(ligne), iso, moyenNouveau, String(montant)], function (ok, v) {
+                if (!tableaux.verifier(ok, v)) return
+                fiches.ajoutOuvert = false
+                message.montrer("Versement ajouté · Ctrl+Z pour revenir")
+                tableaux.rafraichir()
+                fiches.lire()
+            })
+        }
+        if (tableVersements) { ajouter(); return }
+        // (le premier : la feuille des versements est créée, et Versé devient leur somme)
+        tableaux.appeler("SamaVersements.Creer", [nom, cols[0].nom, cols[colVerse].nom, colDate >= 0 ? cols[colDate].nom : "", colMoyen >= 0 ? cols[colMoyen].nom : ""],
+                         function (ok, v) { if (tableaux.verifier(ok, v)) { tableaux.rafraichir(); ajouter() } })
+    }
+    function retirerVersement(l) {
+        tableaux.appeler("SamaVersements.Retirer", [tableau.nom, String(l)], function (ok, v) {
+            if (!tableaux.verifier(ok, v)) return
+            message.montrer("Versement retiré · Ctrl+Z pour revenir")
+            fiches.lire()
+        })
+    }
+    function aujourdhui() { return new Date().toLocaleDateString(Qt.locale("fr_FR"), "dd/MM/yyyy") }
+
     function pourcentage(r) {
         if (!progression || !r.n[progression.du]) return 0
         return Math.max(0, Math.min(1, (r.n[progression.verse] || 0) / r.n[progression.du]))
@@ -59,6 +145,7 @@ Rectangle {
                 var r = remplies
                 choisie = r.length ? r[0].l : (donnees.lignes.length ? donnees.lignes[0].l : -1)
             }
+            fiches.lireVersements()
         })
     }
     Timer { id: relire; interval: 350; onTriggered: fiches.lire() }
@@ -109,7 +196,7 @@ Rectangle {
         var liste = [champNom]
         for (var i = 0; i < champsRepetes.count; i++) {
             var c = champsRepetes.itemAt(i)
-            if (c && !c.calcule) liste.push(c.entree)
+            if (c && !c.calcule && c.visible && !c.estVerse) liste.push(c.entree)
         }
         return liste
     }
@@ -325,6 +412,9 @@ Rectangle {
                                 readonly property int colonne: index + 1
                                 readonly property var modele: fiches.donnees.colonnes[colonne] || ({ nom: "", calcul: false, formule: "" })
                                 readonly property bool calcule: modele.calcul
+                                // (Versé : la liste des versements ; la date et le moyen y sont, pas dans des champs à part)
+                                readonly property bool estVerse: colonne === fiches.colVerse
+                                visible: colonne !== fiches.colDate && colonne !== fiches.colMoyen
                                 readonly property alias entree: saisie
                                 readonly property bool telephone: fiches.estTelephone(champ.modele.nom)
                                 readonly property string valeur: fiches.fiche ? fiches.fiche.v[colonne] : ""
@@ -333,9 +423,214 @@ Rectangle {
                                                               && fiches.fiche.n[colonne] !== null && fiches.fiche.n[colonne] <= 0 && fiches.fiche.n[fiches.progression.du] > 0
                                 Layout.fillWidth: true
                                 spacing: 6
+                                // Les versements (maquette : une ligne par versement, puis Ajouter un versement)
+                                ColumnLayout {
+                                    visible: champ.estVerse
+                                    Layout.fillWidth: true
+                                    spacing: 6
+                                    Text { text: "Versements"; font.pixelSize: 12; font.weight: Font.DemiBold; color: Couleurs.texte2 }
+                                    Repeater {
+                                        model: fiches.entrees
+                                        delegate: Rectangle {
+                                            id: entree
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 40
+                                            radius: 10
+                                            color: Couleurs.sombre ? Couleurs.carte : "#FBF8F3"
+                                            HoverHandler { id: survolEntree }
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 12
+                                                anchors.rightMargin: 8
+                                                spacing: 10
+                                                Text { visible: text !== ""; text: entree.modelData.date; font.pixelSize: 14; color: Couleurs.texte2 }
+                                                Rectangle {
+                                                    visible: entree.modelData.moyen !== ""
+                                                    Layout.preferredHeight: 22
+                                                    Layout.preferredWidth: moyenEntree.implicitWidth + 16
+                                                    radius: 6
+                                                    color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.25 : 0.06)
+                                                    Text { id: moyenEntree; anchors.centerIn: parent; text: entree.modelData.moyen; font.pixelSize: 12; color: Couleurs.texte }
+                                                }
+                                                Item { Layout.fillWidth: true }
+                                                Text { text: entree.modelData.montant; font.pixelSize: 14; font.weight: Font.DemiBold; font.features: { "tnum": 1 }; color: Couleurs.texte }
+                                                Outil {
+                                                    visible: entree.modelData.ligne >= 0
+                                                    opacity: survolEntree.hovered ? 1 : 0
+                                                    Layout.preferredWidth: 26
+                                                    Layout.preferredHeight: 26
+                                                    picto: "M7 7l10 10 M17 7L7 17"
+                                                    encre: "#A3322A"
+                                                    aide: "Retirer ce versement (Ctrl+Z le rend)"
+                                                    onClicked: fiches.retirerVersement(entree.modelData.ligne)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Text { visible: fiches.entrees.length === 0 && !fiches.ajoutOuvert; text: "Rien de versé pour l'instant"; font.pixelSize: 13; color: Couleurs.texte3 }
+                                    Outil {
+                                        visible: !fiches.ajoutOuvert
+                                        text: "Ajouter un versement"
+                                        picto: "M12 5v14 M5 12h14"
+                                        encre: fenetre.accentEncre
+                                        police.pixelSize: 14
+                                        police.bold: true
+                                        onClicked: { fiches.ouvrirAjout(); Qt.callLater(montantNouveau.forceActiveFocus) }
+                                    }
+                                    // Ajouter un versement : le montant (le reste, d'abord), la date (aujourd'hui), le moyen
+                                    Rectangle {
+                                        visible: fiches.ajoutOuvert
+                                        Layout.fillWidth: true
+                                        implicitHeight: formeAjout.implicitHeight + 24
+                                        radius: 12
+                                        color: Couleurs.champ
+                                        border.width: 1
+                                        border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.14)
+                                        ColumnLayout {
+                                            id: formeAjout
+                                            x: 12
+                                            y: 12
+                                            width: parent.width - 24
+                                            spacing: 10
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 10
+                                                ColumnLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 4
+                                                    Text { text: "Montant"; font.pixelSize: 12; font.weight: Font.DemiBold; color: Couleurs.texte2 }
+                                                    Rectangle {
+                                                        Layout.fillWidth: true
+                                                        Layout.preferredHeight: 36
+                                                        radius: 8
+                                                        color: Couleurs.champ
+                                                        border.width: montantNouveau.activeFocus ? 1.5 : 1
+                                                        border.color: montantNouveau.activeFocus ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.16)
+                                                        TextInput {
+                                                            id: montantNouveau
+                                                            anchors.fill: parent
+                                                            anchors.leftMargin: 10
+                                                            anchors.rightMargin: 10
+                                                            verticalAlignment: TextInput.AlignVCenter
+                                                            font.pixelSize: 15
+                                                            font.features: { "tnum": 1 }
+                                                            color: Couleurs.texte
+                                                            selectByMouse: true
+                                                            // (le reste à verser, proposé)
+                                                            text: fiches.ajoutOuvert && fiches.fiche && fiches.progression && fiches.fiche.n[fiches.progression.reste] > 0
+                                                                  ? Fonctions.enChiffres(fiches.fiche.n[fiches.progression.reste]) : ""
+                                                            onActiveFocusChanged: if (activeFocus) Qt.callLater(selectAll)
+                                                            Keys.onReturnPressed: fiches.ajouterVersement(montantNouveau.text, dateNouveau.text)
+                                                            Keys.onEscapePressed: fiches.ajoutOuvert = false
+                                                        }
+                                                    }
+                                                }
+                                                ColumnLayout {
+                                                    visible: fiches.colDate >= 0
+                                                    Layout.preferredWidth: 130
+                                                    spacing: 4
+                                                    Text { text: (fiches.cols[fiches.colDate] || {}).nom || ""; font.pixelSize: 12; font.weight: Font.DemiBold; color: Couleurs.texte2 }
+                                                    Rectangle {
+                                                        Layout.fillWidth: true
+                                                        Layout.preferredHeight: 36
+                                                        radius: 8
+                                                        color: Couleurs.champ
+                                                        border.width: dateNouveau.activeFocus ? 1.5 : 1
+                                                        border.color: dateNouveau.activeFocus ? fenetre.accent : Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.16)
+                                                        TextInput {
+                                                            id: dateNouveau
+                                                            anchors.fill: parent
+                                                            anchors.leftMargin: 10
+                                                            anchors.rightMargin: 10
+                                                            verticalAlignment: TextInput.AlignVCenter
+                                                            font.pixelSize: 15
+                                                            font.features: { "tnum": 1 }
+                                                            color: Couleurs.texte
+                                                            selectByMouse: true
+                                                            text: fiches.ajoutOuvert ? fiches.aujourdhui() : ""
+                                                            Keys.onReturnPressed: fiches.ajouterVersement(montantNouveau.text, dateNouveau.text)
+                                                            Keys.onEscapePressed: fiches.ajoutOuvert = false
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            // Le moyen : ceux déjà écrits dans le tableau
+                                            Flow {
+                                                visible: fiches.moyens.length > 0
+                                                Layout.fillWidth: true
+                                                spacing: 6
+                                                Repeater {
+                                                    model: fiches.moyens
+                                                    delegate: QQC2.AbstractButton {
+                                                        id: pastilleMoyen
+                                                        required property string modelData
+                                                        readonly property bool choisi: fiches.moyenNouveau === modelData
+                                                        height: 30
+                                                        leftPadding: 11
+                                                        rightPadding: 11
+                                                        hoverEnabled: true
+                                                        focusPolicy: Qt.NoFocus
+                                                        onClicked: fiches.moyenNouveau = modelData
+                                                        background: Rectangle {
+                                                            radius: 8
+                                                            color: pastilleMoyen.choisi ? fenetre.accentFond : pastilleMoyen.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.05) : Couleurs.champ
+                                                            border.width: pastilleMoyen.choisi ? 0 : 1
+                                                            border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.14)
+                                                        }
+                                                        contentItem: Text {
+                                                            text: pastilleMoyen.modelData
+                                                            verticalAlignment: Text.AlignVCenter
+                                                            font.pixelSize: 13
+                                                            font.weight: pastilleMoyen.choisi ? Font.DemiBold : Font.Normal
+                                                            color: pastilleMoyen.choisi ? fenetre.accentEncre : Couleurs.texte
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            // (le premier versement gardé : ce qui va se passer)
+                                            Text {
+                                                visible: fiches.tableVersements === ""
+                                                Layout.fillWidth: true
+                                                text: "Pour garder chaque versement, Sama ajoute une feuille « Versements » ; la colonne "
+                                                      + ((fiches.cols[fiches.colVerse] || {}).nom || "Versé") + " en fera la somme. Ctrl+Z pour revenir."
+                                                font.pixelSize: 12
+                                                color: Couleurs.texte2
+                                                wrapMode: Text.Wrap
+                                            }
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 8
+                                                Item { Layout.fillWidth: true }
+                                                Outil {
+                                                    text: "Annuler"
+                                                    background: Rectangle { radius: 8; color: parent.hovered ? Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.07) : Couleurs.champ; border.width: 1; border.color: Qt.rgba(31 / 255, 28 / 255, 24 / 255, 0.14) }
+                                                    onClicked: fiches.ajoutOuvert = false
+                                                }
+                                                QQC2.AbstractButton {
+                                                    id: boutonAjouter
+                                                    implicitHeight: 32
+                                                    leftPadding: 14
+                                                    rightPadding: 14
+                                                    hoverEnabled: true
+                                                    focusPolicy: Qt.NoFocus
+                                                    onClicked: fiches.ajouterVersement(montantNouveau.text, dateNouveau.text)
+                                                    background: Rectangle { radius: 8; color: boutonAjouter.hovered ? fenetre.accentEncre : fenetre.accent }
+                                                    contentItem: Text {
+                                                        text: fiches.tableVersements === "" ? "Garder et ajouter" : "Ajouter"
+                                                        verticalAlignment: Text.AlignVCenter
+                                                        font.pixelSize: 13
+                                                        font.weight: Font.DemiBold
+                                                        color: "#FFFFFF"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 // Colonne calculée : on la lit, on ne l'écrit pas
                                 Rectangle {
-                                    visible: champ.modele.calcul
+                                    visible: champ.modele.calcul && !champ.estVerse
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 52
                                     radius: 10
@@ -371,9 +666,9 @@ Rectangle {
                                     }
                                 }
                                 // Colonne à écrire
-                                Text { visible: !champ.modele.calcul; text: champ.modele.nom; font.pixelSize: 12; font.weight: Font.DemiBold; color: Couleurs.texte2 }
+                                Text { visible: !champ.modele.calcul && !champ.estVerse; text: champ.modele.nom; font.pixelSize: 12; font.weight: Font.DemiBold; color: Couleurs.texte2 }
                                 Rectangle {
-                                    visible: !champ.modele.calcul
+                                    visible: !champ.modele.calcul && !champ.estVerse
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 40
                                     radius: 10
