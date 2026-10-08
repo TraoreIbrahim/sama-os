@@ -3,8 +3,9 @@
 (chacune a son unité systemd « app-<application>@… » dans la session) et les fichiers qu'elles ont reçus. À la fin
 normale de la session (déconnexion, extinction), la note est marquée « propre ». Si, à l'ouverture de session
 suivante, l'ordinateur a redémarré sans que la session se soit fermée (coupure de courant, batterie vide), la carte
-« Le courant a été coupé à 11:05 » propose de tout rouvrir ; les documents que Sama Présentations (LibreOffice) avait
-gardés (ses copies de secours, chaque minute) sont rouverts avec eux.
+« Le courant a été coupé à 11:05 » propose de tout rouvrir ; les documents que Sama Docs et Sama Sheet n'avaient pas
+enregistrés (leurs copies de secours, chaque minute : secours.py) et ceux que Sama Présentations (LibreOffice) avait
+gardés sont rouverts avec eux.
 
   courant.py demarrer      ouverture de session (samaos-courant.desktop) : carte s'il y a eu coupure, puis veille
   courant.py bilan         JSON de la carte : {heure, applis, documents}
@@ -19,6 +20,9 @@ import subprocess
 import sys
 import time
 import uuid
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import secours                                   # (les copies de secours de Sama Docs et Sama Sheet)
 
 ETAT = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "samaos")
 SESSION = os.path.join(ETAT, "session.json")
@@ -118,7 +122,17 @@ def applis_ouvertes():
 
 
 def documents_secours():
-    """Documents que LibreOffice a gardés en secours (liste de récupération), du plus récent au plus ancien."""
+    """Documents à récupérer, du plus récent au plus ancien : les copies de secours de Sama Docs et Sama Sheet laissées
+    par une application arrêtée (avec « fichier », la copie à rouvrir), et ceux que LibreOffice a gardés."""
+    try:
+        sama = secours.orphelins()
+    except OSError:
+        sama = []
+    return sorted(sama + documents_libreoffice(), key=lambda d: d["quand"], reverse=True)
+
+
+def documents_libreoffice():
+    """Documents que LibreOffice a gardés en secours (liste de récupération)."""
     try:
         texte = open(LO, encoding="utf-8", errors="replace").read()
     except OSError:
@@ -140,13 +154,22 @@ def documents_secours():
     return sorted(res, key=lambda d: d["quand"], reverse=True)
 
 
+def a_rouvrir(applis, docs):
+    """Les applications à relancer : pas celles dont les documents rouvrent déjà (copies de secours)."""
+    libreoffice = any(not d.get("fichier") for d in docs)
+    sama = {d["id"] for d in docs if d.get("fichier")}
+    couverts = {d["fichier"] for d in docs if d.get("fichier")} | {d["original"] for d in docs if d.get("original")}
+    return [a for a in applis if not (libreoffice and a["id"] in LIBREOFFICE)
+            and not (a["id"] in sama and (not a.get("fichiers") or a["fichiers"][0] in couverts))]
+
+
 def bilan():
     c = lire(COUPURE)
     if not c or c.get("vu"):
         print("{}")
         return
     docs = documents_secours()
-    applis = [a for a in c.get("applis", []) if not (docs and a["id"] in LIBREOFFICE)]
+    applis = a_rouvrir(c.get("applis", []), docs)
     print(json.dumps({"heure": c.get("heure", 0), "applis": applis, "documents": docs}, ensure_ascii=False))
 
 
@@ -187,10 +210,14 @@ def fermeture_propre_chromium():
 def rouvrir():
     c = lire(COUPURE) or {}
     deja = set()
-    if documents_secours():                      # (LibreOffice rouvre ses documents lui-même, une fois)
+    docs = documents_secours()
+    if any(not d.get("fichier") for d in docs):  # (LibreOffice rouvre ses documents lui-même, une fois)
         lancer("samaos-presentations.desktop", [])
         deja |= LIBREOFFICE
-    for a in c.get("applis", []):
+    for d in docs:                               # (Sama Docs, Sama Sheet : une fenêtre par copie, qui la reprend)
+        if d.get("fichier"):
+            lancer(d["id"], [d["fichier"]])
+    for a in a_rouvrir(c.get("applis", []), docs):
         if a["id"] in deja:
             continue
         deja.add(a["id"])

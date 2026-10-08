@@ -32,7 +32,11 @@ Window {
     readonly property color vertEncre: Couleurs.sombre ? "#A3D6C1" : "#2F6B57"
 
     readonly property var doc: grille.doc
-    readonly property string nomFichier: doc.chemin ? doc.chemin.split("/").pop() : (nomPropose || "Nouveau classeur")
+    // (un classeur récupéré après un arrêt imprévu : la copie de secours est ouverte, son emplacement d'origine est la cible)
+    readonly property var reprise: secours.reprise
+    readonly property string cheminCible: reprise ? reprise.original : doc.chemin
+    readonly property string nomFichier: reprise ? (reprise.original ? reprise.original.split("/").pop() : reprise.titre)
+                                         : doc.chemin ? doc.chemin.split("/").pop() : (nomPropose || "Nouveau classeur")
     // Accueil (au lancement sans fichier) ; nom proposé à l'enregistrement d'un classeur fait d'un modèle
     property bool accueilOuvert: false
     property string nomPropose: ""
@@ -123,7 +127,7 @@ Window {
         else if (vue === "image") vueImage.tableau = tableauFiches
         else vueFormulaire.tableau = tableauFiches
     }
-    readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
+    readonly property string extension: cheminCible ? cheminCible.split(".").pop().toLowerCase() : ""
     property bool fermetureDemandee: false
     readonly property alias actions: lesActions
     Actions { id: lesActions; doc: fenetre.doc; fenetre: fenetre }
@@ -143,12 +147,17 @@ Window {
 
     // ——— Fichiers ———
     function enregistrer() {
-        if (!doc.chemin || ["xlsx", "ods", "xls", "csv"].indexOf(extension) < 0) dialogueEnregistrer.open()
+        if (!cheminCible || ["xlsx", "ods", "xls", "csv"].indexOf(extension) < 0) dialogueEnregistrer.open()
+        else if (reprise) doc.enregistrerSous(cheminCible)
         else doc.enregistrer()
     }
     // Ouvrir dans cette fenêtre si elle est vide et intacte, sinon dans une nouvelle
     function ouvrirFichier(c) {
-        if (!doc.chemin && !doc.modifie) { accueilOuvert = false; doc.ouvrir(c) }
+        if (!doc.chemin && !doc.modifie) {
+            accueilOuvert = false
+            if (secours.estUneCopie(c)) secours.reprendre(c, function () { doc.ouvrir(c) })
+            else doc.ouvrir(c)
+        }
         else commande.lancer("systemd-run --user --quiet --collect --slice=app.slice "
                              + commande.q("--unit=app-samaos\\x2dsheet@" + Date.now() + ".service") + " sama-sheet " + commande.q(c))
     }
@@ -175,6 +184,16 @@ Window {
                         + commande.q("--unit=app-samaos\\x2dsheet@" + Date.now() + ".service") + " sama-sheet")
     }
     Commande { id: commande }
+    // Les copies de secours (chaque minute, tant que le classeur n'est pas enregistré ; pas pendant une saisie)
+    Secours {
+        id: secours
+        doc: fenetre.doc
+        appli: "samaos-sheet.desktop"
+        format: ["xlsx", "ods"].indexOf(fenetre.extension) >= 0 ? fenetre.extension : "xlsx"
+        titre: fenetre.nomFichier
+        original: fenetre.cheminCible
+        permis: !fenetre.doc.curseurTexteVisible
+    }
     function ouvrirDialogue(genre) {
         if (genre === "ouvrir") dialogueOuvrir.open()
         else if (genre === "pdf") dialoguePdf.open()
@@ -236,7 +255,7 @@ Window {
         title: "Enregistrer le classeur"
         fileMode: FileDialog.SaveFile
         nameFilters: ["Classeur Excel (*.xlsx)", "Classeur OpenDocument (*.ods)", "Texte CSV (*.csv)", "PDF (*.pdf)"]
-        currentFile: doc.chemin ? "file://" + doc.chemin
+        currentFile: fenetre.cheminCible ? "file://" + fenetre.cheminCible
                      : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/" + fenetre.nomFichier + ".xlsx"
         onAccepted: {
             var c = fenetre.chemin(selectedFile)
@@ -253,7 +272,7 @@ Window {
         title: "Exporter en PDF"
         fileMode: FileDialog.SaveFile
         nameFilters: ["PDF (*.pdf)"]
-        currentFile: (doc.chemin ? "file://" + doc.chemin.replace(/\.[^.\/]*$/, "")
+        currentFile: (fenetre.cheminCible ? "file://" + fenetre.cheminCible.replace(/\.[^.\/]*$/, "")
                       : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/" + fenetre.nomFichier) + ".pdf"
         onAccepted: {
             var c = fenetre.chemin(selectedFile)
@@ -266,14 +285,23 @@ Window {
         target: fenetre.doc
         function onEnregistre(reussi, c) {
             if (!reussi && !c) { dialogueEnregistrer.open(); return }
+            // (un classeur récupéré dont l'emplacement d'origine n'existe plus, une clé USB retirée : un autre)
+            if (!reussi && fenetre.reprise && !c.endsWith(".pdf")) {
+                message.montrer("« " + c.split("/").pop() + " » n'a pas pu être remplacé : choisissez où l'enregistrer")
+                dialogueEnregistrer.open()
+                return
+            }
             message.montrer(reussi ? (c.endsWith(".pdf") ? "Exporté en PDF : " + c.split("/").pop() : "Enregistré")
                                    : "L'enregistrement a échoué")
-            if (reussi && fenetre.fermetureDemandee && !c.endsWith(".pdf")) Qt.quit()
+            if (reussi && fenetre.fermetureDemandee && !c.endsWith(".pdf")) secours.quitter()
         }
         function onEtatChanged() {
             if (fenetre.doc.etat === DocumentLO.Erreur) message.montrer(fenetre.doc.erreur || "Ce fichier n'a pas pu être ouvert")
             if (fenetre.doc.etat === DocumentLO.Pret && !fenetre.accueilOuvert) fenetre.doc.forceActiveFocus()
             if (fenetre.doc.etat === DocumentLO.Pret) fenetre.relireRegles()
+            // (récupéré : pas encore enregistré à son emplacement)
+            if (fenetre.doc.etat === DocumentLO.Pret && fenetre.reprise)
+                fenetre.doc.commande(".uno:Modified", { Modified: { type: "boolean", value: true } })
             // (classeur neuf : la police de Sama)
             if (fenetre.doc.etat === DocumentLO.Pret && !fenetre.doc.chemin) fenetre.tableaux.appeler("SamaModeles.Preparer", [])
             if (fenetre.doc.etat === DocumentLO.Pret && fenetre.modeleEnAttente) {
@@ -289,8 +317,10 @@ Window {
         var a = Qt.application.arguments
         var dernier = a.length > 0 ? String(a[a.length - 1]) : ""
         if (dernier.indexOf("file://") === 0) dernier = chemin(dernier)
-        if (dernier && dernier.indexOf(".qml") < 0 && dernier.indexOf("/") === 0) doc.ouvrir(dernier)
-        else { doc.nouveau("calc"); accueilOuvert = true }
+        if (dernier && dernier.indexOf(".qml") < 0 && dernier.indexOf("/") === 0) {
+            if (secours.estUneCopie(dernier)) secours.reprendre(dernier, function () { doc.ouvrir(dernier) })
+            else doc.ouvrir(dernier)
+        } else { doc.nouveau("calc"); accueilOuvert = true; secours.chercherOrphelins() }
         Qt.application.domain = ""
         Qt.application.name = "samaos-sheet"
         visible = true
@@ -301,6 +331,10 @@ Window {
         if (doc.modifie && !fermetureDemandee) {
             close.accepted = false
             confirmationFermer.ouverte = true
+        } else if (secours.dossier) {
+            // (la copie de secours d'abord)
+            close.accepted = false
+            secours.quitter()
         }
     }
 
@@ -337,6 +371,7 @@ Window {
             id: barreOutils
             Layout.fillWidth: true
         }
+        BandeauSecours { Layout.fillWidth: true; genre: "Classeur"; reprise: fenetre.reprise; onEnregistrer: fenetre.enregistrer() }
 
         // ——— Barre de formule : adresse, fx, contenu de la cellule ———
         Rectangle {
@@ -627,6 +662,7 @@ Window {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     text: fenetre.doc.etat === DocumentLO.Chargement ? "Ouverture…"
+                          : fenetre.reprise ? "Récupéré, pas encore enregistré"
                           : !fenetre.doc.chemin ? "Nouveau classeur, pas encore enregistré"
                           : fenetre.doc.modifie ? "Modifications non enregistrées"
                           : "Enregistré" + (fenetre.extension === "xlsx" ? " · compatible Excel (.xlsx)" : fenetre.extension === "ods" ? " · format ouvert (.ods)" : "")
@@ -667,6 +703,9 @@ Window {
         preparation: fenetre.modeleEnCours
         onModele: (cle, nom) => fenetre.appliquerModele(cle, nom)
         onOuvrir: chemin => fenetre.ouvrirFichier(chemin)
+        aRecuperer: secours.orphelins
+        onRecuperer: copie => fenetre.ouvrirFichier(copie.fichier)
+        onOublier: copie => secours.oublier(copie)
     }
 
     // ——— Aide des fonctions pendant la saisie d'une formule (barre de formule ou case) ———
@@ -798,7 +837,8 @@ Window {
     Confirmation {
         id: confirmationFermer
         titre: "Enregistrer « " + fenetre.nomFichier + " » ?"
-        texte: "Les modifications seront perdues si vous fermez sans enregistrer."
+        texte: fenetre.reprise ? "Ce classeur récupéré sera perdu si vous fermez sans l'enregistrer."
+                               : "Les modifications seront perdues si vous fermez sans enregistrer."
         action: "Enregistrer"
         teinte: fenetre.accent
         picto: "M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6"
@@ -806,7 +846,7 @@ Window {
         Outil {
             text: "Fermer sans enregistrer"
             encre: "#A3322A"
-            onClicked: { fenetre.fermetureDemandee = true; Qt.quit() }
+            onClicked: { fenetre.fermetureDemandee = true; secours.quitter() }
         }
     }
 }

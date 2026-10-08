@@ -19,6 +19,9 @@ Rectangle {
     // (un modèle en préparation : son nom ; les cartes attendent, un second clic ne le referait pas)
     property string preparation: ""
     signal ouvrir(string chemin)
+    property alias aRecuperer: listeARecuperer.copies
+    signal recuperer(var copie)
+    signal oublier(var copie)
 
     readonly property var modeles: [
         { cle: "cotisations", nom: "Cotisations", tableau: true, categorie: "Association", texte: "Tontine, association : qui a versé, qui doit encore.", colonnes: "Membre · Part · Versé · Reste · Date" },
@@ -73,6 +76,12 @@ Rectangle {
                 anchors.margins: 16
                 anchors.topMargin: 22
                 spacing: 2
+                ARecuperer {
+                    id: listeARecuperer
+                    Layout.fillWidth: true
+                    onRecuperer: copie => accueil.recuperer(copie)
+                    onOublier: copie => accueil.oublier(copie)
+                }
                 Text { text: "Récents"; font.pixelSize: 13; font.weight: Font.DemiBold; color: Couleurs.texte2; Layout.leftMargin: 10; Layout.bottomMargin: 8 }
                 Repeater {
                     model: accueil.recentsVisibles

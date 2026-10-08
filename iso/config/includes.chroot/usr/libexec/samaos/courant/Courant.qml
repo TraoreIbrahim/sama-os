@@ -234,7 +234,7 @@ Window {
                     Layout.fillWidth: true
                     spacing: 6
                     Picto { Layout.preferredWidth: 14; Layout.preferredHeight: 14; encre: fenetre.texte3; trace: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 11v5 M12 8h.01" }
-                    Text { text: "Sauvegarde auto toutes les 30 s"; font.pixelSize: 12; color: fenetre.texte3 }
+                    Text { text: "Documents gardés chaque minute"; font.pixelSize: 12; color: fenetre.texte3 }
                 }
                 QQC2.AbstractButton {
                     id: boutonPlusTard

@@ -13,6 +13,9 @@ Rectangle {
     focus: visible
     property var recents: []
     property string preparation: ""
+    property alias aRecuperer: listeARecuperer.copies
+    signal recuperer(var copie)
+    signal oublier(var copie)
     signal vierge()
     signal modele(string genre, string nom)
     signal ouvrir(string chemin)
@@ -83,6 +86,12 @@ Rectangle {
                 anchors.margins: 16
                 anchors.topMargin: 24
                 spacing: 4
+                ARecuperer {
+                    id: listeARecuperer
+                    Layout.fillWidth: true
+                    onRecuperer: copie => accueil.recuperer(copie)
+                    onOublier: copie => accueil.oublier(copie)
+                }
                 Text { text: "Récents"; font.pixelSize: 13; font.weight: Font.DemiBold; color: Couleurs.texte2; Layout.leftMargin: 10; Layout.bottomMargin: 8 }
                 Repeater {
                     model: accueil.recents

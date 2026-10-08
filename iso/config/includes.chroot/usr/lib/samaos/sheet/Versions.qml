@@ -17,7 +17,9 @@ Item {
     readonly property string outil: "/usr/libexec/samaos/versions.py"
     readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
     // (un classeur enregistré, dans un format de classeur)
+    // (pas pour une copie de secours rouverte : ses versions viendront à son emplacement d'origine)
     readonly property bool possibles: !!doc.chemin && ["xlsx", "ods", "xls", "csv"].indexOf(extension) >= 0
+                                      && doc.chemin.indexOf("/.local/state/samaos/secours/") < 0
     // [{ id, quand, raison, nom, source, taille, fichier }], les plus récentes d'abord
     property var liste: []
     // La comparaison montrée : { id, fichier, nomFichier, etat : « attente » | « prete » | « erreur », total,

@@ -108,6 +108,9 @@ public:
     // Enregistrer à sa place (même format), ou sous un autre nom ; format : extension (« xlsx », « ods », « pdf »…)
     Q_INVOKABLE void enregistrer();
     Q_INVOKABLE void enregistrerSous(const QString &chemin, const QString &format = QString());
+    // Une copie de secours (le retour du courant, une application qui ne répond plus) : le document n'en sait rien, il
+    // reste où il est et « modifié » ; rien pendant qu'un message du moteur attend sa réponse. Réponse : secoursEcrit
+    Q_INVOKABLE void copieDeSecours(const QString &chemin, const QString &format);
     // Commande de LibreOffice (« .uno:Bold »), arguments au format { Nom: { type, value } }
     Q_INVOKABLE void commande(const QString &nom, const QVariantMap &arguments = QVariantMap());
     Q_INVOKABLE void allerPartie(int partie);
@@ -167,6 +170,7 @@ signals:
     void dessinsChanged();
     void resultatScript(int jeton, bool reussi, const QString &valeur);
     void enregistre(bool reussi, const QString &chemin);
+    void secoursEcrit(bool reussi, const QString &chemin);
     void valeurs(const QString &commande, const QVariant &reponse);
     // Gestes de la personne (pixels de l'élément) : pour la mini-barre qui suit la sélection
     void pointeurAppuye();
@@ -266,4 +270,5 @@ private:
     QPointF m_clicDroit;                 // (où le menu s'ouvrira, quand le moteur aura choisi la case)
     bool m_menuAttendu = false;
     bool m_survolAttend = false;
+    QSet<qulonglong> m_messagesOuverts;  // (messages du moteur qui attendent une réponse)
 };

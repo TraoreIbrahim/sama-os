@@ -29,8 +29,12 @@ Window {
     readonly property color accentFond: Qt.rgba(47 / 255, 107 / 255, 87 / 255, Couleurs.sombre ? 0.3 : 0.12)
 
     readonly property var doc: page.doc
-    readonly property string nomFichier: doc.chemin ? doc.chemin.split("/").pop() : (nomPropose || "Document sans titre")
-    readonly property string extension: doc.chemin ? doc.chemin.split(".").pop().toLowerCase() : ""
+    // (un document récupéré après un arrêt imprévu : la copie de secours est ouverte, son emplacement d'origine est la cible)
+    readonly property var reprise: secours.reprise
+    readonly property string cheminCible: reprise ? reprise.original : doc.chemin
+    readonly property string nomFichier: reprise ? (reprise.original ? reprise.original.split("/").pop() : reprise.titre)
+                                         : doc.chemin ? doc.chemin.split("/").pop() : (nomPropose || "Document sans titre")
+    readonly property string extension: cheminCible ? cheminCible.split(".").pop().toLowerCase() : ""
     property bool accueilOuvert: false
     property string nomPropose: ""
     property bool planOuvert: true
@@ -46,6 +50,15 @@ Window {
     ActionsDocs { id: lesActions; doc: fenetre.doc; fenetre: fenetre }
     readonly property alias moi: mesInformations
     Commande { id: commande }
+    // Les copies de secours (chaque minute, tant que le document n'est pas enregistré)
+    Secours {
+        id: secours
+        doc: fenetre.doc
+        appli: "samaos-docs.desktop"
+        format: ["docx", "odt"].indexOf(fenetre.extension) >= 0 ? fenetre.extension : "docx"
+        titre: fenetre.nomFichier
+        original: fenetre.cheminCible
+    }
 
     // ——— Les macros de Sama (SamaDocs) : la réponse arrive par resultatScript ———
     property var attentes: ({})
@@ -74,11 +87,16 @@ Window {
 
     // ——— Fichiers ———
     function enregistrer() {
-        if (!doc.chemin || ["docx", "odt", "doc", "rtf"].indexOf(extension) < 0) dialogueEnregistrer.open()
+        if (!cheminCible || ["docx", "odt", "doc", "rtf"].indexOf(extension) < 0) dialogueEnregistrer.open()
+        else if (reprise) doc.enregistrerSous(cheminCible)
         else doc.enregistrer()
     }
     function ouvrirFichier(c) {
-        if (!doc.chemin && !doc.modifie) { accueilOuvert = false; doc.ouvrir(c) }
+        if (!doc.chemin && !doc.modifie) {
+            accueilOuvert = false
+            if (secours.estUneCopie(c)) secours.reprendre(c, function () { doc.ouvrir(c) })
+            else doc.ouvrir(c)
+        }
         else commande.lancer("systemd-run --user --quiet --collect --slice=app.slice "
                              + commande.q("--unit=app-samaos\\x2ddocs@" + Date.now() + ".service") + " sama-docs " + commande.q(c))
     }
@@ -129,7 +147,7 @@ Window {
         title: "Enregistrer le document"
         fileMode: FileDialog.SaveFile
         nameFilters: ["Document Word (*.docx)", "Document OpenDocument (*.odt)", "PDF (*.pdf)"]
-        currentFile: doc.chemin ? "file://" + doc.chemin
+        currentFile: fenetre.cheminCible ? "file://" + fenetre.cheminCible
                      : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/" + fenetre.nomFichier + ".docx"
         onAccepted: {
             var c = fenetre.chemin(selectedFile)
@@ -145,7 +163,7 @@ Window {
         title: "Exporter en PDF"
         fileMode: FileDialog.SaveFile
         nameFilters: ["PDF (*.pdf)"]
-        currentFile: (doc.chemin ? "file://" + doc.chemin.replace(/\.[^.\/]*$/, "")
+        currentFile: (fenetre.cheminCible ? "file://" + fenetre.cheminCible.replace(/\.[^.\/]*$/, "")
                       : StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/" + fenetre.nomFichier) + ".pdf"
         onAccepted: {
             var c = fenetre.chemin(selectedFile)
@@ -166,8 +184,14 @@ Window {
         target: fenetre.doc
         function onEnregistre(reussi, c) {
             if (!reussi && !c) { dialogueEnregistrer.open(); return }
+            // (un document récupéré dont l'emplacement d'origine n'existe plus, une clé USB retirée : un autre)
+            if (!reussi && fenetre.reprise && !c.endsWith(".pdf")) {
+                message.montrer("« " + c.split("/").pop() + " » n'a pas pu être remplacé : choisissez où l'enregistrer")
+                dialogueEnregistrer.open()
+                return
+            }
             message.montrer(reussi ? (c.endsWith(".pdf") ? "Exporté en PDF : " + c.split("/").pop() : "Enregistré") : "L'enregistrement a échoué")
-            if (reussi && fenetre.fermetureDemandee && !c.endsWith(".pdf")) Qt.quit()
+            if (reussi && fenetre.fermetureDemandee && !c.endsWith(".pdf")) secours.quitter()
         }
         function onEtatChanged() {
             if (fenetre.doc.etat === DocumentLO.Erreur) message.montrer(fenetre.doc.erreur || "Ce fichier n'a pas pu être ouvert")
@@ -176,6 +200,8 @@ Window {
             // (document neuf : les styles de Sama ; les fautes soulignées)
             if (!fenetre.doc.chemin) fenetre.appeler("SamaDocs.Preparer", [])
             fenetre.doc.commande(".uno:SpellOnline", { Enable: { type: "boolean", value: fenetre.orthographe } })
+            // (récupéré : pas encore enregistré à son emplacement)
+            if (fenetre.reprise) fenetre.doc.commande(".uno:Modified", { Modified: { type: "boolean", value: true } })
             if (fenetre.modeleEnAttente) {
                 var m = fenetre.modeleEnAttente
                 fenetre.modeleEnAttente = null
@@ -189,8 +215,10 @@ Window {
         var a = Qt.application.arguments
         var dernier = a.length > 0 ? String(a[a.length - 1]) : ""
         if (dernier.indexOf("file://") === 0) dernier = chemin(dernier)
-        if (dernier && dernier.indexOf(".qml") < 0 && dernier.indexOf("/") === 0) doc.ouvrir(dernier)
-        else { doc.nouveau("writer"); accueilOuvert = true }
+        if (dernier && dernier.indexOf(".qml") < 0 && dernier.indexOf("/") === 0) {
+            if (secours.estUneCopie(dernier)) secours.reprendre(dernier, function () { doc.ouvrir(dernier) })
+            else doc.ouvrir(dernier)
+        } else { doc.nouveau("writer"); accueilOuvert = true; secours.chercherOrphelins() }
         Qt.application.domain = ""
         Qt.application.name = "samaos-docs"
         visible = true
@@ -201,6 +229,10 @@ Window {
         if (doc.modifie && !fermetureDemandee && !accueilOuvert) {
             close.accepted = false
             confirmationFermer.ouverte = true
+        } else if (secours.dossier) {
+            // (la copie de secours d'abord)
+            close.accepted = false
+            secours.quitter()
         }
     }
 
@@ -220,6 +252,7 @@ Window {
         anchors.fill: parent
         spacing: 0
         EnTeteDocs { id: entete; Layout.fillWidth: true }
+        BandeauSecours { Layout.fillWidth: true; reprise: fenetre.reprise; onEnregistrer: fenetre.enregistrer() }
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -257,7 +290,8 @@ Window {
                     color: Couleurs.texte2
                 }
                 Text {
-                    text: !fenetre.doc.chemin ? "Nouveau document, pas encore enregistré"
+                    text: fenetre.reprise ? "Récupéré, pas encore enregistré"
+                          : !fenetre.doc.chemin ? "Nouveau document, pas encore enregistré"
                           : fenetre.doc.modifie ? "Modifications non enregistrées"
                           : fenetre.extension === "docx" || fenetre.extension === "doc" ? "Fichier Word (." + fenetre.extension + ")"
                           : fenetre.extension === "odt" ? "Format ouvert (.odt)" : "Enregistré"
@@ -284,6 +318,9 @@ Window {
         onOuvrir: c => fenetre.ouvrirFichier(c)
         onOuvrirFichier: dialogueOuvrir.open()
         onModifierInfos: mesInformations.ouvrir()
+        aRecuperer: secours.orphelins
+        onRecuperer: copie => fenetre.ouvrirFichier(copie.fichier)
+        onOublier: copie => secours.oublier(copie)
     }
     MesInformations { id: mesInformations }
 
@@ -310,7 +347,8 @@ Window {
     Confirmation {
         id: confirmationFermer
         titre: "Enregistrer « " + fenetre.nomFichier + " » ?"
-        texte: "Les modifications seront perdues si vous fermez sans enregistrer."
+        texte: fenetre.reprise ? "Ce document récupéré sera perdu si vous fermez sans l'enregistrer."
+                               : "Les modifications seront perdues si vous fermez sans enregistrer."
         action: "Enregistrer"
         teinte: fenetre.accent
         picto: "M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6"
@@ -318,7 +356,7 @@ Window {
         Outil {
             text: "Fermer sans enregistrer"
             encre: "#A3322A"
-            onClicked: { fenetre.fermetureDemandee = true; Qt.quit() }
+            onClicked: { fenetre.fermetureDemandee = true; secours.quitter() }
         }
     }
 }

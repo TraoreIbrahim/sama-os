@@ -811,6 +811,7 @@ void DocumentLO::dialogue(const QByteArray &charge)
     // qu'on ne voit pas)
     const QJsonObject o = QJsonDocument::fromJson(charge).object();
     if (o.value(QStringLiteral("jsontype")).toString() == QLatin1String("dialog") && o.value(QStringLiteral("action")).toString() == QLatin1String("close")) {
+        m_messagesOuverts.remove(o.value(QStringLiteral("id")).toVariant().toULongLong());
         emit messageFerme(o.value(QStringLiteral("id")).toVariant().toULongLong());
         return;
     }
@@ -826,6 +827,7 @@ void DocumentLO::dialogue(const QByteArray &charge)
             for (const QJsonValue &c : n.value(QStringLiteral("children")).toArray()) parcourir(c.toObject());
         };
         parcourir(o);
+        m_messagesOuverts.insert(o.value(QStringLiteral("id")).toVariant().toULongLong());
         emit messageMoteur(o.value(QStringLiteral("id")).toVariant().toULongLong(), textes.value(0), textes.value(1), boutons);
         return;
     }
@@ -859,6 +861,7 @@ void DocumentLO::repondreMessage(qulonglong fenetre, const QString &bouton)
     const QByteArray clic = QJsonDocument(QJsonObject{{QStringLiteral("id"), bouton}, {QStringLiteral("cmd"), QStringLiteral("click")},
                                                       {QStringLiteral("data"), QString()}, {QStringLiteral("type"), QStringLiteral("pushbutton")}})
                                 .toJson(QJsonDocument::Compact);
+    m_messagesOuverts.remove(fenetre);
     Moteur::instance()->executer([doc, fenetre, clic] { doc->pClass->sendDialogEvent(doc, fenetre, clic.constData()); });
 }
 
@@ -954,6 +957,21 @@ void DocumentLO::enregistrerSous(const QString &chemin, const QString &format)
             }
             emit enregistre(ok, chemin);
         }, Qt::QueuedConnection);
+    });
+}
+
+void DocumentLO::copieDeSecours(const QString &chemin, const QString &format)
+{
+    if (!m_doc || m_etat != Pret || !m_messagesOuverts.isEmpty()) {
+        emit secoursEcrit(false, chemin);
+        return;
+    }
+    auto *doc = m_doc;
+    const QByteArray url = QUrl::fromLocalFile(chemin).toString(QUrl::FullyEncoded).toUtf8(), fb = format.toUtf8();
+    // (saveAs écrit une copie, sans changer l'emplacement du document ni son état « modifié »)
+    Moteur::instance()->executer([this, doc, url, fb, chemin] {
+        const bool ok = doc->pClass->saveAs(doc, url.constData(), fb.constData(), nullptr);
+        QMetaObject::invokeMethod(this, [this, ok, chemin] { emit secoursEcrit(ok, chemin); }, Qt::QueuedConnection);
     });
 }
 

@@ -2,7 +2,7 @@
 """Application bloquée (maquette ale-05) : remplace l'aide de KWin (kwin_killer_helper, détournée par
 dpkg-divert) quand une fenêtre ne répond plus. Mêmes options : --pid --hostname --windowname --applicationname --wid
 --timestamp. Montre « Sama Docs ne répond pas », l'heure de la dernière copie de secours des documents (Sama Docs,
-Sheet, Présentations), puis « Attendre » ou « Forcer l'arrêt ». KWin arrête cette aide (SIGTERM) si l'application
+Sheet : secours.py ; Présentations : LibreOffice), puis « Attendre » ou « Forcer l'arrêt ». KWin arrête cette aide (SIGTERM) si l'application
 se remet à répondre.
 """
 import json
@@ -43,8 +43,10 @@ d = courant.desktop(appli) if courant and appli else None
 if d:
     nom, icone = d.get("Name[fr]") or d.get("Name", nom), d.get("Icon", "")
 documents = []
-if courant and (appli in courant.LIBREOFFICE or "soffice" in options.get("applicationname", "").lower()):
-    documents = courant.documents_secours()[:3]
+if courant and appli in courant.secours.APPLIS:
+    documents = courant.secours.de(pid)[:3]      # (Sama Docs, Sama Sheet : les copies de secours de cette fenêtre)
+elif courant and (appli in courant.LIBREOFFICE or "soffice" in options.get("applicationname", "").lower()):
+    documents = courant.documents_libreoffice()[:3]
     if not d and documents:
         nom, icone = documents[0]["appli"], documents[0]["icone"]
 
