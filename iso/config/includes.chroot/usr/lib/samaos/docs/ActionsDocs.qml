@@ -50,9 +50,8 @@ QtObject {
     function valeurCouleur(c) { return c ? parseInt(c.slice(1), 16) : -1 }
     function colorerTexte(c) { uno(".uno:Color", { Color: { type: "long", value: valeurCouleur(c) } }) }
     function surligner(c) { uno(".uno:CharBackColor", { CharBackColor: { type: "long", value: valeurCouleur(c) } }) }
-    function tableau(colonnes, lignes) {
-        uno(".uno:InsertTable", { Columns: { type: "long", value: colonnes }, Rows: { type: "long", value: lignes } })
-    }
+    // (un tableau de Sama : traits clairs, la ligne des titres teintée et répétée sur chaque page)
+    function tableau(colonnes, lignes) { fenetre.appeler("SamaDocs.Tableau", [String(colonnes), String(lignes)]) }
 
     // ——— Le catalogue ———
     function c(cle, nom, menu, mots, raccourci, faire, actif) {
@@ -76,6 +75,7 @@ QtObject {
         c("toutSelectionner", "Tout sélectionner", "Édition", "", "Ctrl+A", function () { uno(".uno:SelectAll") }),
 
         c("plan", "Le plan du document", "Affichage", "titres sommaire navigation panneau", "", function () { fenetre.planOuvert = !fenetre.planOuvert }),
+        c("marge", "Commentaires et suggestions", "Affichage", "marge remarques notes relecture", "", function () { fenetre.page.margeOuverte = !fenetre.page.margeOuverte }),
         c("zoomPlus", "Agrandir", "Affichage", "zoom plus gros", "Ctrl++", function () { doc.zoom = doc.zoom * 1.1 }),
         c("zoomMoins", "Réduire", "Affichage", "zoom plus petit", "Ctrl+-", function () { doc.zoom = doc.zoom / 1.1 }),
         c("zoom100", "Taille réelle (100 %)", "Affichage", "zoom", "Ctrl+0", function () { doc.zoom = 1 }),
@@ -86,6 +86,7 @@ QtObject {
         c("date", "Date du jour", "Insertion", "aujourd'hui", "", function () { uno(".uno:InsertDateField") }),
         c("numeroPage", "Numéro de page", "Insertion", "pagination", "", function () { uno(".uno:InsertPageNumberField") }),
         c("commentaire", "Commentaire", "Insertion", "note remarque", "Ctrl+Alt+M", function () { fenetre.commenter() }),
+        c("lien", "Lien…", "Insertion", "adresse site internet url courriel", "", function () { fenetre.page.liens.ouvrirSaisie("") }),
 
         c("gras", "Gras", "Format", "", "Ctrl+B", function () { uno(".uno:Bold") }),
         c("italique", "Italique", "Format", "", "Ctrl+I", function () { uno(".uno:Italic") }),
@@ -110,6 +111,8 @@ QtObject {
 
         c("suggestion", "Mode Suggestion", "Outils", "suivi des modifications proposer relecture changements", "", function () { fenetre.choisirMode(fenetre.mode === "Suggestion" ? "Modification" : "Suggestion") }),
         c("orthographe", "Souligner les fautes", "Outils", "orthographe correcteur", "", function () { fenetre.orthographe = !fenetre.orthographe }),
+        c("toutAccepter", "Accepter toutes les suggestions", "Outils", "suivi modifications valider relecture", "", function () { fenetre.page.marge.toutAccepter() }, function () { return fenetre.page.marge.groupes.length > 0 }),
+        c("toutRefuser", "Refuser toutes les suggestions", "Outils", "suivi modifications rejeter relecture", "", function () { fenetre.page.marge.toutRefuser() }, function () { return fenetre.page.marge.groupes.length > 0 }),
 
         c("aide", "Aide de Sama", "Aide", "comment faire", "F1", function () { fenetre.ouvrirAide("") }),
         c("chercher", "Que voulez-vous faire ?", "Aide", "commande chercher", "Ctrl+K", function () { fenetre.chercherCommande() })
@@ -135,6 +138,10 @@ QtObject {
         date: "M5 6h14v14H5z M5 10h14 M9 4v4 M15 4v4",
         numeroPage: "M7 3h10v18H7z M11 15h2 M12 15v-5l-1 1",
         commentaire: "M4 5h16v11H9l-5 4z M12 8v5 M9.5 10.5h5",
+        marge: "M4 4h16v16H4z M14 4v16 M16.5 8h1.5 M16.5 11h1.5",
+        lien: "M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1 M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1",
+        toutAccepter: "M5 12.5l4.5 4.5L19 7.5",
+        toutRefuser: "M6 6l12 12 M18 6L6 18",
         texteNormal: "M5 6h14 M5 10h14 M5 14h14 M5 18h9",
         titre: "M6 6h12 M12 6v12",
         titre1: "M5 6v12 M12 6v12 M5 12h7 M16 9l2-2v11",
@@ -165,6 +172,9 @@ QtObject {
         tableau: "Trois colonnes, trois lignes, à compléter",
         sautPage: "La suite commence sur une nouvelle page",
         commentaire: "Une question, une remarque dans la marge",
+        marge: "À droite de la page, à la hauteur de leur texte",
+        lien: "Sur le texte choisi ; un clic dessus dit où il mène",
+        toutAccepter: "Les changements proposés entrent dans le texte",
         titre1: "Une partie : elle apparaît dans le plan",
         suggestion: "Vos changements sont proposés, pas imposés",
         orthographe: "Les mots inconnus soulignés en rouge"

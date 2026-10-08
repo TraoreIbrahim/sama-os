@@ -148,6 +148,9 @@ public:
     Q_INVOKABLE void repondreMessage(qulonglong fenetre, const QString &bouton);
     // Coordonnées : pixels de l'élément → pixels du document
     Q_INVOKABLE QPointF versDocument(qreal x, qreal y) const { return QPointF(x + m_vueX, y + m_vueY); }
+    // Des rectangles du moteur (« x, y, l, h; x, y, l, h », en twips : la place d'un commentaire, d'une suggestion) en
+    // pixels du document, au zoom actuel
+    Q_INVOKABLE QVariantList rectangles(const QString &twips) const;
 
 signals:
     void cheminChanged();
@@ -183,6 +186,7 @@ signals:
     void dialogueValide();
     // Un commentaire ajouté, changé ou retiré (le moteur ne les dessine pas : Sama les montre)
     void commentairesChanges();
+    void suggestionsChangees();          // (les modifications suivies : ajoutées, acceptées, refusées)
     // Une case à liste de choix (validation) est la case courante : Sama y pose son bouton ▾ (c, l : à partir de 0)
     void boutonListe(int c, int l, bool visible);
     // Un clic sur un lien (dans une case) : Sama montre où il mène avant de l'ouvrir

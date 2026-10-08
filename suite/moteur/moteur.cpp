@@ -32,6 +32,11 @@ const char *const REGLAGES[][3] = {
     {"/org.openoffice.Office.Linguistic/SpellChecking", "IsSpellAuto", "false"},     // pas de soulignés rouges dans les cases
     {"/org.openoffice.Office.Chart/DefaultColor", "Series",
      "3107671 14259770 4091550 11883311 9286778 8085132 14926443 5151386 10251086 13208219 7244968 9077367"},
+    // Sama Docs : les suggestions en bleu (#3D5A99, celui des maquettes), soulignées ou barrées, au lieu d'une couleur
+    // par auteur
+    {"/org.openoffice.Office.Writer/Revision/TextDisplay/Insert", "Color", "4020889"},
+    {"/org.openoffice.Office.Writer/Revision/TextDisplay/Delete", "Color", "4020889"},
+    {"/org.openoffice.Office.Writer/Revision/TextDisplay/ChangedAttribute", "Color", "4020889"},
 };
 
 // Éléments ajoutés à des ensembles : le jeu de couleurs « Sama » (celui du moteur, « automatique », ne se change pas),

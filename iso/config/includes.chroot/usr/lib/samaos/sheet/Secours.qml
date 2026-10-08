@@ -65,7 +65,16 @@ Item {
     Connections {
         target: secours.doc
         function onSecoursEcrit(reussi, chemin) {
-            if (!reussi || !secours.dossier || chemin.indexOf(secours.dossier + "/") !== 0) { secours.enCours = false; return }
+            if (!secours.dossier || chemin.indexOf(secours.dossier + "/") !== 0) { secours.enCours = false; return }
+            if (!reussi) {
+                // (le dossier de la copie a disparu, effacé à la main : la prochaine en fera un autre)
+                var d = secours.dossier
+                commande.lancer("test -d " + commande.q(d) + " && echo oui", function (sortie) {
+                    if (sortie.trim() !== "oui" && secours.dossier === d) secours.dossier = ""
+                    secours.enCours = false
+                })
+                return
+            }
             secours.lancer(["noter", secours.dossier, "$PPID", secours.appli, secours.original, secours.titre, secours.format],
                            function () { secours.enCours = false })
         }

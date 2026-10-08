@@ -319,6 +319,17 @@ QRectF DocumentLO::enPixels(const QRectF &t) const
     return QRectF(t.x() * f, t.y() * f, t.width() * f, t.height() * f);
 }
 
+QVariantList DocumentLO::rectangles(const QString &twips) const
+{
+    QVariantList l;
+    for (const QString &morceau : twips.split(QLatin1Char(';'), Qt::SkipEmptyParts)) {
+        const QStringList n = morceau.split(QLatin1Char(','));
+        if (n.size() < 4) continue;
+        l << enPixels(QRectF(n[0].trimmed().toDouble(), n[1].trimmed().toDouble(), n[2].trimmed().toDouble(), n[3].trimmed().toDouble()));
+    }
+    return l;
+}
+
 QVariantList DocumentLO::selection() const
 {
     QVariantList l;
@@ -629,6 +640,10 @@ void DocumentLO::annonce(int type, const QByteArray &charge)
         break;
     case LOK_CALLBACK_COMMENT:
         emit commentairesChanges();
+        break;
+    case LOK_CALLBACK_REDLINE_TABLE_SIZE_CHANGED:
+    case LOK_CALLBACK_REDLINE_TABLE_ENTRY_MODIFIED:
+        emit suggestionsChangees();
         break;
     // « 7, 4, 1 » : colonne, ligne, montré ou non
     case LOK_CALLBACK_VALIDITY_LIST_BUTTON: {

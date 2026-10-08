@@ -9,6 +9,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import "../reglages"
 import "Fonctions.js" as Fonctions
+import "AnalyseLien.js" as AnalyseLien
 
 Item {
     id: couche
@@ -190,28 +191,13 @@ Item {
 
     // ——— Les liens ———
     property var lien: null            // { adresse, c, l, site, ouvrable, alertes: [] }
-    readonly property var raccourcisseurs: ["bit.ly", "tinyurl.com", "t.co", "cutt.ly", "is.gd", "rb.gy", "goo.gl", "ow.ly", "shorturl.at", "tiny.cc"]
     function montrerLien(adresse, c, l) {
-        var m = /^([a-z][a-z0-9+.-]*):(?:\/\/)?([^\/?#]*)/i.exec(adresse)
-        var schema = m ? m[1].toLowerCase() : "", autorite = m ? m[2] : "", alertes = []
-        var site = autorite.replace(/^.*@/, "").replace(/:\d+$/, "").toLowerCase()
-        var ouvrable = ["http", "https", "mailto", "tel"].indexOf(schema) >= 0
-        if (!ouvrable) alertes.push("Ce lien n'est pas une page web : Sama ne l'ouvre pas.")
-        if (schema === "http") alertes.push("Pas chiffré (http) : n'y tapez ni mot de passe ni code.")
-        if (autorite.indexOf("@") >= 0) alertes.push("L'adresse cache un nom avant « @ » : le vrai site est " + site + ".")
-        if (/^\d+\.\d+\.\d+\.\d+$/.test(site) || site.indexOf("xn--") >= 0) alertes.push("Adresse inhabituelle : prudence.")
-        if (raccourcisseurs.indexOf(site.replace(/^www\./, "")) >= 0) alertes.push("Lien raccourci : on ne voit pas où il mène vraiment.")
-        // Le texte affiché annonce-t-il un autre site ? (« wave.com » écrit, « wave-bonus.xyz » au bout du lien)
+        // (le texte affiché : celui de la formule LIEN.HYPERTEXTE, sinon la case)
         var affiche = moteur.formule
         var f = /^=(?:LIEN\.HYPERTEXTE|HYPERLINK)\(\s*"[^"]*"\s*[;,]\s*"([^"]*)"/i.exec(affiche)
         if (f) affiche = f[1]
-        var annonce = /((?:[a-z0-9-]+\.)+[a-z]{2,})/i.exec(affiche)
-        if (annonce && site && (schema === "http" || schema === "https")) {
-            var a = annonce[1].toLowerCase().replace(/^www\./, ""), s = site.replace(/^www\./, "")
-            if (s !== a && !s.endsWith("." + a)) alertes.push("Le texte affiché annonce « " + a + " », mais le lien mène à « " + s + " ».")
-        }
-        lien = { adresse: adresse, c: c >= 0 ? c : moteur.colonne, l: l >= 0 ? l : moteur.ligne, site: schema === "mailto" ? adresse.slice(7) : schema === "tel" ? adresse.slice(4) : site,
-                 ouvrable: ouvrable, alertes: alertes }
+        var a = AnalyseLien.analyser(adresse, affiche)
+        lien = { adresse: adresse, c: c >= 0 ? c : moteur.colonne, l: l >= 0 ? l : moteur.ligne, site: a.site, ouvrable: a.ouvrable, alertes: a.alertes }
     }
     TextEdit { id: pressePapiers; visible: false }
     function copierLien() {

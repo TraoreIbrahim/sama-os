@@ -29,6 +29,7 @@ Window {
     readonly property color accentFond: Qt.rgba(47 / 255, 107 / 255, 87 / 255, Couleurs.sombre ? 0.3 : 0.12)
 
     readonly property var doc: page.doc
+    readonly property alias page: page
     // (un document récupéré après un arrêt imprévu : la copie de secours est ouverte, son emplacement d'origine est la cible)
     readonly property var reprise: secours.reprise
     readonly property string cheminCible: reprise ? reprise.original : doc.chemin
@@ -116,7 +117,8 @@ Window {
                         + commande.q("--unit=app-samaos\\x2daide@" + Date.now() + ".service") + " sama-aide" + (article ? " " + commande.q(article) : ""))
     }
     function chercherCommande() { entete.ouvrirRecherche() }
-    function commenter() { doc.commande(".uno:InsertAnnotation") }
+    // (la carte d'un nouveau commentaire, dans la marge, à la hauteur de la sélection)
+    function commenter() { page.margeOuverte = true; page.marge.commenter() }
 
     // ——— Les documents guidés : un seul à la fois (un second clic le referait) ———
     property string modeleEnCours: ""
@@ -258,7 +260,8 @@ Window {
             Layout.fillHeight: true
             spacing: 0
             PlanDocs {
-                visible: fenetre.planOuvert && fenetre.width > 900
+                // (la marge des commentaires a besoin de place : le plan se range quand la fenêtre est trop étroite)
+                visible: fenetre.planOuvert && fenetre.width > 900 && !(page.avecMarge && fenetre.width < 220 + doc.largeurDocument + 330)
                 Layout.preferredWidth: 220
                 Layout.fillHeight: true
             }
@@ -266,6 +269,7 @@ Window {
                 id: page
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                onAnnonce: t => message.montrer(t)
             }
         }
         // ——— Barre d'état : page, mots, langue ; le mode, le format, le zoom ———

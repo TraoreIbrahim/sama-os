@@ -33,8 +33,8 @@ Function Preparer() As String
 	ReglerStyle(oStyles, "Heading", "Noto Sans", 0, com.sun.star.awt.FontWeight.BOLD, ENCRE_TITRE)
 	ReglerStyle(oStyles, "Heading 1", "Noto Sans", 14, com.sun.star.awt.FontWeight.BOLD, ENCRE_TITRE)
 	ReglerStyle(oStyles, "Heading 2", "Noto Sans", 12.5, com.sun.star.awt.FontWeight.BOLD, ENCRE_TITRE)
-	ReglerStyle(oStyles, "Heading 3", "Noto Sans", 11.5, com.sun.star.awt.FontWeight.SEMIBOLD, ENCRE_TITRE)
-	ReglerStyle(oStyles, "Title", "Noto Serif", 22, com.sun.star.awt.FontWeight.SEMIBOLD, RGB(31, 28, 24))
+	ReglerStyle(oStyles, "Heading 3", "Noto Sans", 11.5, com.sun.star.awt.FontWeight.BOLD, ENCRE_TITRE)
+	ReglerStyle(oStyles, "Title", "Noto Serif", 22, com.sun.star.awt.FontWeight.BOLD, RGB(31, 28, 24))
 	o = oStyles.getByName("Title")
 	o.ParaAdjust = com.sun.star.style.ParagraphAdjust.LEFT
 	ReglerStyle(oStyles, "Subtitle", "Noto Sans", 11, 0, ENCRE_DOUCE)
@@ -146,7 +146,7 @@ Private Sub PG(sStyle As String, sGras As String, sTexte As String)
 	If dTaille > 0 Then oCurseur.CharHeight = dTaille
 	If nEncre >= 0 Then oCurseur.CharColor = nEncre
 	If sGras <> "" Then
-		oCurseur.CharWeight = com.sun.star.awt.FontWeight.SEMIBOLD
+		oCurseur.CharWeight = com.sun.star.awt.FontWeight.BOLD
 		oText.insertString(oCurseur, sGras, False)
 		oCurseur.setPropertyToDefault("CharWeight")
 	End If
@@ -297,5 +297,287 @@ Function Modele(sGenre As String, sNom As String, sAdresse As String, sTelephone
 	Exit Function
 Erreur:
 	Modele = "!" & Error$
+End Function
+' ——— La ligne du curseur (le menu « / » des blocs, « @ ») ———
+
+' Le texte du paragraphe avant le curseur : {"avant": …, "vide": le paragraphe est vide, "tableau": dans un tableau}
+Function Ligne() As String
+	Dim oVC As Object, oC As Object, oP As Object, bTableau As Boolean
+	On Error GoTo Erreur
+	oVC = ThisComponent.CurrentController.ViewCursor
+	oC = oVC.Text.createTextCursorByRange(oVC.Start)
+	oC.gotoStartOfParagraph(True)
+	oP = oVC.Text.createTextCursorByRange(oVC.Start)
+	oP.gotoStartOfParagraph(False)
+	oP.gotoEndOfParagraph(True)
+	bTableau = False
+	On Error Resume Next
+	bTableau = Not IsNull(oVC.TextTable) And Not IsEmpty(oVC.TextTable)
+	On Error GoTo Erreur
+	Ligne = "{""avant"":" & Texte(oC.String) & ",""vide"":" & IIf(oP.String = "", "true", "false") & ",""tableau"":" & IIf(bTableau, "true", "false") & "}"
+	Exit Function
+Erreur:
+	Ligne = "!" & Error$
+End Function
+
+' Efface les n caractères avant le curseur (« /tab », « @sam ») ; puis écrit sTexte s'il y en a un
+Function RemplacerAvant(sLongueur As String, sTexte As String) As String
+	Dim oVC As Object, oC As Object
+	On Error GoTo Erreur
+	oVC = ThisComponent.CurrentController.ViewCursor
+	oC = oVC.Text.createTextCursorByRange(oVC.Start)
+	If CLng(sLongueur) > 0 Then
+		oC.goLeft(CLng(sLongueur), True)
+		oC.setString("")
+	End If
+	If sTexte <> "" Then
+		oVC.Text.insertString(oC, sTexte, False)
+		oVC.gotoRange(oC.End, False)
+	End If
+	RemplacerAvant = ""
+	Exit Function
+Erreur:
+	RemplacerAvant = "!" & Error$
+End Function
+
+' ——— Les blocs du menu « / » que le moteur n'a pas tout faits ———
+
+' Un tableau de Sama : des traits clairs, la ligne des titres teintée, en gras, répétée sur chaque page
+Private Sub Habiller(oTable As Object)
+	Dim oBords As New com.sun.star.table.TableBorder2, oTrait As New com.sun.star.table.BorderLine2, i As Integer
+	Dim oCellule As Object, oCurs As Object
+	oTrait.Color = RGB(208, 200, 189)
+	oTrait.LineWidth = 18
+	oTrait.LineStyle = com.sun.star.table.BorderLineStyle.SOLID
+	oBords.TopLine = oTrait
+	oBords.BottomLine = oTrait
+	oBords.LeftLine = oTrait
+	oBords.RightLine = oTrait
+	oBords.HorizontalLine = oTrait
+	oBords.VerticalLine = oTrait
+	oBords.IsTopLineValid = True
+	oBords.IsBottomLineValid = True
+	oBords.IsLeftLineValid = True
+	oBords.IsRightLineValid = True
+	oBords.IsHorizontalLineValid = True
+	oBords.IsVerticalLineValid = True
+	oTable.TableBorder2 = oBords
+	oTable.RepeatHeadline = True
+	oTable.HeaderRowCount = 1
+	For i = 0 To oTable.getColumns().getCount() - 1
+		oCellule = oTable.getCellByPosition(i, 0)
+		oCellule.BackColor = RGB(226, 236, 231)
+		oCurs = oCellule.createTextCursor()
+		oCurs.gotoEnd(True)
+		oCurs.CharWeight = com.sun.star.awt.FontWeight.BOLD
+	Next i
+End Sub
+
+' Un tableau (la barre d'outils, le menu « / ») : sColonnes × sLignes, à la manière de Sama
+Function Tableau(sColonnes As String, sLignes As String) As String
+	Dim oDoc As Object, oVC As Object, oTable As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oVC = oDoc.CurrentController.ViewCursor
+	oTable = oDoc.createInstance("com.sun.star.text.TextTable")
+	oTable.initialize(CLng(sLignes), CLng(sColonnes))
+	oVC.Text.insertTextContent(oVC, oTable, False)
+	Habiller(oTable)
+	' (le curseur dans la première case)
+	oVC.gotoRange(oTable.getCellByPosition(0, 0).getStart(), False)
+	Tableau = ""
+	Exit Function
+Erreur:
+	Tableau = "!" & Error$
+End Function
+
+' La liste de présence : N°, Nom et prénom, Signature ; dix lignes (une ligne des titres teintée, répétée sur chaque page)
+Function ListePresence() As String
+	Dim oDoc As Object, oVC As Object, oTable As Object, aSep As Variant, i As Integer, oCellule As Object, aTitres As Variant
+	Dim oCurs As Object, oRangee As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oVC = oDoc.CurrentController.ViewCursor
+	oTable = oDoc.createInstance("com.sun.star.text.TextTable")
+	oTable.initialize(11, 3)
+	oVC.Text.insertTextContent(oVC, oTable, False)
+	aSep = oTable.TableColumnSeparators
+	Dim oSep0 As Object, oSep1 As Object
+	oSep0 = aSep(0)
+	oSep0.Position = 900
+	aSep(0) = oSep0
+	oSep1 = aSep(1)
+	oSep1.Position = 6000
+	aSep(1) = oSep1
+	oTable.TableColumnSeparators = aSep
+	aTitres = Array("N°", "Nom et prénom", "Signature")
+	For i = 0 To 2
+		oTable.getCellByPosition(i, 0).setString(aTitres(i))
+	Next i
+	Habiller(oTable)
+	For i = 1 To 10
+		oCellule = oTable.getCellByPosition(0, i)
+		oCellule.setString(CStr(i))
+		oRangee = oTable.getRows().getByIndex(i)
+		oRangee.IsAutoHeight = False
+		oRangee.Height = 900
+	Next i
+	ListePresence = ""
+	Exit Function
+Erreur:
+	ListePresence = "!" & Error$
+End Function
+
+' L'encadré « À retenir » : un style à lui (« Encadré » : un fond léger, de l'air autour ; Entrée revient au texte
+' normal), mis sur le paragraphe du curseur
+Function Encadre() As String
+	Dim oDoc As Object, oStyles As Object, oStyle As Object, oVC As Object, oP As Object, oLigne As New com.sun.star.table.BorderLine2
+	Dim nFond As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oStyles = oDoc.StyleFamilies.getByName("ParagraphStyles")
+	If Not oStyles.hasByName("Encadré") Then
+		oStyle = oDoc.createInstance("com.sun.star.style.ParagraphStyle")
+		oStyles.insertByName("Encadré", oStyle)
+		oStyle.ParentStyle = "Standard"
+		oStyle.FollowStyle = "Standard"
+		nFond = RGB(236, 242, 239)
+		oStyle.ParaBackColor = nFond
+		' (des bords de la couleur du fond : ils donnent l'air autour du texte)
+		oLigne.Color = nFond
+		oLigne.LineWidth = 2
+		oLigne.LineStyle = com.sun.star.table.BorderLineStyle.SOLID
+		oStyle.LeftBorder = oLigne
+		oStyle.RightBorder = oLigne
+		oStyle.TopBorder = oLigne
+		oStyle.BottomBorder = oLigne
+		oStyle.LeftBorderDistance = 300
+		oStyle.RightBorderDistance = 300
+		oStyle.TopBorderDistance = 200
+		oStyle.BottomBorderDistance = 200
+		oStyle.ParaTopMargin = 120
+		oStyle.ParaBottomMargin = 240
+	End If
+	oVC = oDoc.CurrentController.ViewCursor
+	oP = oVC.Text.createTextCursorByRange(oVC.Start)
+	oP.ParaStyleName = "Encadré"
+	' (« À retenir : » en gras ; l'espace qui suit ne l'est pas : la suite tapée non plus)
+	oP.CharWeight = com.sun.star.awt.FontWeight.BOLD
+	oVC.Text.insertString(oP, "À retenir :", False)
+	oP.CharWeight = com.sun.star.awt.FontWeight.NORMAL
+	oVC.Text.insertString(oP, " ", False)
+	oVC.gotoRange(oP.End, False)
+	Encadre = ""
+	Exit Function
+Erreur:
+	Encadre = "!" & Error$
+End Function
+
+' La signature : décalée vers la droite, un espace pour signer, puis le nom (Mes informations)
+Function Signature(sNom As String) As String
+	Dim oVC As Object, oText As Object
+	On Error GoTo Erreur
+	oVC = ThisComponent.CurrentController.ViewCursor
+	oText = oVC.Text
+	oVC.ParaLeftMargin = 11300
+	oText.insertString(oVC, "Signature", False)
+	oText.insertControlCharacter(oVC, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+	oText.insertControlCharacter(oVC, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+	oText.insertString(oVC, IIf(sNom <> "", sNom, "[Votre nom]"), False)
+	Signature = ""
+	Exit Function
+Erreur:
+	Signature = "!" & Error$
+End Function
+
+' ——— Les liens ———
+
+' Le lien autour du curseur : les morceaux voisins qui mènent à la même adresse (un lien en partie en gras en a
+' plusieurs) ; aDebut, aFin : ses bornes
+Private Function LienAutour(oVC As Object, aBornes As Variant) As String
+	Dim oText As Object, oC As Object, oEnumP As Object, oPar As Object, oEnum As Object, oPortion As Object
+	Dim sAdresse As String, oDebut As Object, oFin As Object, bDedans As Boolean
+	LienAutour = ""
+	oText = oVC.Text
+	oC = oText.createTextCursorByRange(oVC.Start)
+	oC.gotoStartOfParagraph(False)
+	oC.gotoEndOfParagraph(True)
+	oEnumP = oC.createEnumeration()
+	Do While oEnumP.hasMoreElements()
+		oPar = oEnumP.nextElement()
+		If oPar.supportsService("com.sun.star.text.Paragraph") Then
+			oEnum = oPar.createEnumeration()
+			sAdresse = ""
+			Do While oEnum.hasMoreElements()
+				oPortion = oEnum.nextElement()
+				If oPortion.HyperLinkURL <> sAdresse Then
+					' (un lien se termine : le curseur y était-il ?)
+					If sAdresse <> "" And bDedans Then GoTo Trouve
+					sAdresse = oPortion.HyperLinkURL
+					oDebut = oPortion.Start
+					bDedans = False
+				End If
+				oFin = oPortion.End
+				If sAdresse <> "" Then
+					If oText.compareRegionStarts(oPortion.Start, oVC.Start) >= 0 And oText.compareRegionStarts(oVC.Start, oPortion.End) >= 0 Then bDedans = True
+				End If
+			Loop
+			If sAdresse <> "" And bDedans Then GoTo Trouve
+		End If
+	Loop
+	Exit Function
+Trouve:
+	aBornes(0) = oDebut
+	aBornes(1) = oFin
+	LienAutour = sAdresse
+End Function
+
+' Le lien où est le curseur : {"adresse", "texte"} ; "" sans lien
+Function Lien() As String
+	Dim oVC As Object, aBornes(1) As Object, sAdresse As String, oC As Object
+	On Error GoTo Erreur
+	oVC = ThisComponent.CurrentController.ViewCursor
+	If Not oVC.isCollapsed() Then
+		Lien = ""
+		Exit Function
+	End If
+	sAdresse = LienAutour(oVC, aBornes)
+	If sAdresse = "" Then
+		Lien = ""
+		Exit Function
+	End If
+	oC = oVC.Text.createTextCursorByRange(aBornes(0))
+	oC.gotoRange(aBornes(1), True)
+	Lien = "{""adresse"":" & Texte(sAdresse) & ",""texte"":" & Texte(oC.String) & "}"
+	Exit Function
+Erreur:
+	Lien = ""
+End Function
+
+' Poser un lien (sAdresse vide : le retirer) : sur le texte choisi ; sur le lien où est le curseur ; sinon l'adresse
+' devient le texte du lien
+Function PoserLien(sAdresse As String) As String
+	Dim oDoc As Object, oVC As Object, oPlage As Object, aBornes(1) As Object, oC As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oVC = oDoc.CurrentController.ViewCursor
+	If Not oVC.isCollapsed() Then
+		oPlage = oDoc.CurrentSelection.getByIndex(0)
+		oPlage.HyperLinkURL = sAdresse
+	ElseIf LienAutour(oVC, aBornes) <> "" Then
+		oC = oVC.Text.createTextCursorByRange(aBornes(0))
+		oC.gotoRange(aBornes(1), True)
+		oC.HyperLinkURL = sAdresse
+		If sAdresse = "" Then oC.setPropertyToDefault("CharStyleName")
+	ElseIf sAdresse <> "" Then
+		oC = oVC.Text.createTextCursorByRange(oVC.Start)
+		oVC.Text.insertString(oC, sAdresse, True)
+		oC.HyperLinkURL = sAdresse
+		oVC.gotoRange(oC.End, False)
+	End If
+	PoserLien = ""
+	Exit Function
+Erreur:
+	PoserLien = "!" & Error$
 End Function
 ]]></script:module>

@@ -109,6 +109,7 @@ Rectangle {
             MenuSama {
                 title: "Affichage"
                 ElementMenu { cle: "plan"; coche: fenetre.planOuvert }
+                ElementMenu { cle: "marge"; coche: fenetre.page.margeOuverte }
                 TitreMenu { text: "Zoom" }
                 ElementMenu { cle: "zoomPlus" }
                 ElementMenu { cle: "zoomMoins" }
@@ -123,6 +124,7 @@ Rectangle {
                 ElementMenu { cle: "date" }
                 ElementMenu { cle: "numeroPage" }
                 ElementMenu { cle: "commentaire" }
+                ElementMenu { cle: "lien" }
             }
             MenuSama {
                 id: menuFormat
@@ -147,6 +149,9 @@ Rectangle {
             MenuSama {
                 title: "Outils"
                 ElementMenu { cle: "suggestion"; coche: fenetre.mode === "Suggestion" }
+                ElementMenu { cle: "toutAccepter"; enabled: fenetre.page.marge.groupes.length > 0 }
+                ElementMenu { cle: "toutRefuser"; enabled: fenetre.page.marge.groupes.length > 0 }
+                TitreMenu { text: ""; implicitHeight: 9 }
                 ElementMenu { cle: "orthographe"; coche: fenetre.orthographe }
             }
             MenuSama {

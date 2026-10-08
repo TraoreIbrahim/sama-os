@@ -8,6 +8,13 @@ import "../reglages"
 Item {
     id: page
     readonly property alias doc: document
+    readonly property alias marge: laMarge
+    readonly property alias liens: lesLiens
+    // La marge des commentaires et des suggestions, à droite de la page quand il y en a (Affichage la cache)
+    property bool margeOuverte: true
+    readonly property bool avecMarge: laMarge.utile && margeOuverte
+    readonly property real largeurMarge: 300
+    signal annonce(string texte)
     clip: true
 
     Rectangle { anchors.fill: parent; color: Couleurs.sombre ? "#2A2620" : "#EFE8DD" }
@@ -27,10 +34,13 @@ Item {
         id: document
         // (la largeur du document, au milieu ; le moteur dessine les pages et le sable autour)
         readonly property real largeur: largeurDocument > 0 ? Math.min(page.width, largeurDocument) : page.width
-        x: Math.max(0, Math.round((page.width - largeur) / 2))
+        x: Math.max(0, Math.round((page.width - (page.avecMarge ? page.largeurMarge + 20 : 0) - largeur) / 2))
+        Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
         width: largeur
         height: page.height
         focus: true
+        // (le choix des blocs, ouvert par « / » ou « @ », prend les flèches, Entrée et Échap avant le moteur)
+        Keys.onPressed: (e) => { if (lesBlocs.touche(e)) e.accepted = true }
     }
 
     // ——— Ce que Sama dessine sur le document ———
@@ -38,6 +48,25 @@ Item {
         x: document.x
         width: document.width
         height: page.height
+        // Le texte des commentaires (non résolus), surligné d'ocre ; plus fort pour celui qu'on lit
+        Repeater {
+            model: laMarge.filsVus
+            delegate: Repeater {
+                id: surlignes
+                required property var modelData
+                readonly property bool actif: laMarge.active === modelData.cle
+                model: document.zoom > 0 && !modelData.resolu ? document.rectangles(modelData.plage) : []
+                delegate: Rectangle {
+                    required property var modelData
+                    x: modelData.x - document.vueX
+                    y: modelData.y - document.vueY
+                    width: modelData.width
+                    height: modelData.height
+                    color: Qt.rgba(226 / 255, 166 / 255, 43 / 255, surlignes.actif ? 0.38 : 0.2)
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#E2A62B"; visible: surlignes.actif }
+                }
+            }
+        }
         // La sélection
         Repeater {
             model: document.selection
@@ -74,6 +103,22 @@ Item {
             if (c.y < document.vueY + 8) document.vueY = Math.max(0, c.y - 60)
             else if (c.y + c.height > document.vueY + page.height - 8) document.vueY = c.y + c.height - page.height + 60
         }
+    }
+
+    // ——— Autour du texte : la mini-barre de la sélection, les liens, le choix des blocs ———
+    MiniBarreDocs { doc: document; decalage: document.x; z: 5; onLien: lesLiens.ouvrirSaisie("") }
+    LiensDocs { id: lesLiens; doc: document; decalage: document.x; z: 6; onAnnonce: t => page.annonce(t) }
+    BlocsDocs { id: lesBlocs; doc: document; decalage: document.x; z: 7 }
+
+    // ——— La marge ———
+    MargeDocs {
+        id: laMarge
+        doc: document
+        visible: page.avecMarge
+        x: Math.min(document.x + document.width + 12, page.width - page.largeurMarge - 10)
+        width: page.largeurMarge
+        height: page.height
+        onAnnonce: t => page.annonce(t)
     }
 
     // ——— La barre de défilement ———

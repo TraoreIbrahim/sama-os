@@ -65,7 +65,7 @@ ALTGR = {"[": e.KEY_5, "]": e.KEY_MINUS, "#": e.KEY_3, "{": e.KEY_4, "}": e.KEY_
          "\\": e.KEY_8, "€": e.KEY_E}
 
 TOUCHES = {"entree": e.KEY_ENTER, "echap": e.KEY_ESC, "effacer": e.KEY_BACKSPACE, "suppr": e.KEY_DELETE, "f2": e.KEY_F2, "tab": e.KEY_TAB,
-           "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT}
+           "haut": e.KEY_UP, "bas": e.KEY_DOWN, "gauche": e.KEY_LEFT, "droite": e.KEY_RIGHT, "debut": e.KEY_HOME, "fin": e.KEY_END}
 TOUCHES.update({"f%d" % n: getattr(e, "KEY_F%d" % n) for n in range(1, 13)})
 TOUCHES["impr"] = e.KEY_SYSRQ
 TOUCHES["espace"] = e.KEY_SPACE
