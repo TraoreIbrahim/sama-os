@@ -1,0 +1,7 @@
+#!/bin/sh
+# Sama Docs, le traitement de texte de Sama. Usage : sama-docs [fichier]
+# L'exécutable porte le nom de l'application : son identité (tuile dans la Natte, Alt+Tab) en découle.
+# Le module Sama.Moteur (moteur de LibreOffice) est dans /usr/lib/samaos/qml.
+export QML_IMPORT_PATH="/usr/lib/samaos/qml${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+# (« -a widget » : les fenêtres Ouvrir et Enregistrer sont celles du système, donc celles de Sama, par le portail)
+exec /usr/lib/samaos/bin/samaos-docs -a widget /usr/lib/samaos/docs/Docs.qml -- "$@"

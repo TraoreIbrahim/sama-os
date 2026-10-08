@@ -1,10 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Sama Docs
-Comment=Traitement de texte de Sama (préversion)
-Exec=env PLASMA_INTEGRATION_USE_PORTAL=0 libreoffice --writer %U
+Comment=Traitement de texte de Sama, compatible Word
+Exec=sama-docs %f
 Icon=/usr/share/samaos/icones/docs.svg
-StartupWMClass=libreoffice-writer
+StartupWMClass=samaos-docs
 Categories=Office;WordProcessor;
+MimeType=application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/msword;application/vnd.oasis.opendocument.text;application/rtf;text/rtf;
+Keywords=texte;word;lettre;document;docx;odt;cv;courrier;writer;
 Terminal=false
-X-Sama-Provisoire=true

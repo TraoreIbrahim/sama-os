@@ -3,8 +3,8 @@
 (chacune a son unité systemd « app-<application>@… » dans la session) et les fichiers qu'elles ont reçus. À la fin
 normale de la session (déconnexion, extinction), la note est marquée « propre ». Si, à l'ouverture de session
 suivante, l'ordinateur a redémarré sans que la session se soit fermée (coupure de courant, batterie vide), la carte
-« Le courant a été coupé à 11:05 » propose de tout rouvrir ; les documents que Sama Docs, Sheet et Présentations
-avaient gardés (copies de secours de LibreOffice, chaque minute) sont rouverts avec eux.
+« Le courant a été coupé à 11:05 » propose de tout rouvrir ; les documents que Sama Présentations (LibreOffice) avait
+gardés (ses copies de secours, chaque minute) sont rouverts avec eux.
 
   courant.py demarrer      ouverture de session (samaos-courant.desktop) : carte s'il y a eu coupure, puis veille
   courant.py bilan         JSON de la carte : {heure, applis, documents}
@@ -31,7 +31,8 @@ MODULES = {"com.sun.star.text.TextDocument": ("Sama Docs", "samaos-docs.desktop"
            "com.sun.star.sheet.SpreadsheetDocument": ("Sama Sheet", "samaos-sheet.desktop", "/usr/share/samaos/icones/sheet.svg"),
            "com.sun.star.presentation.PresentationDocument": ("Sama Présentations", "samaos-presentations.desktop",
                                                               "/usr/share/samaos/icones/presentations.svg")}
-LIBREOFFICE = {"samaos-docs.desktop", "samaos-presentations.desktop", "libreoffice-writer.desktop",
+# (Sama Docs et Sama Sheet ont leur propre interface sur le moteur : ils ne rouvrent pas ces copies)
+LIBREOFFICE = {"samaos-presentations.desktop", "libreoffice-writer.desktop",
                "libreoffice-calc.desktop", "libreoffice-impress.desktop", "libreoffice-startcenter.desktop"}
 
 
@@ -186,8 +187,8 @@ def fermeture_propre_chromium():
 def rouvrir():
     c = lire(COUPURE) or {}
     deja = set()
-    if documents_secours():                      # (Sama Docs rouvre ses documents lui-même, une fois)
-        lancer("samaos-docs.desktop", [])
+    if documents_secours():                      # (LibreOffice rouvre ses documents lui-même, une fois)
+        lancer("samaos-presentations.desktop", [])
         deja |= LIBREOFFICE
     for a in c.get("applis", []):
         if a["id"] in deja:

@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="SamaDocs" script:language="StarBasic"><![CDATA[REM Sama Docs : les styles de Sama pour un document neuf (le texte en Noto Serif 12, les titres en Noto Sans, vert
+REM foncé, comme la maquette « Docs · Le document libre »), le plan (les titres du document, celui du curseur), aller à
+REM un titre, et le début des documents guidés (compte rendu, lettre, CV, attestation, annonce, devoir), où « Mes
+REM informations » (nom, adresse, téléphone) sont déjà écrites.
+Option Explicit
+
+Const ENCRE_TITRE = 2512454         ' RGB(38, 86, 70) : le vert de Docs, foncé
+Const ENCRE_DOUCE = 6708820         ' RGB(102, 94, 84)
+
+Private Sub ReglerStyle(oStyles As Object, sNom As String, sPolice As String, dTaille As Double, nGraisse As Double, nEncre As Long)
+	Dim o As Object
+	If Not oStyles.hasByName(sNom) Then Exit Sub
+	o = oStyles.getByName(sNom)
+	If sPolice <> "" Then o.CharFontName = sPolice
+	If dTaille > 0 Then o.CharHeight = dTaille
+	If nGraisse > 0 Then o.CharWeight = nGraisse
+	If nEncre >= 0 Then o.CharColor = nEncre
+End Sub
+
+' Document neuf : les styles de Sama, sans le compter comme une modification
+Function Preparer() As String
+	Dim oDoc As Object, oStyles As Object, o As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oStyles = oDoc.StyleFamilies.getByName("ParagraphStyles")
+	ReglerStyle(oStyles, "Standard", "Noto Serif", 12, 0, -1)
+	o = oStyles.getByName("Standard")
+	o.ParaBottomMargin = 180
+	o.ParaLineSpacing = Interligne(115)
+	ReglerStyle(oStyles, "Text body", "Noto Serif", 12, 0, -1)
+	ReglerStyle(oStyles, "Heading", "Noto Sans", 0, com.sun.star.awt.FontWeight.BOLD, ENCRE_TITRE)
+	ReglerStyle(oStyles, "Heading 1", "Noto Sans", 14, com.sun.star.awt.FontWeight.BOLD, ENCRE_TITRE)
+	ReglerStyle(oStyles, "Heading 2", "Noto Sans", 12.5, com.sun.star.awt.FontWeight.BOLD, ENCRE_TITRE)
+	ReglerStyle(oStyles, "Heading 3", "Noto Sans", 11.5, com.sun.star.awt.FontWeight.SEMIBOLD, ENCRE_TITRE)
+	ReglerStyle(oStyles, "Title", "Noto Serif", 22, com.sun.star.awt.FontWeight.SEMIBOLD, RGB(31, 28, 24))
+	o = oStyles.getByName("Title")
+	o.ParaAdjust = com.sun.star.style.ParagraphAdjust.LEFT
+	ReglerStyle(oStyles, "Subtitle", "Noto Sans", 11, 0, ENCRE_DOUCE)
+	o = oStyles.getByName("Subtitle")
+	o.ParaAdjust = com.sun.star.style.ParagraphAdjust.LEFT
+	ReglerStyle(oStyles, "Quotations", "Noto Serif", 12, 0, ENCRE_DOUCE)
+	' (l'expéditeur d'une lettre : en haut à gauche, serré)
+	ReglerStyle(oStyles, "Sender", "Noto Sans", 11.5, 0, -1)
+	If oStyles.hasByName("Sender") Then
+		o = oStyles.getByName("Sender")
+		o.ParaTopMargin = 0
+		o.ParaBottomMargin = 0
+		o.ParaLineSpacing = Interligne(115)
+	End If
+	oDoc.setModified(False)
+	Preparer = ""
+	Exit Function
+Erreur:
+	Preparer = "!" & Error$
+End Function
+
+Private Function Interligne(n As Integer) As Object
+	Dim l As New com.sun.star.style.LineSpacing
+	l.Mode = com.sun.star.style.LineSpacingMode.PROP
+	l.Height = n
+	Interligne = l
+End Function
+
+' Le plan : {"titres": [{"texte", "niveau"}], "courant": rang du titre où est le curseur (-1 : avant le premier)}
+Function Plan() As String
+	Dim oDoc As Object, oEnum As Object, oPar As Object, oVC As Object, s As String, n As Long, nCourant As Long, nNiveau As Long
+	Dim nOrdre As Integer
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oVC = oDoc.CurrentController.ViewCursor
+	oEnum = oDoc.Text.createEnumeration()
+	s = ""
+	n = 0
+	nCourant = -1
+	Do While oEnum.hasMoreElements()
+		oPar = oEnum.nextElement()
+		If oPar.supportsService("com.sun.star.text.Paragraph") Then
+			nNiveau = oPar.OutlineLevel
+			If nNiveau > 0 And Trim(oPar.String) <> "" Then
+				If s <> "" Then s = s & ","
+				s = s & "{""texte"":" & Texte(Trim(oPar.String)) & ",""niveau"":" & nNiveau & "}"
+				' (le titre est avant le curseur, ou à sa place : c'est la partie où l'on est)
+				nOrdre = -2
+				On Error Resume Next
+				nOrdre = oDoc.Text.compareRegionStarts(oPar.Start, oVC.Start)
+				On Error GoTo Erreur
+				If nOrdre >= 0 Then nCourant = n
+				n = n + 1
+			End If
+		End If
+	Loop
+	Plan = "{""titres"":[" & s & "],""courant"":" & nCourant & "}"
+	Exit Function
+Erreur:
+	Plan = "!" & Error$
+End Function
+
+' Le curseur au début du titre de rang sRang
+Function AllerAuTitre(sRang As String) As String
+	Dim oDoc As Object, oEnum As Object, oPar As Object, n As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oEnum = oDoc.Text.createEnumeration()
+	n = 0
+	Do While oEnum.hasMoreElements()
+		oPar = oEnum.nextElement()
+		If oPar.supportsService("com.sun.star.text.Paragraph") Then
+			If oPar.OutlineLevel > 0 And Trim(oPar.String) <> "" Then
+				If n = CLng(sRang) Then
+					oDoc.CurrentController.ViewCursor.gotoRange(oPar.Start, False)
+					AllerAuTitre = ""
+					Exit Function
+				End If
+				n = n + 1
+			End If
+		End If
+	Loop
+	AllerAuTitre = "!Ce titre n'est plus dans le document"
+	Exit Function
+Erreur:
+	AllerAuTitre = "!" & Error$
+End Function
+
+' ——— Les documents guidés : leur début, prêt à compléter ———
+
+Private oCurseur As Object
+' (la mise en page du paragraphe suivant, posée après son style : un style efface l'alignement et les retraits)
+Private nAligne As Integer, nRetrait As Long, nAlinea As Long, nApres As Long, dTaille As Double, nEncre As Long
+
+' Un paragraphe de plus, dans un style
+Private Sub P(sStyle As String, sTexte As String)
+	PG(sStyle, "", sTexte)
+End Sub
+
+' … qui commence par quelques mots en gras (« Objet : »)
+Private Sub PG(sStyle As String, sGras As String, sTexte As String)
+	Dim oText As Object
+	oText = ThisComponent.Text
+	oCurseur.ParaStyleName = sStyle
+	If nAligne <> com.sun.star.style.ParagraphAdjust.LEFT Then oCurseur.ParaAdjust = nAligne
+	If nRetrait > 0 Then oCurseur.ParaLeftMargin = nRetrait
+	If nAlinea > 0 Then oCurseur.ParaFirstLineIndent = nAlinea
+	If nApres >= 0 Then oCurseur.ParaBottomMargin = nApres
+	If dTaille > 0 Then oCurseur.CharHeight = dTaille
+	If nEncre >= 0 Then oCurseur.CharColor = nEncre
+	If sGras <> "" Then
+		oCurseur.CharWeight = com.sun.star.awt.FontWeight.SEMIBOLD
+		oText.insertString(oCurseur, sGras, False)
+		oCurseur.setPropertyToDefault("CharWeight")
+	End If
+	oText.insertString(oCurseur, sTexte, False)
+	oText.insertControlCharacter(oCurseur, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+	oCurseur.setAllPropertiesToDefault()
+End Sub
+
+Private Sub Aligner(n As Integer)
+	nAligne = n
+End Sub
+
+' La mise en page des paragraphes suivants : retrait à gauche et alinéa (1/100 mm), espace après (-1 : celui du style)
+Private Sub Mise(nGauche As Long, nPremiere As Long, nEspace As Long)
+	nRetrait = nGauche
+	nAlinea = nPremiere
+	nApres = nEspace
+End Sub
+
+' Les caractères des paragraphes suivants : taille (0 : celle du style), encre (-1 : celle du style)
+Private Sub Caracteres(dT As Double, nE As Long)
+	dTaille = dT
+	nEncre = nE
+End Sub
+
+' Le début d'un document guidé : sGenre (compte-rendu, lettre, cv, attestation, annonce, devoir), et Mes informations
+Function Modele(sGenre As String, sNom As String, sAdresse As String, sTelephone As String, sCourriel As String, sVille As String) As String
+	Dim oDoc As Object, sDate As String, aMois As Variant, d As Date, sQui As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	If Len(oDoc.Text.String) > 0 Then
+		Modele = "!Ce document n'est plus vide : le modèle s'ouvre dans un document neuf"
+		Exit Function
+	End If
+	Preparer()
+	aMois = Array("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre")
+	d = Now()
+	sDate = Day(d) & " " & aMois(Month(d) - 1) & " " & Year(d)
+	sQui = IIf(sNom <> "", sNom, "[Votre nom]")
+	If sVille = "" Then sVille = "[Ville]"
+	oCurseur = oDoc.Text.createTextCursor()
+	oCurseur.gotoEnd(False)
+	Aligner(com.sun.star.style.ParagraphAdjust.LEFT)
+	Mise(0, 0, -1)
+	Caracteres(0, -1)
+	Select Case sGenre
+	Case "compte-rendu"
+		P("Subtitle", "Compte rendu")
+		P("Title", "[Réunion, assemblée générale] du " & sDate)
+		P("Subtitle", "[Association ou service] · [heure], [lieu]")
+		P("Heading 1", "Présents et absents")
+		P("Standard", "Présents : [noms]. Excusés : [noms]. Absents : [noms].")
+		P("Heading 1", "1. [Premier point]")
+		P("Standard", "[Ce qui a été présenté, ce qui a été dit.]")
+		P("Heading 1", "2. [Deuxième point]")
+		P("Standard", "[Ce qui a été décidé.]")
+		P("Heading 1", "Prochaine réunion")
+		P("Standard", "[Date], [heure], [lieu].")
+	Case "lettre"
+		' (la disposition des lettres officielles : l'expéditeur en haut à gauche, la date à droite, le destinataire et la
+		' signature décalés vers la droite, le corps justifié avec un alinéa)
+		Mise(0, 0, 0)
+		PG("Sender", sQui, "")
+		P("Sender", IIf(sAdresse <> "", sAdresse, "[Votre adresse]"))
+		If sVille <> "[Ville]" And InStr(1, sAdresse, sVille, 1) = 0 Then P("Sender", sVille)
+		Mise(0, 0, 420)
+		P("Sender", IIf(sTelephone <> "", sTelephone, "[Votre téléphone]") & IIf(sCourriel <> "", " · " & sCourriel, ""))
+		Aligner(com.sun.star.style.ParagraphAdjust.RIGHT)
+		Mise(0, 0, 360)
+		P("Standard", sVille & ", le " & sDate)
+		Aligner(com.sun.star.style.ParagraphAdjust.LEFT)
+		Mise(8700, 0, 0)
+		P("Standard", "À [Madame, Monsieur le Directeur]")
+		P("Standard", "[Service, entreprise ou administration]")
+		Mise(8700, 0, 480)
+		P("Standard", "[Adresse du destinataire]")
+		Mise(0, 0, 360)
+		PG("Standard", "Objet : ", "[demande de …]")
+		P("Standard", "[Madame, Monsieur le Directeur],")
+		Aligner(com.sun.star.style.ParagraphAdjust.BLOCK)
+		Mise(0, 1000, -1)
+		P("Standard", "[Écrivez ici votre demande : ce que vous demandez, pourquoi, depuis quand.]")
+		Mise(0, 1000, 480)
+		P("Standard", "Je vous prie d'agréer, [Madame, Monsieur le Directeur], l'expression de mes salutations distinguées.")
+		Aligner(com.sun.star.style.ParagraphAdjust.LEFT)
+		Mise(11300, 0, 480)
+		P("Standard", sQui)
+		Mise(0, 0, -1)
+		Caracteres(10.5, ENCRE_DOUCE)
+		P("Standard", "[Pièces jointes : …, ou rien]")
+	Case "cv"
+		P("Title", sQui)
+		P("Subtitle", IIf(sTelephone <> "", sTelephone, "[Téléphone]") & " · " & IIf(sCourriel <> "", sCourriel, "[Courriel]") & " · " & IIf(sAdresse <> "", sAdresse, "[Ville]"))
+		P("Heading 1", "Profil")
+		P("Standard", "[En deux lignes : ce que vous savez faire, ce que vous cherchez.]")
+		P("Heading 1", "Expérience")
+		P("Heading 3", "[Poste] · [Entreprise], [années]")
+		P("Standard", "[Ce que vous y avez fait, ce que vous y avez appris.]")
+		P("Heading 1", "Formation")
+		P("Standard", "[Diplôme], [école], [année]")
+		P("Heading 1", "Compétences et langues")
+		P("Standard", "[Informatique, langues parlées et écrites…]")
+	Case "attestation"
+		Aligner(com.sun.star.style.ParagraphAdjust.CENTER)
+		P("Title", "ATTESTATION DE [TRAVAIL, D'HÉBERGEMENT, DE PRÉSENCE]")
+		Aligner(com.sun.star.style.ParagraphAdjust.LEFT)
+		P("Standard", "")
+		P("Standard", "Je soussigné(e), " & sQui & ", [fonction], atteste que [Madame ou Monsieur …], né(e) le [date] à [lieu], [ce qui est attesté] depuis le [date].")
+		P("Standard", "En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.")
+		P("Standard", "")
+		Aligner(com.sun.star.style.ParagraphAdjust.RIGHT)
+		P("Standard", "Fait à " & sVille & ", le " & sDate)
+		Aligner(com.sun.star.style.ParagraphAdjust.RIGHT)
+		P("Standard", sQui)
+		Aligner(com.sun.star.style.ParagraphAdjust.LEFT)
+	Case "annonce"
+		Aligner(com.sun.star.style.ParagraphAdjust.CENTER)
+		P("Title", "[GRAND TITRE DE L'ANNONCE]")
+		Aligner(com.sun.star.style.ParagraphAdjust.CENTER)
+		P("Heading 1", "[Samedi 25 octobre], [16 h] · [Lieu]")
+		Aligner(com.sun.star.style.ParagraphAdjust.CENTER)
+		P("Standard", "[Ce qui va se passer, pour qui, ce qu'il faut apporter.]")
+		Aligner(com.sun.star.style.ParagraphAdjust.CENTER)
+		P("Standard", "Renseignements : " & IIf(sTelephone <> "", sTelephone, "[téléphone]"))
+		Aligner(com.sun.star.style.ParagraphAdjust.LEFT)
+	Case "devoir"
+		P("Standard", "[Établissement]")
+		P("Standard", "[Classe] · [Matière]")
+		P("Standard", "")
+		Aligner(com.sun.star.style.ParagraphAdjust.CENTER)
+		P("Title", "[Sujet du devoir ou de l'exposé]")
+		Aligner(com.sun.star.style.ParagraphAdjust.CENTER)
+		P("Subtitle", "Présenté par " & sQui & " · " & sDate)
+		Aligner(com.sun.star.style.ParagraphAdjust.LEFT)
+		P("Heading 1", "Introduction")
+		P("Standard", "[Le sujet, la question posée, le plan annoncé.]")
+		P("Heading 1", "I. [Première partie]")
+		P("Standard", "")
+		P("Heading 1", "II. [Deuxième partie]")
+		P("Standard", "")
+		P("Heading 1", "Conclusion")
+		P("Standard", "")
+	End Select
+	' (le curseur au début : le premier crochet à remplacer)
+	oDoc.CurrentController.ViewCursor.gotoStart(False)
+	oDoc.setModified(False)
+	Modele = ""
+	Exit Function
+Erreur:
+	Modele = "!" & Error$
+End Function
+]]></script:module>

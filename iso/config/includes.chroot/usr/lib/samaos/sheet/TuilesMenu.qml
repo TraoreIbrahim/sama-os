@@ -40,7 +40,7 @@ Item {
                 QQC2.ToolTip.text: commande ? commande.nom + (commande.raccourci ? "  (" + commande.raccourci + ")" : "") : ""
                 background: Rectangle {
                     radius: 10
-                    color: tuile.down ? Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.22)
+                    color: tuile.down ? Qt.rgba(fenetre.accent.r, fenetre.accent.g, fenetre.accent.b, 0.22)
                          : tuile.hovered ? fenetre.accentFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.2 : 0.04)
                 }
                 contentItem: Item {

@@ -29,7 +29,7 @@ QQC2.MenuItem {
     background: Rectangle {
         radius: 9
         color: !element.highlighted ? "transparent" : element.danger ? Qt.rgba(163 / 255, 50 / 255, 42 / 255, Couleurs.sombre ? 0.25 : 0.08)
-               : Qt.rgba(31 / 255, 94 / 255, 122 / 255, Couleurs.sombre ? 0.25 : 0.08)
+               : Qt.rgba(fenetre.accent.r, fenetre.accent.g, fenetre.accent.b, Couleurs.sombre ? 0.25 : 0.08)
     }
     contentItem: RowLayout {
         spacing: 11
@@ -40,7 +40,7 @@ QQC2.MenuItem {
             Layout.preferredHeight: 28
             radius: 8
             color: element.danger ? Qt.rgba(163 / 255, 50 / 255, 42 / 255, element.highlighted ? 0.14 : 0.07)
-                   : element.highlighted ? Qt.rgba(31 / 255, 94 / 255, 122 / 255, 0.14) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.2 : 0.045)
+                   : element.highlighted ? Qt.rgba(fenetre.accent.r, fenetre.accent.g, fenetre.accent.b, 0.14) : Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.2 : 0.045)
             Picto {
                 anchors.centerIn: parent
                 width: 16
