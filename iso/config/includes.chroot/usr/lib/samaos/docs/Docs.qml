@@ -138,6 +138,15 @@ Window {
     }
     onActiveChanged: if (active) verifierLiens()
 
+    // (les champs — ceux d'« Envoyer à toute une liste », les numéros de page — sur un fond vert pâle, à l'écran
+    // seulement : la vue du moteur les montre sans trame ; .uno:Marks bascule, on regarde d'abord)
+    Timer { id: trames; interval: 400; onTriggered: if (fenetre.doc.etats[".uno:Marks"] !== "true") fenetre.doc.commande(".uno:Marks") }
+
+    // ——— Envoyer à toute une liste : le panneau de droite ———
+    property bool envoiOuvert: false
+    readonly property alias envoiPanneau: leEnvoi
+    function ouvrirEnvoi() { accueilOuvert = false; envoiOuvert = true; leEnvoi.ouvrir() }
+
     // ——— Les documents guidés : un seul à la fois (un second clic le referait) ———
     property string modeleEnCours: ""
     property var modeleEnAttente: null
@@ -220,6 +229,7 @@ Window {
             // (document neuf : les styles de Sama ; les fautes soulignées)
             if (!fenetre.doc.chemin) fenetre.appeler("SamaDocs.Preparer", [])
             fenetre.doc.commande(".uno:SpellOnline", { Enable: { type: "boolean", value: fenetre.orthographe } })
+            trames.restart()
             // (récupéré : pas encore enregistré à son emplacement)
             if (fenetre.reprise) fenetre.doc.commande(".uno:Modified", { Modified: { type: "boolean", value: true } })
             fenetre.verifierLiens()
@@ -322,6 +332,7 @@ Window {
             PlanDocs {
                 // (la marge des commentaires a besoin de place : le plan se range quand la fenêtre est trop étroite)
                 visible: fenetre.planOuvert && fenetre.width > 900 && !(page.avecMarge && fenetre.width < 220 + doc.largeurDocument + 330)
+                         && !(fenetre.envoiOuvert && fenetre.width < 220 + doc.largeurDocument + 420)
                 Layout.preferredWidth: 220
                 Layout.fillHeight: true
             }
@@ -330,6 +341,14 @@ Window {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 onAnnonce: t => message.montrer(t)
+            }
+            EnvoiDocs {
+                id: leEnvoi
+                visible: fenetre.envoiOuvert
+                Layout.preferredWidth: 400
+                Layout.fillHeight: true
+                onAnnonce: t => message.montrer(t)
+                onFermer: { fenetre.envoiOuvert = false; fenetre.doc.forceActiveFocus() }
             }
         }
         // ——— Barre d'état : page, mots, langue ; le mode, le format, le zoom ———
@@ -348,6 +367,13 @@ Window {
                 readonly property string mots: String(fenetre.doc.etats[".uno:StateWordCount"] || "").split(",")[0].replace(/\s*mot(s)?\b.*/, " mots").trim()
                 readonly property string langue: String(fenetre.doc.etats[".uno:LanguageStatus"] || "").split(";")[0].replace(/\s*\(.*\)$/, "")
                 Text { text: [parent.pageNo, parent.mots, parent.langue].filter(function (x) { return x }).join("  ·  "); font.pixelSize: 12; color: Couleurs.texte2 }
+                // (Envoyer à toute une liste : les champs du modèle)
+                Text {
+                    visible: fenetre.envoiOuvert && leEnvoi.source !== null
+                    text: "·  " + leEnvoi.nomsUtilises.length + (leEnvoi.nomsUtilises.length > 1 ? " champs du tableau " : " champ du tableau ") + (leEnvoi.source ? leEnvoi.source.nom : "")
+                    font.pixelSize: 12
+                    color: Couleurs.texte2
+                }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: fenetre.mode === "Suggestion" ? "Mode Suggestion : vos changements sont proposés, pas imposés  ·  " : ""

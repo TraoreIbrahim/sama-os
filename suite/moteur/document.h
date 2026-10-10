@@ -151,6 +151,8 @@ public:
     // Des rectangles du moteur (« x, y, l, h; x, y, l, h », en twips : la place d'un commentaire, d'une suggestion) en
     // pixels du document, au zoom actuel
     Q_INVOKABLE QVariantList rectangles(const QString &twips) const;
+    // Poser le curseur à un endroit de la vue (un clic du moteur) : là où l'on dépose un champ glissé
+    Q_INVOKABLE void placerCurseur(qreal x, qreal y);
 
 signals:
     void cheminChanged();

@@ -12,7 +12,7 @@ Item {
     readonly property alias liens: lesLiens
     // La marge des commentaires et des suggestions, à droite de la page quand il y en a (Affichage la cache)
     property bool margeOuverte: true
-    readonly property bool avecMarge: laMarge.utile && margeOuverte
+    readonly property bool avecMarge: laMarge.utile && margeOuverte && !fenetre.envoiOuvert
     readonly property real largeurMarge: 300
     signal annonce(string texte)
     clip: true

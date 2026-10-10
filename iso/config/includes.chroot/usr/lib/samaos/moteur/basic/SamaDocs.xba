@@ -664,6 +664,180 @@ Erreur:
 	MettreAJourDonnees = "!" & Error$
 End Function
 
+' ——— Envoyer à toute une liste (maquette « Docs · Envoyer à toute une liste ») ———
+' Les champs sont des champs de publipostage (les MERGEFIELD de Word) : « <Prénom> » dans le texte, sur un fond vert
+' pâle à l'écran ; ils viennent d'un tableau de Sama Sheet, noté dans le document (« Sama.Envoi » : le fichier, le
+' tableau). La fusion se fait dans des copies cachées : le modèle ne change pas.
+
+' La source de la liste : {"fichier", "nom"} ; "" s'il n'y en a pas encore
+Function SourceEnvoi() As String
+	Dim oProps As Object, aV As Variant
+	On Error GoTo Erreur
+	oProps = ThisComponent.DocumentProperties.UserDefinedProperties
+	SourceEnvoi = ""
+	If Not oProps.getPropertySetInfo().hasPropertyByName("Sama.Envoi") Then Exit Function
+	aV = Split(oProps.getPropertyValue("Sama.Envoi"), Chr(9))
+	If UBound(aV) >= 1 Then SourceEnvoi = "{""fichier"":" & Texte(aV(0)) & ",""nom"":" & Texte(aV(1)) & "}"
+	Exit Function
+Erreur:
+	SourceEnvoi = ""
+End Function
+
+Function NoterSourceEnvoi(sChemin As String, sNom As String) As String
+	Dim oProps As Object
+	On Error GoTo Erreur
+	oProps = ThisComponent.DocumentProperties.UserDefinedProperties
+	If oProps.getPropertySetInfo().hasPropertyByName("Sama.Envoi") Then
+		oProps.setPropertyValue("Sama.Envoi", sChemin & Chr(9) & sNom)
+	Else
+		oProps.addProperty("Sama.Envoi", 128, sChemin & Chr(9) & sNom)
+	End If
+	NoterSourceEnvoi = ""
+	Exit Function
+Erreur:
+	NoterSourceEnvoi = "!" & Error$
+End Function
+
+' Un champ au curseur : la colonne sColonne du tableau sTable
+Function InsererChamp(sTable As String, sColonne As String) As String
+	Dim oDoc As Object, oVC As Object, oChamp As Object, oMaitre As Object, sMaitre As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oVC = oDoc.CurrentController.ViewCursor
+	sMaitre = "com.sun.star.text.fieldmaster.DataBase.Sama." & sTable & "." & sColonne
+	If oDoc.TextFieldMasters.hasByName(sMaitre) Then
+		oMaitre = oDoc.TextFieldMasters.getByName(sMaitre)
+	Else
+		oMaitre = oDoc.createInstance("com.sun.star.text.fieldmaster.Database")
+		oMaitre.DataBaseName = "Sama"
+		oMaitre.DataTableName = sTable
+		oMaitre.DataColumnName = sColonne
+	End If
+	oChamp = oDoc.createInstance("com.sun.star.text.textfield.Database")
+	oChamp.attachTextFieldMaster(oMaitre)
+	' (dans le modèle, le champ se montre « «Prénom» », comme dans Word)
+	oChamp.Content = "«" & sColonne & "»"
+	oVC.Text.insertTextContent(oVC, oChamp, False)
+	InsererChamp = ""
+	Exit Function
+Erreur:
+	InsererChamp = "!" & Error$
+End Function
+
+' Les champs du document : [{"champ", "paragraphe" : le texte de son paragraphe, "marque" : le champ tel qu'il y paraît}]
+Function ChampsUtilises() As String
+	Dim oDoc As Object, oEnum As Object, oChamp As Object, oC As Object, s As String, sCol As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oEnum = oDoc.TextFields.createEnumeration()
+	s = ""
+	Do While oEnum.hasMoreElements()
+		oChamp = oEnum.nextElement()
+		If oChamp.supportsService("com.sun.star.text.textfield.Database") Then
+			sCol = oChamp.TextFieldMaster.DataColumnName
+			oC = oChamp.getAnchor().getText().createTextCursorByRange(oChamp.getAnchor())
+			oC.gotoStartOfParagraph(False)
+			oC.gotoEndOfParagraph(True)
+			If s <> "" Then s = s & ","
+			s = s & "{""champ"":" & Texte(sCol) & ",""paragraphe"":" & Texte(oC.String) & ",""marque"":" & Texte(oChamp.getPresentation(False)) & "}"
+		End If
+	Loop
+	ChampsUtilises = "[" & s & "]"
+	Exit Function
+Erreur:
+	ChampsUtilises = "!" & Error$
+End Function
+
+Private Function ChargerCache(sChemin As String) As Object
+	Dim aP(1) As New com.sun.star.beans.PropertyValue
+	aP(0).Name = "Hidden"
+	aP(0).Value = True
+	aP(1).Name = "AsTemplate"
+	aP(1).Value = True
+	ChargerCache = StarDesktop.loadComponentFromURL(ConvertToURL(sChemin), "_blank", 0, aP())
+End Function
+
+Private Sub EcrireCopie(oDocument As Object, sChemin As String, sFiltre As String)
+	Dim aP(0) As New com.sun.star.beans.PropertyValue
+	aP(0).Name = "FilterName"
+	aP(0).Value = sFiltre
+	oDocument.storeToURL(ConvertToURL(sChemin), aP())
+End Sub
+
+' Les champs d'une copie deviennent du texte : la valeur de leur colonne pour cette personne
+Private Sub RemplirChamps(oCopie As Object, aCols As Variant, aValeurs As Variant)
+	Dim oEnum As Object, oChamp As Object, aChamps() As Object, n As Long, i As Long, j As Long, sCol As String
+	Dim sValeur As String, oAncre As Object
+	n = 0
+	oEnum = oCopie.TextFields.createEnumeration()
+	Do While oEnum.hasMoreElements()
+		oChamp = oEnum.nextElement()
+		If oChamp.supportsService("com.sun.star.text.textfield.Database") Then
+			ReDim Preserve aChamps(n) As Object
+			aChamps(n) = oChamp
+			n = n + 1
+		End If
+	Loop
+	For i = 0 To n - 1
+		sCol = aChamps(i).TextFieldMaster.DataColumnName
+		sValeur = ""
+		For j = 0 To UBound(aCols)
+			If aCols(j) = sCol And j <= UBound(aValeurs) Then sValeur = aValeurs(j)
+		Next j
+		oAncre = aChamps(i).getAnchor()
+		oAncre.getText().insertString(oAncre, sValeur, True)
+	Next i
+End Sub
+
+' La fusion : pour chaque personne (sDonnees : lignes séparées par Chr(30), valeurs par Chr(31), dans l'ordre de
+' sColonnes), une copie du document où les champs deviennent ses valeurs. sForme « pdf » : un PDF par personne dans le
+' dossier sSortie, nommé d'après sNoms ; « un » : un seul document (sSortie, .docx), une personne par page. sTemp : un
+' dossier de travail. Rend {"fichiers": [...]}
+Function Fusionner(sForme As String, sSortie As String, sTemp As String, sColonnes As String, sDonnees As String, sNoms As String) As String
+	Dim oDoc As Object, sModele As String, aCols As Variant, aLignes As Variant, aNoms As Variant, k As Long
+	Dim oCopie As Object, oFinal As Object, oTexte As Object, oCurs As Object, sFichier As String, s As String
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	sModele = sTemp & "/modele.odt"
+	EcrireCopie(oDoc, sModele, "writer8")
+	aCols = Split(sColonnes, Chr(31))
+	aLignes = Split(sDonnees, Chr(30))
+	aNoms = Split(sNoms, Chr(30))
+	s = ""
+	For k = 0 To UBound(aLignes)
+		oCopie = ChargerCache(sModele)
+		RemplirChamps(oCopie, aCols, Split(aLignes(k), Chr(31)))
+		If sForme = "pdf" Then
+			sFichier = sSortie & "/" & aNoms(k) & ".pdf"
+			EcrireCopie(oCopie, sFichier, "writer_pdf_Export")
+			If s <> "" Then s = s & ","
+			s = s & Texte(sFichier)
+		Else
+			EcrireCopie(oCopie, sTemp & "/" & k & ".odt", "writer8")
+		End If
+		oCopie.close(True)
+	Next k
+	If sForme <> "pdf" Then
+		' (un seul document : les copies l'une après l'autre, chacune sur une nouvelle page)
+		oFinal = ChargerCache(sTemp & "/0.odt")
+		oTexte = oFinal.Text
+		For k = 1 To UBound(aLignes)
+			oCurs = oTexte.createTextCursor()
+			oCurs.gotoEnd(False)
+			oTexte.insertControlCharacter(oCurs, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+			oCurs.BreakType = com.sun.star.style.BreakType.PAGE_BEFORE
+			oCurs.insertDocumentFromURL(ConvertToURL(sTemp & "/" & k & ".odt"), Array())
+		Next k
+		EcrireCopie(oFinal, sSortie, "MS Word 2007 XML")
+		oFinal.close(True)
+		s = Texte(sSortie)
+	End If
+	Fusionner = "{""fichiers"":[" & s & "]}"
+	Exit Function
+Erreur:
+	Fusionner = "!" & Error$
+End Function
+
 ' ——— Les liens ———
 
 ' Le lien autour du curseur : les morceaux voisins qui mènent à la même adresse (un lien en partie en gras en a

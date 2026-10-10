@@ -37,7 +37,14 @@ Item {
             suite(d)
         })
     }
-    function choisir() { dialogue.open() }
+    function choisir() { suite = null; dialogue.open() }
+    // (pour une autre fonction : la liste d'« Envoyer à toute une liste » ; suite(fichier, nom) au lieu d'insérer)
+    property var suite: null
+    function choisirPour(f) { suite = f; dialogue.open() }
+    function choisi(nom) {
+        if (suite) { var f = suite; suite = null; tableaux = null; f(fichier, nom) }
+        else inserer(nom)
+    }
     FileDialog {
         id: dialogue
         title: "Un tableau de Sama Sheet"
@@ -56,7 +63,7 @@ Item {
             if (!l) { lie.annonce("Ce classeur n'a pas pu être lu"); return }
             if (l.erreur) { lie.annonce(l.erreur); return }
             if (!l.length) lie.annonce("Ce classeur est vide")
-            else if (l.length === 1) lie.inserer(l[0].nom)
+            else if (l.length === 1) lie.choisi(l[0].nom)
             else lie.tableaux = l
         })
     }
@@ -82,7 +89,7 @@ Item {
             })
         })
     }
-    function fermer() { tableaux = null; fenetre.doc.forceActiveFocus() }
+    function fermer() { tableaux = null; suite = null; fenetre.doc.forceActiveFocus() }
     Shortcut { sequence: "Escape"; enabled: lie.visible; onActivated: lie.fermer() }
 
     Rectangle {
@@ -117,7 +124,8 @@ Item {
             Text {
                 Layout.fillWidth: true
                 Layout.bottomMargin: 8
-                text: "Il entre dans le document tel qu'on le voit dans Sheet (les lignes filtrées en moins). Quand le classeur change, Sama propose de le mettre à jour."
+                text: lie.suite ? "Chaque ligne du tableau recevra son exemplaire, rempli de ses informations."
+                                : "Il entre dans le document tel qu'on le voit dans Sheet (les lignes filtrées en moins). Quand le classeur change, Sama propose de le mettre à jour."
                 font.pixelSize: 13
                 lineHeight: 18
                 lineHeightMode: Text.FixedHeight
@@ -133,7 +141,7 @@ Item {
                     implicitHeight: 56
                     hoverEnabled: true
                     focusPolicy: Qt.NoFocus
-                    onClicked: lie.inserer(modelData.nom)
+                    onClicked: lie.choisi(modelData.nom)
                     background: Rectangle { radius: 12; color: choix.hovered ? fenetre.accentFond : Qt.rgba(31 / 255, 28 / 255, 24 / 255, Couleurs.sombre ? 0.12 : 0.035) }
                     contentItem: RowLayout {
                         spacing: 12

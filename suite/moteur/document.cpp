@@ -1162,6 +1162,13 @@ void DocumentLO::envoyerSouris(int type, QPointF p, int nombre, int boutons, int
     });
 }
 
+void DocumentLO::placerCurseur(qreal x, qreal y)
+{
+    const QPointF p(x + m_vueX, y + m_vueY);
+    envoyerSouris(LOK_MOUSEEVENT_MOUSEBUTTONDOWN, p, 1, 1, 0);
+    envoyerSouris(LOK_MOUSEEVENT_MOUSEBUTTONUP, p, 1, 1, 0);
+}
+
 void DocumentLO::souris(int type, QMouseEvent *e, int nombre)
 {
     int boutons = 0;

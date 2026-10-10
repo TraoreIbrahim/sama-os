@@ -5,8 +5,10 @@ classeur est ouvert caché, en lecture seule, sans ses macros ni ses liens (il n
 
   lire-classeur.py liste FICHIER        JSON : [{nom, lignes, colonnes: [...], feuille?}] (ses tableaux ; sans tableau,
                                         ses feuilles)
-  lire-classeur.py lire FICHIER NOM     JSON : {lignes: [[texte…]…], nombres: ["0101"…], totaux} — les cases telles
-                                        qu'on les voit (« 25 000 F »), lignes masquées par un filtre en moins
+  lire-classeur.py lire FICHIER NOM     JSON : {lignes: [[texte…]…], nombres: ["0101"…], brut: [[valeur…]…], totaux,
+                                        titre} — les cases telles qu'on les voit (« 25 000 F ») et leurs valeurs (25000),
+                                        lignes vides et masquées par un filtre en moins ; titre : le texte au-dessus du
+                                        tableau dans la feuille (« Membres de la coopérative »)
 En cas d'échec : {"erreur": "…"}.
 """
 import json
@@ -115,11 +117,13 @@ def lire(doc, nom):
         raise ValueError("Le tableau « %s » n'est plus dans ce classeur" % nom)
     if c2 - c1 + 1 > MAX_COLONNES or l2 - l1 + 1 > MAX_LIGNES:
         raise ValueError("Ce tableau est trop grand pour une page (%d lignes, %d colonnes)" % (l2 - l1 + 1, c2 - c1 + 1))
-    lignes, nombres = [], []
+    lignes, nombres, brut = [], [], []
     sans = vides(f, c1, l1 + 1, c2, l2)
+    valeurs = f.getCellRangeByPosition(c1, l1, c2, l2).getDataArray()
     for l in range(l1, l2 + 1):
         if l in sans or not f.Rows.getByIndex(l).IsVisible:
             continue
+        brut.append(list(valeurs[l - l1]))
         textes, n = [], ""
         for c in range(c1, c2 + 1):
             case = f.getCellByPosition(c, l)
@@ -128,7 +132,13 @@ def lire(doc, nom):
             n += "1" if genre == "VALUE" or (genre == "FORMULA" and case.FormulaResultType2 == 1) else "0"
         lignes.append(textes)
         nombres.append(n)
-    return {"lignes": lignes, "nombres": nombres, "totaux": totaux}
+    # (le titre : la première case remplie au-dessus du tableau, dans ses trois lignes d'avant)
+    titre = ""
+    for l in range(l1 - 1, max(-1, l1 - 4), -1):
+        t = f.getCellByPosition(c1, l).String.strip()
+        if t:
+            titre = t
+    return {"lignes": lignes, "nombres": nombres, "brut": brut, "totaux": totaux, "titre": titre}
 
 
 def main(args):

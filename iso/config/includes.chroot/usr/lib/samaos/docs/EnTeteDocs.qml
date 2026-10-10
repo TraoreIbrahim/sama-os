@@ -95,6 +95,7 @@ Rectangle {
                 ElementMenu { cle: "enregistrer" }
                 ElementMenu { cle: "enregistrerSous" }
                 ElementMenu { cle: "pdf" }
+                ElementMenu { cle: "envoiListe" }
                 TitreMenu { text: ""; implicitHeight: 9 }
                 ElementMenu { cle: "fermer" }
             }
@@ -280,6 +281,31 @@ Rectangle {
             encre: fenetre.accentEncre
             background: Rectangle { radius: 8; color: parent.hovered ? Qt.rgba(47 / 255, 107 / 255, 87 / 255, 0.2) : fenetre.accentFond }
             onClicked: fenetre.enregistrer()
+        }
+        // Envoyer : à toute une liste, ou en PDF
+        QQC2.AbstractButton {
+            id: boutonEnvoyer
+            implicitHeight: 32
+            implicitWidth: rangeeEnvoyer.implicitWidth + 28
+            hoverEnabled: true
+            focusPolicy: Qt.NoFocus
+            onClicked: menuEnvoyer.popup(boutonEnvoyer, 0, boutonEnvoyer.height + 4)
+            background: Rectangle { radius: 9; color: boutonEnvoyer.hovered ? Qt.darker(fenetre.accent, 1.1) : fenetre.accent }
+            contentItem: Item {
+                Row {
+                    id: rangeeEnvoyer
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Picto { anchors.verticalCenter: parent.verticalCenter; width: 15; height: 15; trace: "M21 3L10 14 M21 3l-7 18-4-7-7-4z"; encre: "#FFFFFF"; trait: 1.9 }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Envoyer"; font.pixelSize: 13; font.weight: Font.DemiBold; color: "#FFFFFF" }
+                }
+            }
+            MenuSama {
+                id: menuEnvoyer
+                largeur: 300
+                ElementMenu { cle: "envoiListe" }
+                ElementMenu { cle: "pdf" }
+            }
         }
     }
     function lancer(a) {
