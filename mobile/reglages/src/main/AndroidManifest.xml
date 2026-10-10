@@ -305,6 +305,10 @@
                 <action android:name="africa.samaos.action.PROCHES" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="africa.samaos.action.MODE_SIMPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <!-- Le code QR d'un téléphone Sama (samaos:proche?…) : le reconnaître. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

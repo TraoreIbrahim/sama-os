@@ -469,7 +469,7 @@ fun IconeAppli(appli: Appli, onClick: () -> Unit, modifier: Modifier = Modifier,
         ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Image(appli.icone, contentDescription = null, modifier = Modifier.size(60.dp).onGloballyPositioned { bornes = it.boundsInRoot() })
+        Image(appli.icone, contentDescription = null, modifier = Modifier.size(60.dp).ombre(appli).onGloballyPositioned { bornes = it.boundsInRoot() })
         Spacer(Modifier.height(6.dp))
         BasicText(
             text = appli.nom,
@@ -518,7 +518,8 @@ private fun Natte(applis: List<Appli>, ouvrirCour: () -> Unit, lancer: (Appli) -
                 contentDescription = a.nom,
                 modifier = Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(17.dp))
+                    .ombre(a)
+                    .clip(RoundedCornerShape(24))
                     .clickable(onClickLabel = "Ouvrir ${a.nom}", role = Role.Button) { lancer(a) },
             )
         }

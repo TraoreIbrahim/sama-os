@@ -113,7 +113,21 @@ class MainActivity : ComponentActivity() {
                 pouls.fermerTout()
             }
 
+            val simple = rememberModeSimple()
             AvecBanco(banco, LocalNuit provides estNuit) {
+                if (simple.actif) {
+                    AccueilSimple(
+                        tuiles = simple.tuiles,
+                        espaces = espaces,
+                        applis = applis,
+                        cour = cour,
+                        pouls = pouls,
+                        nuit = reglageNuit(estNuit, auto, ::choisirNuit),
+                        generation = generation,
+                        lancer = { lancer(this, it) },
+                    )
+                    return@AvecBanco
+                }
                 Accueil(
                     espaces = espaces,
                     applis = applis,
@@ -122,24 +136,27 @@ class MainActivity : ComponentActivity() {
                     pouls = pouls,
                     retourAccueil = retourAccueil,
                     demandeEspaces = demandeEspaces,
-                    nuit = if (espaces.profils) {
-                        ReglageNuit(estNuit, ModeNuit.AUTO) { Profils.basculerNuit(this, !estNuit) }
-                    } else {
-                        // Toucher la tuile inverse ce qu'on voit ; si cela revient à l'automatique, on lui rend la main.
-                        ReglageNuit(estNuit, modeNuit) {
-                            val voulu = !estNuit
-                            choisirNuit(
-                                when {
-                                    voulu == auto -> ModeNuit.AUTO
-                                    voulu -> ModeNuit.NUIT
-                                    else -> ModeNuit.JOUR
-                                },
-                            )
-                        }
-                    },
+                    nuit = reglageNuit(estNuit, auto, ::choisirNuit),
                     lancer = { lancer(this, it) },
                 )
             }
+        }
+    }
+
+    /** La tuile Nuit du Pouls. */
+    private fun reglageNuit(estNuit: Boolean, auto: Boolean, choisirNuit: (ModeNuit) -> Unit) = if (espaces.profils) {
+        ReglageNuit(estNuit, ModeNuit.AUTO) { Profils.basculerNuit(this, !estNuit) }
+    } else {
+        // Toucher la tuile inverse ce qu'on voit ; si cela revient à l'automatique, on lui rend la main.
+        ReglageNuit(estNuit, modeNuit) {
+            val voulu = !estNuit
+            choisirNuit(
+                when {
+                    voulu == auto -> ModeNuit.AUTO
+                    voulu -> ModeNuit.NUIT
+                    else -> ModeNuit.JOUR
+                },
+            )
         }
     }
 

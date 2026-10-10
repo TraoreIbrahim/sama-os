@@ -115,6 +115,8 @@ sealed class Page(val android: String? = null) {
     data object Accessibilite : Page(Settings.ACTION_ACCESSIBILITY_SETTINGS)
     data object Couleurs : Page(Settings.ACTION_ACCESSIBILITY_SETTINGS)
     data object Loupe : Page(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+    data object ModeSimple : Page(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+    data class TuileSimple(val place: Int) : Page(Settings.ACTION_ACCESSIBILITY_SETTINGS)
 
     // Urgence (lot 4)
     data object Urgence : Page(Settings.ACTION_SETTINGS)
@@ -146,7 +148,7 @@ sealed class Page(val android: String? = null) {
     val faite: Boolean
         get() = this in FAITES || this is WifiDetail || this is WifiConnexion || this is SimReglages || this is AppareilBluetooth ||
             this is AppliInfos || this is AppliAutorisations || this is AccesSpecial || this is NotifsAppli || this is AutorisationGroupe || this is MinuteurAppli ||
-            this is DelaiInstallation || this is Reconnaitre || this is ConfirmerProche
+            this is DelaiInstallation || this is Reconnaitre || this is ConfirmerProche || this is TuileSimple
 
     companion object {
         private val FAITES: Set<Page> by lazy {
@@ -161,7 +163,7 @@ sealed class Page(val android: String? = null) {
                 Securite, Verrouillage, GestionnaireAutorisations, TableauConfidentialite, CameraMicro, PinSim, Chiffrement, Localisation,
                 Systeme, Langues, Clavier, Gestes, DateHeure, MajSysteme, APropos,
                 Comptes, CompteSama, AutresComptes, MotsDePasse, Sauvegarde,
-                TempsEcran, Minuteurs, Concentration, Accessibilite, Couleurs, Loupe, Urgence, FicheMedicale, Reinitialiser, ToutEffacer,
+                TempsEcran, Minuteurs, Concentration, Accessibilite, Couleurs, Loupe, ModeSimple, Urgence, FicheMedicale, Reinitialiser, ToutEffacer,
                 Bouclier, BilanBouclier, Arnaques, StockagePlein, Surchauffe, Soldes, Proches,
             )
         }
@@ -210,6 +212,7 @@ sealed class Page(val android: String? = null) {
                 "africa.samaos.action.SURCHAUFFE" -> Surchauffe
                 "africa.samaos.action.SOLDES" -> Soldes
                 "africa.samaos.action.PROCHES" -> Proches
+                africa.samaos.banco.ModeSimple.ACTION_REGLAGES -> ModeSimple
                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES -> intent.data?.schemeSpecificPart?.let { DelaiInstallation(it) } ?: AccesSpecial(Acces.INCONNUES)
                 else -> null
             }
@@ -237,6 +240,7 @@ fun sousEntrees(): List<Entree> = listOf(
     Entree("Concentration", africa.samaos.banco.Icones.NE_PAS_DERANGER, "concentration pause applis travail ecole", Page.Concentration),
     Entree("Couleurs et contraste", africa.samaos.banco.Icones.PALETTE, "couleurs contraste daltonien inverser gris", Page.Couleurs),
     Entree("Loupe", africa.samaos.banco.Icones.RECHERCHE, "loupe agrandir zoom vue", Page.Loupe),
+    Entree("Mode simplifié", africa.samaos.banco.Icones.GRILLE, "mode simplifie simple facile grandes tuiles icones debutant andika", Page.ModeSimple),
     Entree("Réinitialiser", africa.samaos.banco.Icones.CORBEILLE, "reinitialiser effacer remise zero usine reseau", Page.Reinitialiser),
     Entree("Fiche médicale", africa.samaos.banco.Icones.PERSONNE, "fiche medicale sang allergie urgence", Page.FicheMedicale),
 )
@@ -317,6 +321,8 @@ fun Afficher(page: Page, nav: Nav) {
         Page.Accessibilite -> PageAccessibilite(nav)
         Page.Couleurs -> PageCouleurs(nav)
         Page.Loupe -> PageLoupe(nav)
+        Page.ModeSimple -> PageModeSimple(nav)
+        is Page.TuileSimple -> PageTuileSimple(page.place, nav)
         Page.Urgence -> PageUrgence(nav)
         Page.FicheMedicale -> PageFicheMedicale(nav)
         Page.Reinitialiser -> PageReinitialiser(nav)

@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Les droits ordinaires que le système accorde d'office à Sama, sans fenêtre de demande :
      lire les SIM présentes (premier démarrage, tuiles du Pouls),
-     chercher dans les contacts et les SMS depuis la Cour. -->
+     chercher dans les contacts et les SMS depuis la Cour, appeler un proche d'un toucher (mode simplifié). -->
 <exceptions>
     <exception package="africa.samaos.accueil">
         <permission name="android.permission.READ_PHONE_STATE" fixed="false" />
         <permission name="android.permission.READ_CONTACTS" fixed="false" />
+        <permission name="android.permission.CALL_PHONE" fixed="false" />
         <permission name="android.permission.READ_SMS" fixed="false" />
         <permission name="android.permission.POST_NOTIFICATIONS" fixed="false" />
     </exception>

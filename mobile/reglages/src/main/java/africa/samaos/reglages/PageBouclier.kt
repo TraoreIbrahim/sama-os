@@ -302,8 +302,9 @@ fun PageDelaiInstallation(paquet: String, nav: Nav) {
     val nom = remember(paquet) { MoteurApplis.nom(c, paquet) }
     val icone = remember(paquet) { MoteurApplis.icone(c, paquet, 32) }
     val autorisee = remember(v, reprise) { MoteurApplis.op(c, op, paquet) }
+    val simple = remember(reprise) { africa.samaos.banco.ModeSimple.actif(c) }
     val pret = remember(v, reprise) {
-        if (autorisee) {
+        if (autorisee || simple) {
             null
         } else {
             // Une nouvelle demande entre au journal du bouclier : un proche qui veille en est prévenu.
@@ -318,6 +319,18 @@ fun PageDelaiInstallation(paquet: String, nav: Nav) {
         nav.retour()
     }
     when {
+        // En mode simplifié, rien ne s'installe hors de Sugu : pas même une demande, qui lancerait le délai.
+        !autorisee && simple -> PageReglages(titre = "Seulement depuis Sugu", sousTitre = "En mode simplifié, les applis s'installent depuis Sugu", retour = nav.retour) {
+            section(cle = "simple") {
+                Ligne("Ouvrir Sugu", icone = Icones.TELECHARGE) {
+                    c.packageManager.getLaunchIntentForPackage("africa.samaos.sugu")?.let { nav.android(it) }
+                }
+                Explication(
+                    "Sugu vérifie chaque appli avant de l'installer. Si quelqu'un vous demande d'installer une appli reçue par message " +
+                        "ou de quitter le mode simplifié pour le faire, c'est une arnaque : n'allez pas plus loin.",
+                )
+            }
+        }
         autorisee -> PageReglages(titre = "Autorisée", sousTitre = "$nom peut installer des applis qui ne viennent pas de Sugu", retour = nav.retour) {
             section(cle = "acces") {
                 Ligne("Autoriser $nom à installer des applis", image = icone, fin = Fin.Inter(true)) {

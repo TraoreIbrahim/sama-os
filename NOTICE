@@ -19,6 +19,10 @@ Fichiers dérivés de KDE Plasma et Breeze (licence d'origine indiquée en tête
 Autres éléments :
 - Police Noto Sans (mobile/banco/src/main/res/font/noto_sans.ttf) : SIL Open Font License 1.1,
   texte dans mobile/licences/OFL-NotoSans.txt.
+- Police Andika de SIL International (mobile/banco/src/main/res/font/andika_regulier.ttf et andika_gras.ttf,
+  pour le mode simplifié) : SIL Open Font License 1.1, texte dans mobile/licences/OFL-Andika.txt.
+- Les prévisions de l'appli Météo (mobile/meteo) viennent d'Open-Meteo (open-meteo.com) : données sous licence
+  CC BY 4.0, citées dans l'appli. Rien de leur code n'est repris.
 - Fonds d'écran Sama Aube et Sama Nuit (iso/config/includes.chroot/usr/share/wallpapers/) : CC BY-SA 4.0.
 - Gradle Wrapper (mobile/gradlew, mobile/gradlew.bat, mobile/gradle/wrapper/) : Apache 2.0, Gradle.
 - L'appli Mail embarque Jakarta Mail pour Android (com.sun.mail:android-mail et android-activation 1.6.7),

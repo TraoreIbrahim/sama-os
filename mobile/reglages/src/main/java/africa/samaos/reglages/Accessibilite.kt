@@ -95,6 +95,13 @@ fun PageAccessibilite(nav: Nav) {
     val c = LocalContext.current
     var v by remember { mutableIntStateOf(0) }
     PageReglages(titre = "Accessibilité", sousTitre = remember(v) { MoteurAccessibilite.resume(c) }, retour = nav.retour) {
+        section(cle = "simple") {
+            Ligne(
+                "Mode simplifié",
+                detail = if (remember(v, LocalReprise.current) { africa.samaos.banco.ModeSimple.actif(c) }) "Activé · trois proches et six grandes tuiles" else "Andika, gros boutons, moins de choix",
+                icone = Icones.GRILLE,
+            ) { nav.aller(Page.ModeSimple) }
+        }
         section("Voir", cle = "voir") {
             Ligne("Taille du texte et de l'affichage", icone = Icones.TEXTE) { nav.aller(Page.TailleTexte) }
             Ligne("Couleurs et contraste", detail = remember(v) {

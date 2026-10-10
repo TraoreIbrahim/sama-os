@@ -12,4 +12,8 @@
          celui des dialogues d'Android ; les fonds de dialogue d'Android (drawable/) gardent 28dp, comme ceux de Sama.
          Ne pas passer par le thème Theme.DeviceDefault : le remplacer en surcouche casse le mode nuit de SystemUI. -->
     <dimen name="config_dialogCornerRadius">45dp</dimen>
+
+    <!-- La forme des icônes de toutes les applis : un carré aux coins doux (environ 24 %), comme les icônes de Sama
+         (outils/icones.py). Android découpe par défaut des coins de 8 %. -->
+    <string name="config_icon_mask" translatable="false">M50,0 L76,0 C91,0 100,9 100,24 L100,76 C100,91 91,100 76,100 L24,100 C9,100 0,91 0,76 L0,24 C0,9 9,0 24,0 Z</string>
 </resources>

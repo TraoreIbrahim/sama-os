@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le dessin de l'icône (appareil). Fabriqué par mobile/outils/icones.py : retoucher là-bas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="0.6667" android:scaleY="0.6667" android:translateX="18" android:translateY="18">
+        <path android:pathData="M34,36 h40 a10,10 0 0 1 10,10 v22 a10,10 0 0 1 -10,10 h-40 a10,10 0 0 1 -10,-10 v-22 a10,10 0 0 1 10,-10 z" android:fillColor="#EFE6D6" />
+        <path android:pathData="M42,37 l4,-8 h16 l4,8 z" android:fillColor="#EFE6D6" />
+        <path android:pathData="M39,57 a15,15 0 1 0 30,0 a15,15 0 1 0 -30,0 z" android:fillColor="#2A2724" />
+        <path android:pathData="M43,57 a11,11 0 1 0 22,0 a11,11 0 1 0 -22,0 z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="49.8" android:centerY="53.7" android:gradientRadius="17.6">
+                    <item android:offset="0" android:color="#6E8FB0" />
+                    <item android:offset="0.6" android:color="#22374C" />
+                    <item android:offset="1" android:color="#0E1822" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M47,53 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0 z" android:fillColor="#FFFFFF" android:fillAlpha="0.8" />
+        <path android:pathData="M71.5,44 a2.5,2.5 0 1 0 5.0,0 a2.5,2.5 0 1 0 -5.0,0 z" android:fillColor="#D9542F" />
+    </group>
+</vector>

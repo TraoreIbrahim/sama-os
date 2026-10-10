@@ -34,7 +34,7 @@ redemarrer() {
 
 echo "• Construction de l'Accueil et de l'animation"
 python3 "$MOBILE/outils/droits-reglages.py" >/dev/null
-(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease :sugu:assembleRelease :mail:assembleRelease :clavier:assembleRelease)
+(cd "$MOBILE" && ./gradlew -q :accueil:assembleRelease :reglages:assembleRelease :telephone:assembleRelease :contacts:assembleRelease :messages:assembleRelease :horloge:assembleRelease :calculatrice:assembleRelease :notes:assembleRelease :agenda:assembleRelease :fichiers:assembleRelease :photos:assembleRelease :dictaphone:assembleRelease :lecteur:assembleRelease :griot:assembleRelease :appareil:assembleRelease :sugu:assembleRelease :mail:assembleRelease :clavier:assembleRelease :meteo:assembleRelease)
 [ -f "$ANIM" ] || python3 "$MOBILE/systeme/animation/fabriquer.py"
 "$MOBILE/systeme/surcouche-android/fabriquer.sh" >/dev/null
 "$MOBILE/systeme/surcouche-systemui/fabriquer.sh" >/dev/null
@@ -113,11 +113,13 @@ for droit in READ_PHONE_STATE ACCESS_FINE_LOCATION BLUETOOTH_CONNECT BLUETOOTH_S
 done
 # Sugu : la notification « Ouvert à vos proches » et les applis que les proches envoient.
 $ADB shell pm grant africa.samaos.sugu android.permission.POST_NOTIFICATIONS
+# Le mode simplifié de l'Accueil : un toucher sur un proche l'appelle.
+$ADB shell pm grant africa.samaos.accueil android.permission.CALL_PHONE
 
 echo "• Applis de Sama : Téléphone, Contacts, Messages, Horloge, Calculatrice, Notes"
 # Signées avec la clé de la plateforme, installées comme des applis ordinaires ; Android leur confie
 # ensuite les appels (rôle DIALER) et les SMS (rôle SMS).
-for appli in telephone contacts messages horloge calculatrice notes agenda fichiers photos dictaphone lecteur griot mail clavier; do
+for appli in telephone contacts messages horloge calculatrice notes agenda fichiers photos dictaphone lecteur griot mail clavier meteo; do
     $ADB install -r "$MOBILE/$appli/build/outputs/apk/release/$appli-release.apk" >/dev/null
 done
 for droit in CALL_PHONE READ_CALL_LOG WRITE_CALL_LOG READ_CONTACTS READ_PHONE_STATE READ_PHONE_NUMBERS POST_NOTIFICATIONS; do
@@ -145,7 +147,7 @@ $ADB shell cmd role add-role-holder android.app.role.SMS africa.samaos.messages 
 $ADB shell cmd role add-role-holder android.app.role.BROWSER africa.samaos.griot 0
 $ADB shell pm grant africa.samaos.horloge android.permission.POST_NOTIFICATIONS
 $ADB shell pm grant africa.samaos.notes android.permission.POST_NOTIFICATIONS
-for droit in READ_CALENDAR WRITE_CALENDAR POST_NOTIFICATIONS; do
+for droit in READ_CALENDAR WRITE_CALENDAR POST_NOTIFICATIONS READ_CONTACTS; do
     $ADB shell pm grant africa.samaos.agenda android.permission.$droit
 done
 # Fichiers voit tout le stockage partagé (« accès à tous les fichiers »). Les Fichiers d'Android restent :

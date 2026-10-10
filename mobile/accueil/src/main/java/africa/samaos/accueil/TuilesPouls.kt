@@ -493,10 +493,10 @@ private fun TuileAAjouter(id: TuileId, mod: Modifier, ajouter: () -> Unit) {
 }
 
 /** La lampe torche : une appli peut l'allumer sans demander l'accès à l'appareil photo. */
-private class EtatLampe(val allumee: Boolean?, val basculer: () -> Unit)
+internal class EtatLampe(val allumee: Boolean?, val basculer: () -> Unit)
 
 @Composable
-private fun rememberLampe(): EtatLampe {
+internal fun rememberLampe(): EtatLampe {
     val contexte = LocalContext.current
     val cm = remember { contexte.getSystemService(CameraManager::class.java) }
     var id by remember { mutableStateOf<String?>(null) }

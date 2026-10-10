@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le fond de l'icône (photos). Fabriqué par mobile/outils/icones.py : retoucher là-bas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="0.6667" android:scaleY="0.6667" android:translateX="18" android:translateY="18">
+        <path android:pathData="M-27,-27 h162 v162 h-162 z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="54" android:startY="0" android:endX="54" android:endY="108" android:startColor="#FFE9D2" android:endColor="#F7C8A0" />
+            </aapt:attr>
+        </path>
+        <path android:pathData="M-27,74 C0,62 30,60 54,66 S100,72 135,58 V135 H-27 z" android:fillColor="#E2774A" />
+        <path android:pathData="M-27,90 C5,80 35,78 60,84 S105,88 135,80 V135 H-27 z" android:fillColor="#A8442A" />
+    </group>
+</vector>

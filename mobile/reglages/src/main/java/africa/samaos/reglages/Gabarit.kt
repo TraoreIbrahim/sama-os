@@ -46,6 +46,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import africa.samaos.banco.Astre
@@ -305,5 +308,81 @@ fun Puce(texte: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(texte, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = b.encre))
+    }
+}
+
+/** Les teintes des petites icônes des Réglages (comme les icônes des applis : un dégradé, un dessin blanc). */
+enum class Teinte(val haut: Color, val bas: Color) {
+    BLEU(Color(0xFF5B9BF0), Color(0xFF2F6FD0)),
+    OR(Color(0xFFF2C04E), Color(0xFFD9921E)),
+    LAGUNE(Color(0xFF3FB6A8), Color(0xFF1E8679)),
+    LATERITE(Color(0xFFE9805A), Color(0xFFC24A2A)),
+    VERT(Color(0xFF5FBF86), Color(0xFF2E8A5C)),
+    GRIS(Color(0xFFA9A29A), Color(0xFF78716A)),
+    ROUGE(Color(0xFFE5534B), Color(0xFFB42F2A)),
+    ROSE(Color(0xFFE86C9C), Color(0xFFC2477A)),
+    CYAN(Color(0xFF3FB6C8), Color(0xFF1E8699)),
+    VIOLET(Color(0xFF8C7BE8), Color(0xFF5D4CC0)),
+    MAUVE(Color(0xFFA779D9), Color(0xFF7A4CB0)),
+    ORANGE(Color(0xFFF09A4A), Color(0xFFD06F1E)),
+}
+
+/** Le fond d'un groupe de réglages : blanc le jour, un bleu de nuit plus clair que le sol la nuit. */
+val couleurGroupe: Color
+    @Composable get() = if (LocalBanco.current.sombre) Color(0xFF282D42) else Color(0xFFFFFFFF)
+
+/**
+ * Un groupe de réglages, comme chez Apple : une petite rubrique, puis les lignes dans un bloc aux coins doux,
+ * séparées par un filet qui commence après l'icône.
+ */
+fun LazyListScope.groupe(titre: String? = null, cle: Any, contenu: @Composable ColumnScope.() -> Unit) {
+    item(key = cle) {
+        val b = LocalBanco.current
+        Column(Modifier.fillMaxWidth().background(b.sol).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 14.dp)) {
+            if (titre != null) {
+                BasicText(
+                    titre,
+                    modifier = Modifier.padding(start = 14.dp, bottom = 7.dp),
+                    style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = b.encre2),
+                )
+            }
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(couleurGroupe), content = contenu)
+        }
+    }
+}
+
+/** La petite icône d'un réglage : un carré aux coins doux, en dégradé, avec son dessin blanc. */
+@Composable
+fun TuileReglage(icone: String, teinte: Teinte, taille: Dp = 30.dp) {
+    Box(
+        Modifier.size(taille).clip(RoundedCornerShape(taille * 0.27f)).background(Brush.verticalGradient(listOf(teinte.haut, teinte.bas))),
+        contentAlignment = Alignment.Center,
+    ) { IconeTrait(icone, taille * 0.63f, Color.White, epaisseur = 2f) }
+}
+
+/**
+ * Une ligne de groupe : l'icône en couleur, le titre, un résumé à droite, la flèche. [filet] : sauf la première.
+ * [debut] remplace la petite icône (l'avatar du Compte Sama) ; [second] : une seconde ligne sous le titre.
+ */
+@Composable
+fun LigneGroupe(titre: String, icone: String, teinte: Teinte, detail: String? = null, filet: Boolean = true, onClick: () -> Unit) {
+    val b = LocalBanco.current
+    Box(Modifier.fillMaxWidth().clickable(onClickLabel = titre, role = Role.Button, onClick = onClick)) {
+        if (filet) Box(Modifier.padding(start = 58.dp).fillMaxWidth().height(1.dp).background(b.trait))
+        Row(Modifier.fillMaxWidth().heightIn(min = 54.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            TuileReglage(icone, teinte)
+            // Le titre d'abord, entier ; le résumé prend la place qui reste, aligné à droite.
+            BasicText(
+                titre, maxLines = 1,
+                modifier = Modifier.padding(start = 14.dp, end = 10.dp),
+                style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = b.encre),
+            )
+            BasicText(
+                detail.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(end = 6.dp),
+                style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = b.encre2, textAlign = TextAlign.End),
+            )
+            IconeTrait(Icones.CHEVRON, 16.dp, b.encre2)
+        }
     }
 }

@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.layout.offset
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -27,12 +31,15 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -197,6 +204,16 @@ object Identites {
         trait = Color(0x24FFFFFF), accent = Color(0xFFE6DAC2), surAccent = Color(0xFF1F1C18), voile = Color(0x2EE6DAC2), sombre = true,
     )
 
+    /** La Météo (maquette l2-meteo) : le ciel de l'après-midi, terre cuite. */
+    val Meteo = Identite(
+        fond = Color(0xFFF6E3CF), surface = Color(0x8CFFFFFF), champ = Color(0x123A1D0F), encre = Color(0xFF3A1D0F), encre2 = Color(0xFF7A5340),
+        trait = Color(0x1F3A1D0F), accent = Color(0xFF93401F), voile = Color(0x1A93401F),
+    )
+    val MeteoNuit = Identite(
+        fond = Color(0xFF1B2033), surface = Color(0x1FFFFFFF), champ = Color(0x1FFFFFFF), encre = Color(0xFFF3EBDF), encre2 = Color(0xFFB9AE9E),
+        trait = Color(0x24FFFFFF), accent = Color(0xFFF2C879), surAccent = Color(0xFF2A1A12), voile = Color(0x29F2C879), sombre = true,
+    )
+
     /** L'appel en cours : un fond sombre, la latérite pour raccrocher. */
     val Appel = Identite(
         fond = Color(0xFF14211C), surface = Color(0xFF1E2E28), champ = Color(0x24FFFFFF), encre = Color(0xFFF1F4F2), encre2 = Color(0xFFA9B8B1),
@@ -286,6 +303,20 @@ fun ChampAppli(valeur: String, indication: String, changer: (String) -> Unit, mo
             },
         )
     }
+}
+
+/** Un bloc aux coins doux, pour regrouper des lignes (comme les groupes d'Apple) : la surface de l'appli, un filet fin. */
+@Composable
+fun BlocAppli(modifier: Modifier = Modifier, contenu: @Composable ColumnScope.() -> Unit) {
+    val a = LocalIdentite.current
+    val forme = RoundedCornerShape(20.dp)
+    Column(modifier.fillMaxWidth().clip(forme).background(a.surface).border(1.dp, a.trait, forme), content = contenu)
+}
+
+/** Le filet entre deux lignes d'un bloc ; il commence après l'icône ou l'avatar ([debut]). */
+@Composable
+fun FiletBloc(debut: Dp = 16.dp) {
+    Box(Modifier.padding(start = debut).fillMaxWidth().height(1.dp).background(LocalIdentite.current.trait))
 }
 
 /** Une rubrique : un petit titre en encre douce. */
@@ -405,6 +436,64 @@ fun NavAppli(pages: List<Pair<String, String>>, courante: Int, choisir: (Int) ->
     }
 }
 
+/** Combien de feuilles et de dialogues sont ouverts : la barre flottante s'efface tant qu'il y en a. */
+object BarreFlottante {
+    var cachee by androidx.compose.runtime.mutableIntStateOf(0)
+}
+
+/** Une feuille ou un dialogue s'affiche : la barre flottante ne passe pas par-dessus. */
+@Composable
+fun CacherBarreFlottante() {
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        BarreFlottante.cachee++
+        onDispose { BarreFlottante.cachee-- }
+    }
+}
+
+/** Les onglets d'une appli en barre flottante (Téléphone, Agenda) : l'onglet courant voilé de l'accent. */
+@Composable
+fun NavFlottante(pages: List<Pair<String, String>>, courante: Int, choisir: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val a = LocalIdentite.current
+    // Elle glisse vers le bas quand une feuille s'ouvre, et remonte quand elle se referme.
+    androidx.compose.animation.AnimatedVisibility(
+        BarreFlottante.cachee == 0,
+        modifier = modifier,
+        enter = androidx.compose.animation.slideInVertically(androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 500f)) { it } + androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.slideOutVertically(androidx.compose.animation.core.tween(180)) { it } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)),
+    ) {
+        Row(
+            Modifier
+                .navigationBarsPadding()
+                .padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
+                .fillMaxWidth()
+                .height(64.dp)
+                .clip(RoundedCornerShape(32.dp))
+                .background(if (a.sombre) a.surface else a.fond)
+                .border(1.dp, a.trait, RoundedCornerShape(32.dp)),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            pages.forEachIndexed { i, (nom, icone) ->
+                val ici = i == courante
+                Column(
+                    Modifier.width(if (pages.size > 4) 70.dp else 78.dp).clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = nom, role = Role.Tab) { choisir(i) }.semantics { selected = ici }.padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    val pastille by androidx.compose.animation.animateColorAsState(if (ici) a.voile else a.voile.copy(alpha = 0f), label = "pastille")
+                    val trait by androidx.compose.animation.animateColorAsState(if (ici) a.accentTexte else a.encre2, label = "icone")
+                    val large by androidx.compose.animation.core.animateDpAsState(if (ici) 52.dp else 34.dp, androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 600f), label = "large")
+                    Box(Modifier.size(52.dp, 28.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(large.coerceAtLeast(0.dp), 28.dp).clip(RoundedCornerShape(14.dp)).background(pastille))
+                        IconeTrait(icone, 21.dp, trait)
+                    }
+                    BasicText(nom, maxLines = 1, softWrap = false, style = TextStyle(fontFamily = Polices.corps, fontWeight = if (ici) FontWeight.Bold else FontWeight.Medium, fontSize = if (pages.size > 4) 11.sp else 11.5.sp, letterSpacing = if (pages.size > 4) (-0.1).sp else 0.sp, color = if (ici) a.encre else a.encre2))
+                }
+            }
+        }
+    }
+}
+
 /** Le gros bouton flottant d'une appli (« Nouveau message », « Ajouter »). */
 @Composable
 fun BoxScope.Fab(texte: String?, icone: String, onClick: () -> Unit) {
@@ -431,11 +520,13 @@ fun BoxScope.Fab(texte: String?, icone: String, onClick: () -> Unit) {
 @Composable
 fun PuceFiltre(texte: String, choisie: Boolean, debut: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     val a = LocalIdentite.current
+    val fond by androidx.compose.animation.animateColorAsState(if (choisie) a.voile else a.voile.copy(alpha = 0f), label = "puce")
+    val bord by androidx.compose.animation.animateColorAsState(if (choisie) a.trait.copy(alpha = 0f) else a.trait, label = "bord")
     Row(
         Modifier
             .height(36.dp)
             .clip(RoundedCornerShape(18.dp))
-            .then(if (choisie) Modifier.background(a.voile) else Modifier.border(1.dp, a.trait, RoundedCornerShape(18.dp)))
+            .background(fond).border(1.dp, bord, RoundedCornerShape(18.dp))
             .clickable(onClickLabel = texte, role = Role.RadioButton, onClick = onClick)
             .semantics { selected = choisie }
             .padding(horizontal = 14.dp),
@@ -443,7 +534,8 @@ fun PuceFiltre(texte: String, choisie: Boolean, debut: (@Composable () -> Unit)?
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         debut?.invoke()
-        BasicText(texte, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = if (choisie) a.accentTexte else a.encre))
+        val encre by androidx.compose.animation.animateColorAsState(if (choisie) a.accentTexte else a.encre, label = "encre")
+        BasicText(texte, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = encre))
     }
 }
 
@@ -487,45 +579,99 @@ fun Filet() {
 @Composable
 fun CaseAppli(cochee: Boolean) {
     val a = LocalIdentite.current
+    val fond by androidx.compose.animation.animateColorAsState(if (cochee) a.accent else a.accent.copy(alpha = 0f), label = "case")
+    val echelle by androidx.compose.animation.core.animateFloatAsState(if (cochee) 1f else 0f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 800f), label = "coche")
     Box(
-        Modifier.size(24.dp).clip(RoundedCornerShape(7.dp)).then(if (cochee) Modifier.background(a.accent) else Modifier.border(2.dp, a.encre2, RoundedCornerShape(7.dp))),
+        Modifier.size(24.dp).clip(RoundedCornerShape(7.dp)).background(fond).then(if (cochee) Modifier else Modifier.border(2.dp, a.encre2, RoundedCornerShape(7.dp))),
         contentAlignment = Alignment.Center,
-    ) { if (cochee) IconeTrait("M5 12.5l4.5 4.5L19 7", 18.dp, a.surAccent, epaisseur = 2.25f) }
+    ) { if (echelle > 0.01f) IconeTrait("M5 12.5l4.5 4.5L19 7", 18.dp, a.surAccent, Modifier.scale(echelle), epaisseur = 2.25f) }
 }
 
 /** Un interrupteur d'appli, à l'accent de l'appli. */
 @Composable
 fun InterAppli(allume: Boolean) {
     val a = LocalIdentite.current
-    Box(Modifier.size(52.dp, 32.dp).clip(RoundedCornerShape(50)).background(if (allume) a.accent else Color(0xFF8F8476)).padding(4.dp), contentAlignment = if (allume) Alignment.CenterEnd else Alignment.CenterStart) {
-        Box(Modifier.size(24.dp).background(if (allume) a.surAccent else Color.White, CircleShape))
+    val fond by androidx.compose.animation.animateColorAsState(if (allume) a.accent else Color(0xFF8F8476), label = "inter")
+    val rond by androidx.compose.animation.animateColorAsState(if (allume) a.surAccent else Color.White, label = "rond")
+    val x by androidx.compose.animation.core.animateDpAsState(if (allume) 20.dp else 0.dp, androidx.compose.animation.core.spring(dampingRatio = 0.65f, stiffness = 700f), label = "x")
+    Box(Modifier.size(52.dp, 32.dp).clip(RoundedCornerShape(50)).background(fond).padding(4.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.offset(x = x).size(24.dp).background(rond, CircleShape))
     }
 }
 
-/** Une feuille d'actions posée en bas de l'écran, sur un voile ; toucher le voile la ferme. */
+/**
+ * Fermer la feuille (ou le dialogue) qui contient ce bouton, en la faisant redescendre : à appeler par ses boutons
+ * (Enregistrer, Supprimer…) plutôt que de la retirer d'un coup. Après l'animation, la feuille appelle son `fermer`.
+ */
+val LocalFermerFeuille = staticCompositionLocalOf<() -> Unit> { {} }
+
+/** Les mouvements de Sama : un ressort doux pour ce qui arrive, une sortie brève pour ce qui s'en va. */
+object Mouvement {
+    val arrivee = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.86f, stiffness = 520f)
+    const val SORTIE = 210
+    const val FONDU = 180
+}
+
+/**
+ * Une feuille posée en bas de l'écran, sur un voile. Elle monte d'un ressort, le voile apparaît en fondu ;
+ * toucher le voile, Retour, ou la tirer vers le bas la refont descendre avant de la fermer.
+ */
 @Composable
 fun FeuilleAppli(fermer: () -> Unit, titre: String? = null, contenu: @Composable ColumnScope.() -> Unit) {
     val a = LocalIdentite.current
-    androidx.activity.compose.BackHandler(onBack = fermer)
+    CacherBarreFlottante()
+    val etat = androidx.compose.runtime.remember { androidx.compose.animation.core.MutableTransitionState(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { etat.targetState = true }
+    var fermeture by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val fermerAnime: () -> Unit = {
+        fermeture = true
+        etat.targetState = false
+    }
+    // La feuille est redescendue : on la retire pour de bon.
+    androidx.compose.runtime.LaunchedEffect(fermeture, etat.isIdle, etat.currentState) { if (fermeture && etat.isIdle && !etat.currentState) fermer() }
+    androidx.activity.compose.BackHandler(onBack = fermerAnime)
+    val voile by androidx.compose.animation.core.animateFloatAsState(if (etat.targetState) 1f else 0f, androidx.compose.animation.core.tween(Mouvement.FONDU), label = "voile")
+    var tire by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val portee = androidx.compose.runtime.rememberCoroutineScope()
+    val seuil = with(androidx.compose.ui.platform.LocalDensity.current) { 110.dp.toPx() }
+    // La feuille remonte au-dessus du clavier (en plein écran, la fenêtre ne se redimensionne plus).
     Box(
-        Modifier.fillMaxSize().background(Color(0x66000000))
-            .clickable(interactionSource = null, indication = null, onClickLabel = "Fermer", onClick = fermer),
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f * voile))
+            .clickable(interactionSource = null, indication = null, onClickLabel = "Fermer", onClick = fermerAnime)
+            .imePadding(),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(a.fond)
-                .clickable(interactionSource = null, indication = null) {}
-                .navigationBarsPadding().padding(top = 10.dp, bottom = 12.dp),
+        androidx.compose.animation.AnimatedVisibility(
+            etat,
+            enter = androidx.compose.animation.slideInVertically(Mouvement.arrivee) { it },
+            exit = androidx.compose.animation.slideOutVertically(androidx.compose.animation.core.tween(Mouvement.SORTIE, easing = androidx.compose.animation.core.FastOutLinearInEasing)) { it },
         ) {
-            Box(Modifier.align(Alignment.CenterHorizontally).size(36.dp, 4.dp).clip(CircleShape).background(a.trait))
-            if (titre != null) {
-                BasicText(
-                    titre, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
-                    style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = a.encre),
-                )
+            Column(
+                Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset(0, tire.toInt()) }
+                    .fillMaxWidth().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(a.fond)
+                    .clickable(interactionSource = null, indication = null) {}
+                    // Tirée vers le bas au-delà du seuil (ou lancée), elle se ferme ; sinon elle revient.
+                    .draggable(
+                        androidx.compose.foundation.gestures.rememberDraggableState { d -> tire = (tire + d).coerceAtLeast(0f) },
+                        androidx.compose.foundation.gestures.Orientation.Vertical,
+                        onDragStopped = { v ->
+                            if (tire > seuil || v > 1800f) fermerAnime()
+                            else portee.launch { androidx.compose.animation.core.animate(tire, 0f, animationSpec = androidx.compose.animation.core.spring(stiffness = 600f)) { x, _ -> tire = x } }
+                        },
+                    )
+                    .navigationBarsPadding().padding(top = 10.dp, bottom = 12.dp),
+            ) {
+                Box(Modifier.align(Alignment.CenterHorizontally).size(36.dp, 4.dp).clip(CircleShape).background(a.trait))
+                if (titre != null) {
+                    BasicText(
+                        titre, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
+                        style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = a.encre),
+                    )
+                }
+                CompositionLocalProvider(LocalFermerFeuille provides fermerAnime) { contenu() }
             }
-            contenu()
         }
     }
 }
@@ -548,29 +694,47 @@ fun ActionFeuille(icone: String, texte: String, danger: Boolean = false, second:
     }
 }
 
-/** Une question avant d'agir : un titre, une explication, puis les boutons (le dernier est l'action). */
+/** Une question avant d'agir : un titre, une explication, puis les boutons (le dernier est l'action). Elle s'ouvre en grandissant un peu. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun DialogueAppli(titre: String, texte: String?, fermer: () -> Unit, contenu: @Composable ColumnScope.() -> Unit = {}, boutons: @Composable RowScope.() -> Unit) {
     val a = LocalIdentite.current
-    androidx.activity.compose.BackHandler(onBack = fermer)
+    CacherBarreFlottante()
+    val etat = androidx.compose.runtime.remember { androidx.compose.animation.core.MutableTransitionState(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { etat.targetState = true }
+    var fermeture by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val fermerAnime: () -> Unit = {
+        fermeture = true
+        etat.targetState = false
+    }
+    androidx.compose.runtime.LaunchedEffect(fermeture, etat.isIdle, etat.currentState) { if (fermeture && etat.isIdle && !etat.currentState) fermer() }
+    androidx.activity.compose.BackHandler(onBack = fermerAnime)
+    val voile by androidx.compose.animation.core.animateFloatAsState(if (etat.targetState) 1f else 0f, androidx.compose.animation.core.tween(Mouvement.FONDU), label = "voile")
     Box(
-        Modifier.fillMaxSize().background(Color(0x66000000)).clickable(interactionSource = null, indication = null, onClickLabel = "Fermer", onClick = fermer).padding(24.dp),
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f * voile)).clickable(interactionSource = null, indication = null, onClickLabel = "Fermer", onClick = fermerAnime).imePadding().padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(a.fond).clickable(interactionSource = null, indication = null) {}.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        androidx.compose.animation.AnimatedVisibility(
+            etat,
+            enter = androidx.compose.animation.scaleIn(androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 700f), initialScale = 0.9f) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(140)),
+            exit = androidx.compose.animation.scaleOut(androidx.compose.animation.core.tween(Mouvement.SORTIE - 60), targetScale = 0.94f) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(Mouvement.SORTIE - 60)),
         ) {
-            BasicText(titre, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp, color = a.encre))
-            if (texte != null) BasicText(texte, style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 21.sp, color = a.encre2))
-            contenu()
-            // Les boutons passent à la ligne plutôt que de s'écraser.
-            androidx.compose.foundation.layout.FlowRow(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) { boutons() }
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(a.fond).clickable(interactionSource = null, indication = null) {}.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                BasicText(titre, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp, color = a.encre))
+                if (texte != null) BasicText(texte, style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 21.sp, color = a.encre2))
+                CompositionLocalProvider(LocalFermerFeuille provides fermerAnime) {
+                    contenu()
+                    // Les boutons passent à la ligne plutôt que de s'écraser.
+                    androidx.compose.foundation.layout.FlowRow(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) { boutons() }
+                }
+            }
         }
     }
 }

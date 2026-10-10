@@ -185,5 +185,13 @@ object Polices {
 
     val horloge = FontFamily(noto(200, 62.5f))
     val monument = FontFamily(noto(600, 87.5f))
+    /** Très fine, de largeur normale : les grands chiffres (la température de la Météo). */
+    val fine = FontFamily(noto(200, 100f))
     val corps = FontFamily(noto(300, 100f), noto(400, 100f), noto(500, 100f), noto(600, 100f))
+
+    /** Andika (SIL), faite pour qui apprend à lire : le mode simplifié. */
+    val andika = FontFamily(
+        androidx.compose.ui.text.font.Font(R.font.andika_regulier, FontWeight.Normal),
+        androidx.compose.ui.text.font.Font(R.font.andika_gras, FontWeight.Bold),
+    )
 }

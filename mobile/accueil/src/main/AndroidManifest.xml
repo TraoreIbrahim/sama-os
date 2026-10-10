@@ -77,6 +77,8 @@
     <!-- La recherche de la Cour trouve aussi les contacts, les SMS et les fichiers (par leur nom) ;
          « Désinstaller » dans le menu d'une appli. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Le mode simplifié : un toucher sur un proche l'appelle. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le dessin de l'icône (clavier). Fabriqué par mobile/outils/icones.py : retoucher là-bas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="0.6667" android:scaleY="0.6667" android:translateX="18" android:translateY="18">
+        <path android:pathData="M31,34 h46 a9,9 0 0 1 9,9 v24 a9,9 0 0 1 -9,9 h-46 a9,9 0 0 1 -9,-9 v-24 a9,9 0 0 1 9,-9 z" android:fillColor="#FFFFFF" />
+        <path android:pathData="M30.8,41.0 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M41.199999999999996,41.0 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M51.599999999999994,41.0 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M62.0,41.0 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M72.39999999999999,41.0 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M30.8,50.5 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M41.199999999999996,50.5 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M51.599999999999994,50.5 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M62.0,50.5 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M72.39999999999999,50.5 h3.4 a1.8,1.8 0 0 1 1.8,1.8 v2.4 a1.8,1.8 0 0 1 -1.8,1.8 h-3.4 a1.8,1.8 0 0 1 -1.8,-1.8 v-2.4 a1.8,1.8 0 0 1 1.8,-1.8 z" android:fillColor="#7A6A5C" />
+        <path android:pathData="M41,62 h26 a2,2 0 0 1 2,2 v2 a2,2 0 0 1 -2,2 h-26 a2,2 0 0 1 -2,-2 v-2 a2,2 0 0 1 2,-2 z" android:fillColor="#7A6A5C" />
+    </group>
+</vector>

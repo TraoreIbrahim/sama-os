@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -125,7 +128,7 @@ class DemarrageActivity : ComponentActivity() {
     }
 }
 
-private enum class Etape { BIENVENUE, LANGUE, RESEAU, COMPTE, CODE, ACCES }
+private enum class Etape { BIENVENUE, LANGUE, RESEAU, COMPTE, CODE, PRET, ACCES }
 
 @Composable
 private fun Demarrage(terminer: () -> Unit) {
@@ -146,7 +149,8 @@ private fun Demarrage(terminer: () -> Unit) {
         Etape.LANGUE -> Langue(retour = { aller(Etape.BIENVENUE) }) { aller(Etape.RESEAU) }
         Etape.RESEAU -> Reseau(retour = { aller(Etape.LANGUE) }) { aller(Etape.COMPTE) }
         Etape.COMPTE -> Compte(retour = { aller(Etape.RESEAU) }) { aller(Etape.CODE) }
-        Etape.CODE -> CodeDeverrouillage(retour = { aller(Etape.COMPTE) }, terminer = terminer)
+        Etape.CODE -> CodeDeverrouillage(retour = { aller(Etape.COMPTE) }, terminer = { aller(Etape.PRET) })
+        Etape.PRET -> Pret(retour = { aller(Etape.CODE) }, terminer = terminer)
     }
 }
 
@@ -231,6 +235,7 @@ private fun AccesDemarrage(retour: () -> Unit, continuer: () -> Unit) {
     var grand by remember { mutableStateOf(Settings.System.getFloat(cr, Settings.System.FONT_SCALE, 1f) > 1.05f) }
     var loupe by remember { mutableStateOf(Settings.Secure.getInt(cr, "accessibility_display_magnification_enabled", 0) == 1) }
     var soleil by remember { mutableStateOf(Settings.Secure.getInt(cr, CLE_PLEIN_SOLEIL, 0) == 2) }
+    var simple by remember { mutableStateOf(ModeSimple.actif(contexte)) }
     GabaritDemarrage(
         titre = "Accessibilité",
         retour = retour,
@@ -258,6 +263,106 @@ private fun AccesDemarrage(retour: () -> Unit, continuer: () -> Unit) {
                 Settings.Secure.putInt(cr, CLE_PLEIN_SOLEIL, if (soleil) 2 else 0)
             } catch (_: Exception) {
             }
+        }
+        RangeeInter("Mode simplifié", "Andika, gros boutons, moins de choix", Icones.GRILLE, simple) {
+            simple = !simple
+            ModeSimple.regler(contexte, simple)
+        }
+    }
+}
+
+/**
+ * dem-06 : la dernière étape. Le téléphone est prêt ; on choisit comment l'utiliser : Standard (toutes les fonctions,
+ * avec les Espaces) ou Simplifié (grandes tuiles, seulement l'essentiel). Le choix se change ensuite dans les Réglages.
+ */
+@Composable
+private fun Pret(retour: () -> Unit, terminer: () -> Unit) {
+    val contexte = LocalContext.current
+    var simple by remember { mutableStateOf(ModeSimple.actif(contexte)) }
+    GabaritDemarrage(
+        titre = "Votre téléphone\nest prêt",
+        retour = retour,
+        pied = { PiedDemarrage(gauche = "", action = "Commencer", surAction = terminer) },
+    ) {
+        Paragraphe("Comment voulez-vous l'utiliser ?")
+        Spacer(Modifier.height(4.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ChoixUsage("Standard", "Toutes les fonctions, avec les Espaces", choisi = !simple, simple = false, modifier = Modifier.weight(1f)) {
+                simple = false
+                ModeSimple.regler(contexte, false)
+            }
+            ChoixUsage("Simplifié", "Grandes icônes, seulement l'essentiel", choisi = simple, simple = true, modifier = Modifier.weight(1f)) {
+                simple = true
+                ModeSimple.regler(contexte, true)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Note("Vous pourrez changer à tout moment dans Réglages › Accessibilité.")
+    }
+}
+
+/** Une carte de choix, avec un aperçu dessiné de l'Accueil qu'elle donne. */
+@Composable
+private fun ChoixUsage(titre: String, detail: String, choisi: Boolean, simple: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val b = LocalBanco.current
+    Column(
+        modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(b.sol)
+            .border(if (choisi) 2.dp else 1.dp, if (choisi) b.laterite else b.trait, RoundedCornerShape(22.dp))
+            .clickable(onClickLabel = titre, role = Role.RadioButton, onClick = onClick)
+            .padding(12.dp),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(14.dp)).background(b.sol2).padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (simple) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf(0xFFB5532F, 0xFF3D5A99, 0xFF2F6B57).forEach { Box(Modifier.size(22.dp).clip(CircleShape).background(Color(it))) }
+                }
+                Spacer(Modifier.height(10.dp))
+                ModeSimple.COULEURS.chunked(2).forEach { paire ->
+                    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        paire.forEach { c ->
+                            Box(Modifier.weight(1f).height(30.dp).clip(RoundedCornerShape(8.dp)).background(c?.first ?: b.sol))
+                        }
+                    }
+                }
+            } else {
+                Box(Modifier.width(56.dp).height(6.dp).clip(RoundedCornerShape(50)).background(b.colline3))
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(8.dp)).background(b.sol))
+                Spacer(Modifier.height(12.dp))
+                listOf(listOf(0xFFD9A07A, 0xFFEFCDA9, 0xFFE2A62B, 0xFF9A3B3B), listOf(0xFFA89580, 0xFFD8E2E8, 0xFFB5532F, 0xFF7A736A)).forEach { r ->
+                    Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        r.forEach { Box(Modifier.size(20.dp).clip(RoundedCornerShape(6.dp)).background(Color(it))) }
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                Row(
+                    Modifier.fillMaxWidth().height(24.dp).clip(RoundedCornerShape(50)).background(b.sol),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    listOf(0xFFB5532F, 0xFF2F6B57, 0xFF3D5A99, 0xFF1F1C18).forEach { Box(Modifier.size(12.dp).clip(CircleShape).background(Color(it))) }
+                }
+            }
+        }
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                BasicText(titre, style = TextStyle(fontFamily = if (simple) Polices.andika else Polices.corps, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = b.encre))
+                BasicText(detail, style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, lineHeight = 17.sp, color = b.encre2))
+            }
+            Box(
+                Modifier
+                    .padding(start = 6.dp)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(if (choisi) b.laterite else Color.Transparent)
+                    .border(2.dp, if (choisi) b.laterite else b.encre2, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { if (choisi) IconeTrait(Icones.COCHE, 14.dp, b.surLaterite) }
         }
     }
 }

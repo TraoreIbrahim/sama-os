@@ -11,6 +11,10 @@ import android.os.Environment
 import android.os.StatFs
 import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -142,15 +148,33 @@ fun entrees(): List<Entree> = listOf(
     Entree("Son et vibrations", Icones.MUSIQUE, "son volume sonnerie vibreur silencieux", Page.Son),
     Entree("Affichage", Icones.SOLEIL, "affichage luminosite theme sombre nuit texte taille veille rotation plein soleil", Page.Affichage),
     Entree("Fond d'écran et style", Icones.PAYSAGE, "fond ecran style paysage couleur verrouille", Page.FondEcran),
-    Entree("Espaces", Icones.CADENAS, "espaces profils maison travail", null, Intent("africa.samaos.action.REGLAGES_ESPACES")),
-    Entree("Sécurité", Icones.BOUCLIER, "securite code verrouillage empreinte autorisations confidentialite chiffrement sim", Page.Securite),
-    Entree("Bouclier anti-arnaques", Icones.ALERTE, "bouclier arnaque arnaques escroquerie mobile money sms faux agent lien code secret", Page.Bouclier),
+    Entree("Espaces", Icones.GRILLE, "espaces profils maison travail", null, Intent("africa.samaos.action.REGLAGES_ESPACES")),
+    Entree("Sécurité", Icones.CADENAS, "securite code verrouillage empreinte autorisations confidentialite chiffrement sim", Page.Securite),
+    Entree("Bouclier anti-arnaques", Icones.BOUCLIER, "bouclier arnaque arnaques escroquerie mobile money sms faux agent lien code secret", Page.Bouclier),
     Entree("Localisation", Icones.BOUSSOLE, "localisation position gps", Page.Localisation),
     Entree("Mots de passe et comptes", Icones.CLE, "mots de passe comptes saisie automatique compte sama", Page.Comptes),
     Entree("Bien-être", Icones.HORLOGE, "bien etre temps ecran minuteur concentration pause", Page.TempsEcran),
     Entree("Accessibilité", Icones.ACCESSIBILITE, "accessibilite loupe contraste couleurs texte mono appui", Page.Accessibilite),
     Entree("Urgence", Icones.APPEL, "urgence sos samu pompiers police fiche medicale contacts", Page.Urgence),
-    Entree("Système", Icones.TELEPHONE, "systeme langue clavier gestes date heure mise a jour a propos", Page.Systeme),
+    Entree("Système", Icones.REGLAGES, "systeme langue clavier gestes date heure mise a jour a propos", Page.Systeme),
+)
+
+/**
+ * L'accueil des Réglages rangé en groupes, comme chez Apple (demande du 7 octobre 2026) : chaque titre d'entrée,
+ * avec la teinte de sa petite icône. Les groupes sans titre se lisent seuls (Système).
+ */
+private val GROUPES: List<Pair<String?, List<Pair<String, Teinte>>>> = listOf(
+    "Connexions" to listOf("Réseau et data" to Teinte.BLEU, "Soldes et forfaits" to Teinte.OR, "Proche en proche" to Teinte.LAGUNE, "Appareils connectés" to Teinte.BLEU),
+    "Protection" to listOf(
+        "Bouclier anti-arnaques" to Teinte.LATERITE, "Sécurité" to Teinte.VERT, "Localisation" to Teinte.BLEU,
+        "Mots de passe et comptes" to Teinte.GRIS, "Urgence" to Teinte.ROUGE,
+    ),
+    "Ce téléphone" to listOf(
+        "Notifications" to Teinte.ROUGE, "Son et vibrations" to Teinte.ROSE, "Affichage" to Teinte.BLEU,
+        "Fond d'écran et style" to Teinte.CYAN, "Accessibilité" to Teinte.BLEU,
+    ),
+    "Usage" to listOf("Applications" to Teinte.VIOLET, "Batterie" to Teinte.VERT, "Stockage" to Teinte.GRIS, "Bien-être" to Teinte.MAUVE, "Espaces" to Teinte.ORANGE),
+    null to listOf("Système" to Teinte.GRIS),
 )
 
 fun simplifier(s: String): String = Normalizer.normalize(s, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase()
@@ -199,26 +223,43 @@ fun PageAccueil(nav: Nav) {
         if (recherche.isNotBlank()) {
             val mots = simplifier(recherche).split(' ').filter { it.isNotBlank() }
             val trouvees = (entrees() + sousEntrees()).filter { e -> mots.all { m -> simplifier(e.titre).contains(m) || e.mots.split(' ').any { it.startsWith(m) } } }
-            section(cle = "resultats") {
-                if (trouvees.isEmpty()) Explication("Aucun réglage ne correspond à « $recherche ».")
-                trouvees.forEach { e -> Ligne(e.titre, icone = e.icone) { ouvrir(e) } }
+            if (trouvees.isEmpty()) {
+                section(cle = "resultats") { Explication("Aucun réglage ne correspond à « $recherche ».") }
+            } else {
+                val teintes = GROUPES.flatMap { it.second }.toMap()
+                groupe(cle = "resultats") {
+                    trouvees.forEachIndexed { i, e -> LigneGroupe(e.titre, e.icone, teintes[e.titre] ?: Teinte.GRIS, filet = i > 0) { ouvrir(e) } }
+                }
             }
             return@PageReglages
         }
-        section(cle = "compte") {
-            Ligne(
-                "Compte Sama",
-                detail = "Pas encore ouvert · sauvegarde et Espaces sur un autre téléphone",
-                debut = {
-                    val b = LocalBanco.current
-                    Box(Modifier.size(44.dp).background(b.laterite, CircleShape), contentAlignment = Alignment.Center) {
-                        IconeTrait(Icones.PERSONNE, 22.dp, b.surLaterite)
-                    }
-                },
-            ) { nav.aller(Page.CompteSama) }
+        groupe(cle = "compte") {
+            val b = LocalBanco.current
+            Row(
+                Modifier.fillMaxWidth().clickable(onClickLabel = "Compte Sama", role = Role.Button) { nav.aller(Page.CompteSama) }.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(54.dp).clip(CircleShape).background(Brush.verticalGradient(listOf(Teinte.LATERITE.haut, Teinte.LATERITE.bas))),
+                    contentAlignment = Alignment.Center,
+                ) { IconeTrait(Icones.PERSONNE, 26.dp, Color.White, epaisseur = 2f) }
+                Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                    BasicText("Compte Sama", style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = b.encre))
+                    BasicText(
+                        "Pas encore ouvert · sauvegarde et Espaces sur un autre téléphone",
+                        style = TextStyle(fontFamily = Polices.corps, fontSize = 13.5.sp, lineHeight = 18.sp, color = b.encre2),
+                    )
+                }
+                IconeTrait(Icones.CHEVRON, 16.dp, b.encre2)
+            }
         }
-        section(cle = "familles") {
-            entrees().forEach { e -> Ligne(e.titre, detail = detailDe(e), icone = e.icone) { ouvrir(e) } }
+        val parTitre = entrees().associateBy { it.titre }
+        GROUPES.forEachIndexed { g, (titre, lignes) ->
+            groupe(titre, cle = "groupe$g") {
+                lignes.mapNotNull { (t, teinte) -> parTitre[t]?.let { it to teinte } }.forEachIndexed { i, (e, teinte) ->
+                    LigneGroupe(e.titre, e.icone, teinte, detail = detailDe(e), filet = i > 0) { ouvrir(e) }
+                }
+            }
         }
     }
 }

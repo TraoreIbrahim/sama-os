@@ -262,7 +262,7 @@ fun GrilleAccueil(elements: List<Element>, applis: Map<String, Appli>, gestes: G
                         val cibleDossier = sur != null && apercu.getOrNull(sur!!)?.id == e.id && tenu != e.id
                         when (e) {
                             is ElemAppli -> if (appli != null) VueIcone(appli.nom, cibleDossier) {
-                                Image(appli.icone, contentDescription = null, modifier = Modifier.size(ICONE))
+                                Image(appli.icone, contentDescription = null, modifier = Modifier.size(ICONE).ombre(appli))
                             }
                             is ElemDossier -> VueIcone(e.nom, cibleDossier) { IconeDossier(e, applis) }
                         }
