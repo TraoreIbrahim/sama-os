@@ -9,14 +9,23 @@ import android.provider.ContactsContract.CommonDataKinds.Email
 import android.provider.ContactsContract.CommonDataKinds.Event
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.provider.ContactsContract.CommonDataKinds.StructuredName
+import android.provider.ContactsContract.CommonDataKinds.StructuredPostal
 import android.provider.ContactsContract.Data
 import android.provider.ContactsContract.RawContacts
+import android.graphics.BitmapFactory
 import android.telephony.SubscriptionManager
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import java.text.Collator
 import java.util.Locale
 
-/** Un contact de la liste. */
-class Contact(val id: Long, val cle: String, val nom: String, val favori: Boolean)
+/** Un contact de la liste : sa vignette (photo ou avatar enregistré) et son lien (« Maman », « Collègue »). */
+class Contact(val id: Long, val cle: String, val nom: String, val favori: Boolean, val photo: ImageBitmap? = null, val lien: String? = null) {
+    val groupe: String? get() = Carnet.groupeDe(lien)
+
+    /** Comment l'appeler en un mot : le lien de famille (« Maman »), sinon le prénom. */
+    val appel: String get() = lien?.takeIf { Carnet.groupeDe(it) == "Famille" && it in Carnet.LIENS_UN_MOT } ?: nom.substringBefore(' ')
+}
 
 /** Un numéro d'une fiche : le numéro, son type, et s'il est préféré. */
 class Numero(val id: Long, val numero: String, val type: Int, val prefere: Boolean)
@@ -34,20 +43,72 @@ class Fiche(
     val anniversaire: String?,
     val compte: String?,
     val brut: Long?,
+    val lien: String? = null,
+    val adresse: String? = null,
+    val photo: ImageBitmap? = null,
 )
 
 /** Le carnet d'adresses d'Android, lu et écrit pour les Contacts de Sama. */
 object Carnet {
     private val tri = Collator.getInstance(Locale.FRENCH)
 
-    fun liste(c: Context): List<Contact> {
+    /** Le lien avec la personne (« Maman », « Collègue ») : une ligne de Sama dans la fiche, que le carnet garde. */
+    const val MIME_LIEN = "vnd.android.cursor.item/vnd.africa.samaos.lien"
+
+    val LIENS = listOf(
+        "Maman", "Papa", "Sœur", "Frère", "Enfant", "Conjoint·e", "Cousin·e", "Oncle", "Tante", "Grand-parent",
+        "Ami·e", "Voisin·e", "Collègue", "Patron·ne", "Client·e", "Professeur·e", "Camarade",
+    )
+
+    /** Les liens qu'on dit seuls pour appeler quelqu'un : « Maman », « Papa ». */
+    val LIENS_UN_MOT = setOf("Maman", "Papa", "Tonton", "Tata")
+
+    val GROUPES = listOf("Famille", "Travail", "École")
+
+    fun groupeDe(lien: String?): String? = when (lien) {
+        null -> null
+        "Maman", "Papa", "Sœur", "Frère", "Enfant", "Conjoint·e", "Cousin·e", "Oncle", "Tante", "Grand-parent" -> "Famille"
+        "Collègue", "Patron·ne", "Client·e" -> "Travail"
+        "Professeur·e", "Camarade" -> "École"
+        else -> null
+    }
+
+    private fun vignette(c: Context, uri: String?): ImageBitmap? = uri?.let {
+        try {
+            c.contentResolver.openInputStream(Uri.parse(it))?.use { e -> BitmapFactory.decodeStream(e)?.asImageBitmap() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Les liens de tous les contacts, d'une seule lecture. */
+    private fun liens(c: Context): Map<Long, String> {
+        val m = HashMap<Long, String>()
+        try {
+            c.contentResolver.query(Data.CONTENT_URI, arrayOf(Data.CONTACT_ID, Data.DATA1), "${Data.MIMETYPE} = ?", arrayOf(MIME_LIEN), null)
+                ?.use { cur -> while (cur.moveToNext()) cur.getString(1)?.takeIf { it.isNotBlank() }?.let { m[cur.getLong(0)] = it } }
+        } catch (_: Exception) {
+        }
+        return m
+    }
+
+    fun liste(c: Context, vignettes: Boolean = true): List<Contact> {
         val l = mutableListOf<Contact>()
+        val liens = liens(c)
         try {
             c.contentResolver.query(
                 ContactsContract.Contacts.CONTENT_URI,
-                arrayOf(ContactsContract.Contacts._ID, ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.DISPLAY_NAME_PRIMARY, ContactsContract.Contacts.STARRED),
+                arrayOf(
+                    ContactsContract.Contacts._ID, ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+                    ContactsContract.Contacts.STARRED, ContactsContract.Contacts.PHOTO_THUMBNAIL_URI,
+                ),
                 null, null, null,
-            )?.use { cur -> while (cur.moveToNext()) l += Contact(cur.getLong(0), cur.getString(1).orEmpty(), cur.getString(2).orEmpty(), cur.getInt(3) == 1) }
+            )?.use { cur ->
+                while (cur.moveToNext()) {
+                    val id = cur.getLong(0)
+                    l += Contact(id, cur.getString(1).orEmpty(), cur.getString(2).orEmpty(), cur.getInt(3) == 1, if (vignettes) vignette(c, cur.getString(4)) else null, liens[id])
+                }
+            }
         } catch (_: SecurityException) {
         }
         return l.filter { it.nom.isNotBlank() }.sortedWith { a, b -> tri.compare(a.nom, b.nom) }
@@ -98,6 +159,8 @@ object Carnet {
         var famille = ""
         var brut: Long? = null
         var compte: String? = null
+        var lien: String? = null
+        var adresse: String? = null
         c.contentResolver.query(
             Data.CONTENT_URI,
             arrayOf(Data._ID, Data.MIMETYPE, Data.DATA1, Data.DATA2, Data.DATA3, Data.IS_SUPER_PRIMARY, Data.RAW_CONTACT_ID, RawContacts.ACCOUNT_TYPE),
@@ -114,10 +177,22 @@ object Carnet {
                         prenom = cur.getString(3).orEmpty()
                         famille = cur.getString(4).orEmpty()
                     }
+                    MIME_LIEN -> lien = cur.getString(2)?.ifBlank { null }
+                    StructuredPostal.CONTENT_ITEM_TYPE -> adresse = cur.getString(2)?.ifBlank { null }
                 }
             }
         }
-        return Fiche(id, cle, nom, prenom, famille, favori, numeros.distinctBy { it.numero.filter { ch -> ch.isDigit() } }, emails.distinct(), anniversaire, compte, brut)
+        // La grande photo de la fiche (sinon la vignette).
+        val photo = try {
+            ContactsContract.Contacts.openContactPhotoInputStream(c.contentResolver, ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, id), true)
+                ?.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+        } catch (_: Exception) {
+            null
+        }
+        return Fiche(
+            id, cle, nom, prenom, famille, favori, numeros.distinctBy { it.numero.filter { ch -> ch.isDigit() } }, emails.distinct(),
+            anniversaire, compte, brut, lien, adresse, photo,
+        )
     }
 
     fun favori(c: Context, id: Long, oui: Boolean) {
@@ -136,7 +211,20 @@ object Carnet {
      * Enregistre un contact : neuf, ou en remplaçant le nom, les numéros et l'e-mail d'une fiche existante.
      * Les contacts créés par Sama restent sur le téléphone (compte local) tant qu'il n'y a pas de compte Sama.
      */
-    fun enregistrer(c: Context, brut: Long?, prenom: String, famille: String, numeros: List<Pair<String, Int>>, email: String?): Long? {
+    fun enregistrer(
+        c: Context,
+        brut: Long?,
+        prenom: String,
+        famille: String,
+        numeros: List<Pair<String, Int>>,
+        email: String?,
+        lien: String? = null,
+        anniversaire: String? = null,
+        adresse: String? = null,
+        favori: Boolean? = null,
+        photo: ByteArray? = null,
+        sansPhoto: Boolean = false,
+    ): Long? {
         val ops = ArrayList<ContentProviderOperation>()
         if (brut == null) {
             ops += ContentProviderOperation.newInsert(RawContacts.CONTENT_URI)
@@ -145,8 +233,16 @@ object Carnet {
                 .build()
         } else {
             ops += ContentProviderOperation.newDelete(Data.CONTENT_URI)
-                .withSelection("${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} IN (?, ?, ?)", arrayOf(brut.toString(), StructuredName.CONTENT_ITEM_TYPE, Phone.CONTENT_ITEM_TYPE, Email.CONTENT_ITEM_TYPE))
+                .withSelection(
+                    "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?)",
+                    arrayOf(brut.toString(), StructuredName.CONTENT_ITEM_TYPE, Phone.CONTENT_ITEM_TYPE, Email.CONTENT_ITEM_TYPE, MIME_LIEN, StructuredPostal.CONTENT_ITEM_TYPE, Event.CONTENT_ITEM_TYPE),
+                )
                 .build()
+            if (sansPhoto) {
+                ops += ContentProviderOperation.newDelete(Data.CONTENT_URI)
+                    .withSelection("${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?", arrayOf(brut.toString(), ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE))
+                    .build()
+            }
         }
         fun ligne(mime: String): ContentProviderOperation.Builder {
             val b = ContentProviderOperation.newInsert(Data.CONTENT_URI).withValue(Data.MIMETYPE, mime)
@@ -159,13 +255,32 @@ object Carnet {
             .build()
         numeros.filter { it.first.isNotBlank() }.forEach { (n, t) -> ops += ligne(Phone.CONTENT_ITEM_TYPE).withValue(Phone.NUMBER, n).withValue(Phone.TYPE, t).build() }
         if (!email.isNullOrBlank()) ops += ligne(Email.CONTENT_ITEM_TYPE).withValue(Email.ADDRESS, email.trim()).withValue(Email.TYPE, Email.TYPE_HOME).build()
+        if (!lien.isNullOrBlank()) ops += ligne(MIME_LIEN).withValue(Data.DATA1, lien.trim()).build()
+        if (!adresse.isNullOrBlank()) {
+            ops += ligne(StructuredPostal.CONTENT_ITEM_TYPE).withValue(StructuredPostal.FORMATTED_ADDRESS, adresse.trim()).withValue(StructuredPostal.TYPE, StructuredPostal.TYPE_HOME).build()
+        }
+        if (!anniversaire.isNullOrBlank()) {
+            ops += ligne(Event.CONTENT_ITEM_TYPE).withValue(Event.START_DATE, anniversaire).withValue(Event.TYPE, Event.TYPE_BIRTHDAY).build()
+        }
         return try {
             val r = c.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
             val idBrut = brut ?: ContentUris.parseId(r[0].uri!!)
-            c.contentResolver.query(RawContacts.CONTENT_URI, arrayOf(RawContacts.CONTACT_ID), "${RawContacts._ID} = ?", arrayOf(idBrut.toString()), null)
+            if (photo != null) ecrirePhoto(c, idBrut, photo)
+            val id = c.contentResolver.query(RawContacts.CONTENT_URI, arrayOf(RawContacts.CONTACT_ID), "${RawContacts._ID} = ?", arrayOf(idBrut.toString()), null)
                 ?.use { if (it.moveToFirst()) it.getLong(0) else null }
+            if (id != null && favori != null) favori(c, id, favori)
+            id
         } catch (_: Exception) {
             null
+        }
+    }
+
+    /** La grande photo d'un contact (Android en tire aussi la vignette) : une photo prise ou choisie, ou un avatar. */
+    private fun ecrirePhoto(c: Context, brut: Long, jpeg: ByteArray) {
+        val uri = Uri.withAppendedPath(ContentUris.withAppendedId(RawContacts.CONTENT_URI, brut), RawContacts.DisplayPhoto.CONTENT_DIRECTORY)
+        try {
+            c.contentResolver.openAssetFileDescriptor(uri, "rw")?.use { it.createOutputStream().use { o -> o.write(jpeg) } }
+        } catch (_: Exception) {
         }
     }
 

@@ -25,8 +25,26 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Une conversation : un fil d'Android, son correspondant, son dernier message. */
-class Conversation(val fil: Long, val adresse: String, val nom: String?, val dernier: String, val date: Long, val nonLus: Int, val service: Boolean)
+/**
+ * Une conversation : un fil d'Android, son correspondant (nom, photo, favori s'il est dans les contacts), son dernier
+ * message (reçu ou envoyé), et le verdict du bouclier sur ce dernier message s'il vient d'un inconnu.
+ */
+class Conversation(
+    val fil: Long,
+    val adresse: String,
+    val nom: String?,
+    val dernier: String,
+    val date: Long,
+    val nonLus: Int,
+    val service: Boolean,
+    val photo: String? = null,
+    val favori: Boolean = false,
+    val recu: Boolean = true,
+    val suspect: africa.samaos.bouclier.Verdict? = null,
+)
+
+/** Le correspondant tel que le carnet le connaît. */
+class Correspondant(val nom: String, val photo: String?, val favori: Boolean)
 
 /** Un SMS d'une conversation. */
 class Sms(val id: Long, val corps: String, val date: Long, val recu: Boolean, val etat: Int, val sim: Int?)
@@ -46,7 +64,7 @@ object Boite {
     fun conversations(c: Context): List<Conversation> {
         val parFil = LinkedHashMap<Long, Conversation>()
         val nonLus = HashMap<Long, Int>()
-        val noms = HashMap<String, String?>()
+        val gens = HashMap<String, Correspondant?>()
         try {
             c.contentResolver.query(
                 Telephony.Sms.CONTENT_URI,
@@ -58,13 +76,49 @@ object Boite {
                     if (cur.getInt(4) == 0 && cur.getInt(5) == Telephony.Sms.MESSAGE_TYPE_INBOX) nonLus[fil] = (nonLus[fil] ?: 0) + 1
                     if (fil in parFil) continue
                     val adresse = cur.getString(1).orEmpty()
-                    val nom = noms.getOrPut(adresse) { nomDe(c, adresse) }
-                    parFil[fil] = Conversation(fil, adresse, nom, cur.getString(2).orEmpty(), cur.getLong(3), 0, nom == null && estService(adresse))
+                    val qui = gens.getOrPut(adresse) { correspondant(c, adresse) }
+                    val corps = cur.getString(2).orEmpty()
+                    val recu = cur.getInt(5) == Telephony.Sms.MESSAGE_TYPE_INBOX
+                    // Le bouclier regarde le dernier message d'un inconnu, pour le signaler dès la liste.
+                    val suspect = if (qui == null && recu) verdict(c, adresse, corps) else null
+                    parFil[fil] = Conversation(fil, adresse, qui?.nom, corps, cur.getLong(3), 0, qui == null && estService(adresse), qui?.photo, qui?.favori == true, recu, suspect)
                 }
             }
         } catch (_: SecurityException) {
         }
-        return parFil.values.map { Conversation(it.fil, it.adresse, it.nom, it.dernier, it.date, nonLus[it.fil] ?: 0, it.service) }
+        return parFil.values.map { Conversation(it.fil, it.adresse, it.nom, it.dernier, it.date, nonLus[it.fil] ?: 0, it.service, it.photo, it.favori, it.recu, it.suspect) }
+    }
+
+    /** Le nom, la photo et l'étoile d'un numéro, s'il est dans les contacts. */
+    fun correspondant(c: Context, adresse: String): Correspondant? = try {
+        if (adresse.isBlank()) null else c.contentResolver.query(
+            Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(adresse)),
+            arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI, ContactsContract.PhoneLookup.STARRED), null, null, null,
+        )?.use { if (it.moveToFirst()) Correspondant(it.getString(0).orEmpty(), it.getString(1), it.getInt(2) == 1) else null }
+    } catch (_: Exception) {
+        null
+    }
+
+    /** Supprimer un seul message (un envoi raté qu'on renvoie). */
+    fun supprimerMessage(c: Context, id: Long) {
+        try {
+            c.contentResolver.delete(android.content.ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id), null, null)
+        } catch (_: Exception) {
+        }
+    }
+
+    /** L'opérateur d'un numéro ivoirien à dix chiffres, d'après ses deux premiers chiffres. */
+    fun operateurDe(numero: String): String? {
+        var d = numero.filter { it.isDigit() }
+        if (d.startsWith("225") && d.length >= 12) d = d.drop(3)
+        if (d.length != 10) return null
+        return when (d.take(2)) {
+            "07" -> "Orange"
+            "05" -> "MTN"
+            "01" -> "Moov Africa"
+            "27", "21", "25" -> "Fixe"
+            else -> null
+        }
     }
 
     fun messages(c: Context, fil: Long): List<Sms> {

@@ -88,5 +88,16 @@
                 <data android:mimeType="vnd.android.cursor.item/email_v2" />
             </intent-filter>
         </activity>
+
+        <!-- La photo prise par l'Appareil photo pour un contact : un fichier que l'appli lui prête le temps de la prise. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="africa.samaos.contacts.photos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/photos" />
+        </provider>
     </application>
 </manifest>

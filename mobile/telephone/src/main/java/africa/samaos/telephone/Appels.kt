@@ -118,7 +118,9 @@ class ServiceAppels : InCallService() {
         val etat = call.details.state
         if (etat == Call.STATE_DISCONNECTED) return
         val numero = Appels.numero(call)
-        val nom = Moteur.personne(this, numero)?.nom ?: Moteur.formater(numero).ifBlank { "Numéro masqué" }
+        val connu = Moteur.personne(this, numero)
+        val fiche = if (connu == null) Identification.chercher(this, numero) else null
+        val nom = connu?.nom ?: fiche?.nom ?: Moteur.formater(numero).ifBlank { "Numéro masqué" }
         val personne = Person.Builder().setName(nom).setImportant(true).build()
         val ecran = PendingIntent.getActivity(this, 0, Intent(this, EcranAppel::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         fun action(quoi: String) = PendingIntent.getBroadcast(this, quoi.hashCode(), Intent(this, ActionAppel::class.java).setAction(quoi), PendingIntent.FLAG_IMMUTABLE)
@@ -126,7 +128,7 @@ class ServiceAppels : InCallService() {
             Notification.Builder(this, CANAL_ENTRANT)
                 .setSmallIcon(R.drawable.ic_notif_appel)
                 .setContentTitle(nom)
-                .setContentText("Appel entrant")
+                .setContentText(if (fiche?.genre == Identification.Genre.ARNAQUE) "Arnaque signalée" else "Appel entrant")
                 .setCategory(Notification.CATEGORY_CALL)
                 .setFullScreenIntent(ecran, true)
                 .setContentIntent(ecran)

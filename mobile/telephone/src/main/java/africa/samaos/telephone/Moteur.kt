@@ -25,7 +25,7 @@ import java.util.Locale
 class Sim(val fente: Int, val operateur: String, val compte: PhoneAccountHandle, val idAbonnement: Int)
 
 /** Une personne trouvée dans les contacts. */
-class Personne(val id: Long, val cle: String, val nom: String, val numero: String, val type: String, val favori: Boolean)
+class Personne(val id: Long, val cle: String, val nom: String, val numero: String, val type: String, val favori: Boolean, val photo: String? = null)
 
 /** Une ligne du journal : un ou plusieurs appels de suite, du même numéro, le même jour, du même genre. */
 class Appel(
@@ -112,6 +112,8 @@ object Moteur {
     /** « 07 08 45 12 30 » : un numéro ivoirien en paires. */
     fun formater(numero: String): String {
         val n = numero.filter { it.isDigit() || it == '+' || it == '*' || it == '#' }
+        // +225 07 08 45 12 30 : l'indicatif à part, puis le numéro en paires.
+        if (n.startsWith("+225") && n.length == 14) return "+225 " + n.drop(4).chunked(2).joinToString(" ")
         if (n.startsWith("+") || n.any { it == '*' || it == '#' }) return n
         // Les numéros courts (secours, services) se lisent d'un bloc : 185, pas « 18 5 ».
         if (n.length <= 5) return n
@@ -146,10 +148,10 @@ object Moteur {
     fun personne(c: Context, numero: String): Personne? = try {
         c.contentResolver.query(
             Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(numero)),
-            arrayOf(ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.LOOKUP_KEY, ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup.TYPE, ContactsContract.PhoneLookup.STARRED),
+            arrayOf(ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.LOOKUP_KEY, ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup.TYPE, ContactsContract.PhoneLookup.STARRED, ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI),
             null, null, null,
         )?.use { cur ->
-            if (cur.moveToFirst()) Personne(cur.getLong(0), cur.getString(1).orEmpty(), cur.getString(2).orEmpty(), numero, typeNumero(cur.getInt(3)), cur.getInt(4) == 1) else null
+            if (cur.moveToFirst()) Personne(cur.getLong(0), cur.getString(1).orEmpty(), cur.getString(2).orEmpty(), numero, typeNumero(cur.getInt(3)), cur.getInt(4) == 1, cur.getString(5)) else null
         }
     } catch (_: Exception) {
         null
@@ -170,15 +172,11 @@ object Moteur {
         try {
             c.contentResolver.query(
                 Uri.withAppendedPath(ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI, Uri.encode(chiffres)),
-                arrayOf(
-                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID, ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY,
-                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER,
-                    ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.STARRED,
-                ),
+                COLONNES,
                 null, null, null,
             )?.use { cur ->
                 while (cur.moveToNext() && liste.size < 3) {
-                    liste += Personne(cur.getLong(0), cur.getString(1).orEmpty(), cur.getString(2).orEmpty(), cur.getString(3).orEmpty(), typeNumero(cur.getInt(4)), cur.getInt(5) == 1)
+                    liste += lirePersonne(cur)
                 }
             }
         } catch (_: Exception) {
@@ -186,19 +184,40 @@ object Moteur {
         return liste.distinctBy { it.numero.filter { ch -> ch.isDigit() } }
     }
 
+    private val COLONNES = arrayOf(
+        ContactsContract.CommonDataKinds.Phone.CONTACT_ID, ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY,
+        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER,
+        ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.STARRED,
+        ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI,
+    )
+
+    private fun lirePersonne(cur: android.database.Cursor) = Personne(
+        cur.getLong(0), cur.getString(1).orEmpty(), cur.getString(2).orEmpty(), cur.getString(3).orEmpty(), typeNumero(cur.getInt(4)), cur.getInt(5) == 1, cur.getString(6),
+    )
+
+    /** Tous les contacts qui ont un numéro, un par personne (son numéro préféré, sinon le premier), dans l'ordre des noms. */
+    fun tous(c: Context): List<Personne> {
+        val liste = mutableListOf<Personne>()
+        try {
+            c.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI, COLONNES, null, null,
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE LOCALIZED, ${ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY} DESC",
+            )?.use { cur -> while (cur.moveToNext()) liste += lirePersonne(cur) }
+        } catch (_: Exception) {
+        }
+        val tri = java.text.Collator.getInstance(Locale.FRENCH)
+        return liste.distinctBy { it.id }.sortedWith { x, y -> tri.compare(x.nom, y.nom) }
+    }
+
     fun favoris(c: Context): List<Personne> {
         val liste = mutableListOf<Personne>()
         try {
             c.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                arrayOf(
-                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID, ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY,
-                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER,
-                    ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.STARRED,
-                ),
+                COLONNES,
                 "${ContactsContract.CommonDataKinds.Phone.STARRED} = 1", null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
             )?.use { cur ->
-                while (cur.moveToNext()) liste += Personne(cur.getLong(0), cur.getString(1).orEmpty(), cur.getString(2).orEmpty(), cur.getString(3).orEmpty(), typeNumero(cur.getInt(4)), true)
+                while (cur.moveToNext()) liste += lirePersonne(cur)
             }
         } catch (_: Exception) {
         }
@@ -259,6 +278,16 @@ object Moteur {
             CallLog.Calls.CONTENT_URI, arrayOf(CallLog.Calls._ID),
             "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.DATE} > ? AND ${CallLog.Calls.TYPE} != ?",
             arrayOf(numero, (System.currentTimeMillis() - 24 * 3600_000L).toString(), CallLog.Calls.OUTGOING_TYPE.toString()), null,
+        )?.use { it.count } ?: 0
+    } catch (_: Exception) {
+        0
+    }
+
+    /** Combien de fois on a appelé ce numéro (pour « Vous l'avez déjà appelée 2 fois »). */
+    fun appelsVers(c: Context, numero: String): Int = try {
+        c.contentResolver.query(
+            CallLog.Calls.CONTENT_URI, arrayOf(CallLog.Calls._ID), "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.TYPE} = ?",
+            arrayOf(numero, CallLog.Calls.OUTGOING_TYPE.toString()), null,
         )?.use { it.count } ?: 0
     } catch (_: Exception) {
         0

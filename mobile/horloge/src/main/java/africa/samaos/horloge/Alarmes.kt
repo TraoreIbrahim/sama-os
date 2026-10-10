@@ -16,8 +16,21 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
-/** Une alarme : l'heure, le nom, les jours (vide : une seule fois), allumée ou non. */
-data class Alarme(val id: Int, val heure: Int, val minute: Int, val nom: String, val jours: Set<DayOfWeek>, val active: Boolean)
+/**
+ * Une alarme : l'heure, le nom, les jours (vide : une seule fois), allumée ou non ; sa sonnerie (celle des alarmes
+ * du téléphone si [son] est nul), si elle vibre, et de combien de minutes « Encore » la repousse.
+ */
+data class Alarme(
+    val id: Int,
+    val heure: Int,
+    val minute: Int,
+    val nom: String,
+    val jours: Set<DayOfWeek>,
+    val active: Boolean,
+    val vibrer: Boolean = true,
+    val son: String? = null,
+    val report: Int = 10,
+)
 
 /**
  * Les alarmes et le minuteur de l'Horloge. Les alarmes passent par setAlarmClock d'Android : elles sonnent
@@ -34,6 +47,9 @@ object Alarmes {
                 o.getInt("id"), o.getInt("h"), o.getInt("m"), o.optString("nom"),
                 o.optJSONArray("jours")?.let { j -> (0 until j.length()).map { DayOfWeek.of(j.getInt(it)) }.toSet() }.orEmpty(),
                 o.optBoolean("active", true),
+                o.optBoolean("vibrer", true),
+                o.optString("son").ifBlank { null },
+                o.optInt("report", 10),
             )
         }.sortedWith(compareBy({ it.heure }, { it.minute }))
     } catch (_: Exception) {
@@ -43,7 +59,10 @@ object Alarmes {
     private fun ecrire(c: Context, l: List<Alarme>) {
         val a = JSONArray()
         l.forEach { x ->
-            a.put(JSONObject().put("id", x.id).put("h", x.heure).put("m", x.minute).put("nom", x.nom).put("jours", JSONArray(x.jours.map { it.value })).put("active", x.active))
+            a.put(
+                JSONObject().put("id", x.id).put("h", x.heure).put("m", x.minute).put("nom", x.nom).put("jours", JSONArray(x.jours.map { it.value })).put("active", x.active)
+                    .put("vibrer", x.vibrer).put("son", x.son.orEmpty()).put("report", x.report),
+            )
         }
         prefs(c).edit().putString("alarmes", a.toString()).apply()
         programmer(c)
@@ -63,12 +82,24 @@ object Alarmes {
         return t
     }
 
-    /** « dans 7 h 12 min, demain à 05:30 ». */
-    fun dans(t: ZonedDateTime): String {
+    /** « 7 h 12 min », « 45 min » : le temps jusqu'à [t]. */
+    fun duree(t: ZonedDateTime): String {
         val min = ChronoUnit.MINUTES.between(ZonedDateTime.now(), t) + 1
         val h = min / 60
         val m = min % 60
-        val duree = if (h > 0) "$h h ${"%02d".format(m)} min" else "$m min"
+        return if (h > 0) "$h h ${"%02d".format(m)} min" else "$m min"
+    }
+
+    /** « aujourd'hui », « demain », « lundi » : le jour où sonne [t]. */
+    fun jour(t: ZonedDateTime): String = when (t.toLocalDate()) {
+        java.time.LocalDate.now() -> "aujourd'hui"
+        java.time.LocalDate.now().plusDays(1) -> "demain"
+        else -> t.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.FRENCH)
+    }
+
+    /** « dans 7 h 12 min, demain à 05:30 ». */
+    fun dans(t: ZonedDateTime): String {
+        val duree = duree(t)
         val jour = when (t.toLocalDate()) {
             java.time.LocalDate.now() -> "aujourd'hui"
             java.time.LocalDate.now().plusDays(1) -> "demain"
@@ -95,9 +126,9 @@ object Alarmes {
     }
 
     /** Le minuteur : sa fin, gardée pour qu'il sonne même appli fermée. */
-    fun lancerMinuteur(c: Context, nom: String, ms: Long) {
+    fun lancerMinuteur(c: Context, nom: String, ms: Long, duree: Long = ms) {
         val fin = System.currentTimeMillis() + ms
-        prefs(c).edit().putLong("minuteur_fin", fin).putString("minuteur_nom", nom).putLong("minuteur_duree", ms).apply()
+        prefs(c).edit().putLong("minuteur_fin", fin).putString("minuteur_nom", nom).putLong("minuteur_duree", duree).remove("minuteur_pause").apply()
         val operation = PendingIntent.getBroadcast(c, 3, Intent(c, Reveil::class.java).setAction(MINUTEUR), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         try {
             c.getSystemService(AlarmManager::class.java).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fin, operation)
@@ -120,8 +151,18 @@ object Alarmes {
     fun finMinuteur(c: Context) = prefs(c).getLong("minuteur_fin", 0).takeIf { it > 0 }
     fun pauseRestante(c: Context) = prefs(c).getLong("minuteur_pause", 0).takeIf { it > 0 }
     fun nomMinuteur(c: Context) = prefs(c).getString("minuteur_nom", "Minuteur").orEmpty()
+    fun dureeMinuteur(c: Context) = prefs(c).getLong("minuteur_duree", 0).takeIf { it > 0 }
 
-    fun reporter(c: Context, minutes: Int) {
+    /** Les dernières durées lancées à la main, pour les relancer d'un toucher. */
+    fun recents(c: Context): List<Long> = prefs(c).getString("minuteur_recents", "").orEmpty().split(',').mapNotNull { it.toLongOrNull() }
+
+    fun retenir(c: Context, ms: Long) {
+        val l = (listOf(ms) + recents(c).filter { it != ms }).take(4)
+        prefs(c).edit().putString("minuteur_recents", l.joinToString(",")).apply()
+    }
+
+    fun reporter(c: Context, minutes: Int, alarme: Int = -1) {
+        prefs(c).edit().putInt("reportee", alarme).apply()
         val operation = PendingIntent.getBroadcast(c, 4, Intent(c, Reveil::class.java).setAction(ALARME_REPORTEE), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val t = System.currentTimeMillis() + minutes * 60_000L
         val montrer = PendingIntent.getActivity(c, 2, Intent(c, Horloge::class.java), PendingIntent.FLAG_IMMUTABLE)
@@ -132,6 +173,7 @@ object Alarmes {
     }
 
     fun alarmeProgrammee(c: Context): Alarme? = prefs(c).getInt("prochaine", -1).let { id -> liste(c).firstOrNull { it.id == id } }
+    fun alarmeReportee(c: Context): Alarme? = prefs(c).getInt("reportee", -1).let { id -> liste(c).firstOrNull { it.id == id } }
 
     // Le coucher
     fun coucher(c: Context) = prefs(c).getInt("coucher", 22 * 60 + 30)
@@ -153,15 +195,20 @@ object Alarmes {
 /** L'heure est venue : l'écran de sonnerie s'ouvre (plein écran, même verrouillé). */
 class Reveil : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
-        val alarme = if (i.action == Alarmes.ALARME) Alarmes.alarmeProgrammee(c) else null
+        val alarme = when (i.action) {
+            Alarmes.ALARME -> Alarmes.alarmeProgrammee(c)
+            Alarmes.ALARME_REPORTEE -> Alarmes.alarmeReportee(c)
+            else -> null
+        }
         // Une alarme d'un seul jour s'éteint après avoir sonné ; les autres sont reprogrammées.
-        if (alarme != null && alarme.jours.isEmpty()) Alarmes.garder(c, alarme.copy(active = false)) else Alarmes.programmer(c)
+        if (i.action == Alarmes.ALARME && alarme != null && alarme.jours.isEmpty()) Alarmes.garder(c, alarme.copy(active = false)) else Alarmes.programmer(c)
         if (i.action == Alarmes.MINUTEUR) Alarmes.arreterMinuteur(c)
         val titre = when (i.action) {
             Alarmes.MINUTEUR -> Alarmes.nomMinuteur(c)
             else -> alarme?.nom?.ifBlank { null } ?: "Alarme"
         }
         val ecran = Intent(c, Sonnerie::class.java).putExtra("titre", titre).putExtra("minuteur", i.action == Alarmes.MINUTEUR)
+            .putExtra("id", alarme?.id ?: -1).putExtra("son", alarme?.son).putExtra("vibrer", alarme?.vibrer ?: true).putExtra("report", alarme?.report ?: 10)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         Alarmes.canal(c)
         val plein = PendingIntent.getActivity(c, 5, ecran, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)

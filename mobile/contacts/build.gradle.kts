@@ -65,4 +65,6 @@ dependencies {
     implementation(project(":banco"))
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.activity:activity-compose:1.10.1")
+    // Le code QR de « Ma fiche ».
+    implementation("com.google.zxing:core:3.5.3")
 }
