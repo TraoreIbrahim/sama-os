@@ -121,6 +121,7 @@ object Galerie {
         nom == "Pictures" -> "Images"
         nom == "Movies" -> "Vidéos"
         nom == "Scans" || nom == "Documents scannés" -> "Documents scannés"
+        nom.isBlank() -> "Autres"
         else -> nom
     }
 
@@ -226,6 +227,48 @@ object Galerie {
             val x = ExifInterface(e)
             listOfNotNull(x.getAttribute(ExifInterface.TAG_MAKE), x.getAttribute(ExifInterface.TAG_MODEL)).joinToString(" ").ifBlank { null }
         }
+    } catch (_: Exception) {
+        null
+    }
+
+    // ——— Faire de la place ———
+
+    /** Les captures d'écran, les documents scannés, les images reçues par WhatsApp. */
+    fun estCapture(m: Media) = nomAlbum(m.album, m.dossier) == "Captures d'écran"
+    fun estDocument(m: Media) = nomAlbum(m.album, m.dossier) == "Documents scannés"
+    fun estWhatsApp(m: Media) = m.dossier.contains("WhatsApp", ignoreCase = true) || m.album.contains("WhatsApp", ignoreCase = true)
+
+    /** Le début du fichier (256 Ko), pour reconnaître deux fichiers identiques sans tout lire. */
+    private fun empreinte(c: Context, m: Media): String? = try {
+        c.contentResolver.openInputStream(m.uri)?.use { e ->
+            val md = java.security.MessageDigest.getInstance("MD5")
+            val tampon = ByteArray(64 * 1024)
+            var lu = 0
+            while (lu < 256 * 1024) {
+                val n = e.read(tampon)
+                if (n <= 0) break
+                md.update(tampon, 0, n)
+                lu += n
+            }
+            md.digest().joinToString("") { "%02x".format(it) }
+        }
+    } catch (_: Exception) {
+        null
+    }
+
+    /** Les photos et vidéos en double : même poids, même taille, même contenu. Dans chaque groupe, la plus ancienne d'abord. */
+    fun doublons(c: Context, l: List<Media>): List<List<Media>> =
+        l.filter { it.taille > 0 }.groupBy { Triple(it.taille, it.largeur, it.hauteur) }.values.filter { it.size > 1 }
+            .flatMap { g -> g.groupBy { empreinte(c, it) }.filterKeys { it != null }.values.filter { it.size > 1 } }
+            .map { g -> g.sortedBy { it.date } }
+
+    /** Une copie plus légère à partager (1600 pixels au plus, sans les données de la photo : ni lieu ni appareil). */
+    fun copieLegere(c: Context, m: Media): File? = try {
+        val b = image(c, m.uri, 1600) ?: throw IllegalStateException()
+        val dossier = File(c.cacheDir, "partage").apply { mkdirs() }
+        val f = File(dossier, m.nom.substringBeforeLast('.') + "_leger.jpg")
+        f.outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 82, it) }
+        f
     } catch (_: Exception) {
         null
     }

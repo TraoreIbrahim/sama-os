@@ -1,6 +1,19 @@
 package africa.samaos.mail
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import africa.samaos.banco.appli.ActionFeuille
+import africa.samaos.banco.appli.FeuilleAppli
+import africa.samaos.banco.appli.LocalFermerFeuille
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -136,11 +149,12 @@ internal fun PageAjouter(premiere: Boolean, retour: (() -> Unit)?, fini: () -> U
         }
     }
     EcranAppli(Modifier.imePadding()) {
-        Tete(if (premiere) "Mail" else "Ajouter une boîte", retour = retour)
+        if (retour != null) Barre("Retour", retour) else Spacer(Modifier.height(24.dp))
+        GrandTitre(if (premiere) "Mail" else "Ajouter une adresse mail")
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BasicText(
                 if (premiere) "Mail marche avec la boîte que vous avez déjà : celle de votre fournisseur, de votre travail ou de votre école."
-                else "Une autre boîte : elle aura ses propres dossiers.",
+                else "Une autre adresse : elle aura ses propres dossiers. On passe de l'une à l'autre d'un toucher sur l'adresse, en haut de la Réception.",
                 modifier = Modifier.padding(horizontal = 4.dp),
                 style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, lineHeight = 23.sp, color = a.encre2),
             )
@@ -196,56 +210,56 @@ private fun ChoixSecurite(s: Securite, changer: (Securite) -> Unit) {
 
 // ——— Réglages ———
 
+/** Les réglages de Mail : les adresses (vérifier, mot de passe, nom, retirer), la relève, les images. */
 @Composable
 internal fun PageReglages(aller: (Vue) -> Unit, retour: () -> Unit) {
     val c = LocalContext.current
     val a = LocalIdentite.current
     var v by remember { mutableIntStateOf(0) }
+    var choisi by remember { mutableStateOf<Compte?>(null) }
     var retirer by remember { mutableStateOf<Compte?>(null) }
-    val comptes = remember(v) { Comptes.liste(c) }
-    EcranAppli {
-        Tete("Réglages", retour = retour)
-        LazyColumn {
-            item { Rub("Relever les mails") }
+    val comptes = remember(v, Courrier.version) { Comptes.liste(c) }
+    Column(Modifier.fillMaxSize().background(a.fond).statusBarsPadding()) {
+        Barre("Retour", retour)
+        LazyColumn(Modifier.weight(1f)) {
+            item { GrandTitre("Réglages") }
+            item { Section("Adresses mail") }
+            itemsIndexed(comptes, key = { _, x -> x.id }) { i, x ->
+                LigneReglage(IconesMail.ENVELOPPE, a.accentTexte, x.adresse, listOf(x.nom, x.imap.hote).filter { it.isNotBlank() }.joinToString(" · "), i, comptes.size + 1) { choisi = x }
+            }
+            item { LigneReglage(Icones.PLUS, a.accentTexte, "Ajouter une adresse mail", null, comptes.size, comptes.size + 1) { aller(Vue.Ajouter) } }
+            item { Section("Relève") }
             item {
                 val f = remember(v) { Preferences.frequence(c) }
-                LigneAppli(Preferences.nomFrequence(f), second = "Avec un réseau seulement ; les mails en attente partent en même temps", debut = { IconeTrait(Icones.ROTATION, 20.dp, a.encre2) }) {
+                LigneReglage(Icones.ROTATION, a.encre2, "Relever les mails", Preferences.nomFrequence(f) + ", avec un réseau ; les mails en attente partent en même temps", 0, 2, fin = {
+                    BasicText("Changer", style = st(14.5f, a.accentTexte, FontWeight.SemiBold))
+                }) {
                     Preferences.frequenceSuivante(c)
                     v++
                 }
-            }
-            item {
                 val t = remember(v) { Preferences.texteSurData(c) }
-                LigneAppli("Le texte aussi sur data mobile", second = if (t) "Le texte vient avec les en-têtes" else "Sur data, seulement les en-têtes ; le texte à l'ouverture", fin = { InterAppli(t) }) {
+                LigneReglage(Icones.DONNEES, a.encre2, "Le texte aussi sur data mobile", if (t) "Le texte vient avec les en-têtes" else "Sur data, seulement les en-têtes ; le texte à l'ouverture", 1, 2, fin = { InterAppli(t) }) {
                     Preferences.reglerTexteSurData(c, !t)
                     v++
                 }
             }
-            item { Rub("Lire") }
+            item { Section("Lecture") }
             item {
                 val i = remember(v) { Preferences.imagesToujours(c) }
-                LigneAppli(
-                    "Images des mails", second = if (i) "Toujours chargées" else "À la demande : moins de data, et l'expéditeur ne sait pas que vous avez ouvert",
-                    fin = { InterAppli(i) },
-                ) {
+                LigneReglage(Icones.IMAGE, a.encre2, "Images des mails", if (i) "Toujours chargées" else "À la demande : moins de data, et l'expéditeur ne sait pas que vous avez ouvert", 0, 1, fin = { InterAppli(i) }) {
                     Preferences.reglerImages(c, !i)
                     v++
                 }
             }
-            item { Rub("Boîtes") }
-            items(comptes, key = { it.id }) { x ->
-                LigneAppli(x.adresse, second = "${x.imap.hote} · ${x.imap.securite.nom}", debut = { IconeTrait(IconesMail.ENVELOPPE, 20.dp, a.encre2) }, fin = {
-                    BoutonTexteAppli("Retirer", style = 't') { retirer = x }
-                })
-            }
-            item { LigneAppli("Ajouter une boîte", debut = { IconeTrait(Icones.PLUS, 20.dp, a.encre2) }) { aller(Vue.Ajouter) } }
             item {
                 Note("Mail ne garde que les derniers mails de chaque dossier sur le téléphone ; tout reste sur le serveur de votre boîte. Une pièce jointe ne se télécharge que si vous la demandez.")
+                Spacer(Modifier.navigationBarsPadding().height(24.dp))
             }
         }
     }
+    choisi?.let { x -> FeuilleCompte(x, fermer = { choisi = null }, retirer = { retirer = x }) { v++ } }
     retirer?.let { x ->
-        DialogueAppli("Retirer ${x.adresse} ?", "Les mails restent sur le serveur ; ce téléphone oublie la boîte et son mot de passe.", fermer = { retirer = null }) {
+        DialogueAppli("Retirer ${x.adresse} ?", "Les mails restent sur le serveur ; ce téléphone oublie l'adresse et son mot de passe.", fermer = { retirer = null }) {
             BoutonTexteAppli("Annuler", style = 't') { retirer = null }
             Spacer(Modifier.width(8.dp))
             BoutonTexteAppli("Retirer") {
@@ -260,6 +274,98 @@ internal fun PageReglages(aller: (Vue) -> Unit, retour: () -> Unit) {
     }
 }
 
+/** Une ligne de réglage dans un groupe aux coins doux. */
+@Composable
+private fun LigneReglage(icone: String, couleur: Color, titre: String, second: String?, i: Int, n: Int, fin: @Composable () -> Unit = { IconeTrait(Icones.CHEVRON, 15.dp, LocalIdentite.current.encre2.copy(alpha = 0.7f), epaisseur = 2f) }, onClick: () -> Unit) {
+    val a = LocalIdentite.current
+    Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(forme(i, n)).background(a.surface).clickable(onClickLabel = titre, role = Role.Button, onClick = onClick)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(start = 16.dp, end = 14.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconeTrait(icone, 22.dp, couleur)
+            Column(Modifier.weight(1f).padding(start = 14.dp, end = 10.dp)) {
+                BasicText(titre, maxLines = 1, overflow = TextOverflow.Ellipsis, style = st(16.5f, a.encre))
+                if (!second.isNullOrBlank()) BasicText(second, style = st(13f, a.encre2, interligne = 1.35f))
+            }
+            fin()
+        }
+        if (i < n - 1) Separateur(52.dp)
+    }
+}
+
+/** Une adresse : où sont ses serveurs, vérifier qu'elle répond, changer son mot de passe ou le nom affiché, la retirer. */
+@Composable
+private fun FeuilleCompte(x: Compte, fermer: () -> Unit, retirer: () -> Unit, change: () -> Unit) {
+    val c = LocalContext.current
+    val a = LocalIdentite.current
+    val portee = rememberCoroutineScope()
+    var etat by remember { mutableStateOf<String?>(null) }
+    var motDePasse by remember { mutableStateOf(false) }
+    var nom by remember { mutableStateOf(false) }
+    FeuilleAppli(fermer = fermer, titre = x.adresse) {
+        val f = LocalFermerFeuille.current
+        BasicText(
+            "Réception : ${x.imap.hote} · ${x.imap.securite.nom}\nEnvoi : ${x.smtp.hote} · ${x.smtp.securite.nom}",
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp), style = st(13f, a.encre2, interligne = 1.45f),
+        )
+        ActionFeuille(Icones.ROTATION, "Vérifier la connexion", second = etat) {
+            etat = "Connexion…"
+            portee.launch {
+                val probleme = withContext(Dispatchers.IO) { Courrier.tester(x, Comptes.motDePasse(c, x).orEmpty()) }
+                etat = probleme ?: "Tout marche : la boîte répond."
+            }
+        }
+        ActionFeuille(Icones.CLE, "Changer le mot de passe", second = "Si vous l'avez changé chez votre fournisseur") { motDePasse = true }
+        ActionFeuille(Icones.PERSONNE, "Le nom vu par vos destinataires", second = x.nom.ifBlank { "Aucun nom" }) { nom = true }
+        ActionFeuille(Icones.CORBEILLE, "Retirer cette adresse", danger = true, second = "Les mails restent sur le serveur") {
+            f()
+            retirer()
+        }
+    }
+    if (motDePasse) {
+        var mdp by remember { mutableStateOf("") }
+        var erreur by remember { mutableStateOf<String?>(null) }
+        var encours by remember { mutableStateOf(false) }
+        DialogueAppli("Nouveau mot de passe", "Celui de ${x.adresse}. Il reste sur ce téléphone, chiffré.", fermer = { motDePasse = false }, contenu = {
+            ChampTexte(mdp, "Mot de passe", { mdp = it }, clavier = KeyboardType.Password, secret = true)
+            erreur?.let { BasicText(it, style = st(14f, a.accentTexte, interligne = 1.4f)) }
+        }) {
+            val fd = LocalFermerFeuille.current
+            BoutonTexteAppli("Annuler", style = 't') { fd() }
+            BoutonTexteAppli(if (encours) "Vérification…" else "Vérifier et garder", actif = mdp.isNotEmpty() && !encours) {
+                encours = true
+                portee.launch {
+                    val probleme = withContext(Dispatchers.IO) { Courrier.tester(x, mdp) }
+                    encours = false
+                    if (probleme != null) {
+                        erreur = probleme
+                    } else {
+                        Courrier.deconnecter(x)
+                        Comptes.ajouter(c, x, mdp)
+                        Courrier.erreurs.remove(x.id)
+                        Courrier.changer()
+                        etat = "Mot de passe mis à jour."
+                        fd()
+                    }
+                }
+            }
+        }
+    }
+    if (nom) {
+        var texte by remember { mutableStateOf(x.nom) }
+        DialogueAppli("Votre nom", "Ce que voient vos destinataires à côté de ${x.adresse}.", fermer = { nom = false }, contenu = {
+            ChampTexte(texte, "Votre nom", { texte = it.take(60) })
+        }) {
+            val fd = LocalFermerFeuille.current
+            BoutonTexteAppli("Annuler", style = 't') { fd() }
+            BoutonTexteAppli("Garder") {
+                Comptes.motDePasse(c, x)?.let { m -> Comptes.ajouter(c, Compte(x.id, x.adresse, texte.trim(), x.identifiant, x.imap, x.smtp), m) }
+                change()
+                Courrier.changer()
+                fd()
+            }
+        }
+    }
+}
+
 // ——— Ce qui attend sur ce téléphone ———
 
 @Composable
@@ -268,7 +374,8 @@ internal fun PageBrouillons(aller: (Vue) -> Unit, retour: () -> Unit) {
     val a = LocalIdentite.current
     val l = remember(Courrier.version) { Base.brouillons(c) }
     EcranAppli {
-        Tete("Sur ce téléphone", retour = retour)
+        Barre("Boîtes", retour)
+        GrandTitre("Sur ce téléphone", "Brouillons et mails qui attendent le réseau")
         LazyColumn {
             if (l.isEmpty()) item { Note("Rien n'attend ici.") }
             items(l, key = { it.id }) { b ->

@@ -5,6 +5,20 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -136,25 +150,28 @@ internal fun PageEcrire(depart: Brouillon, retour: () -> Unit) {
         delay(300)
         runCatching { if (depart.a.isBlank()) focusDest.requestFocus() else focusCorps.requestFocus() }
     }
-    EcranAppli(Modifier.imePadding()) {
-        Tete(if (depart.enReponseA != null) "Répondre" else "Nouveau mail", retour = { garderEtQuitter() }, petit = true) {
-            BoutonAppli(IconesMail.TROMBONE, "Joindre un fichier") { joindre.launch(arrayOf("*/*")) }
-            BoutonAppli(Icones.ENVOYER, "Envoyer", style = 'a') { envoyer() }
+    val titre = when {
+        depart.enReponseA != null -> "Répondre"
+        depart.sujet.startsWith("Tr :") -> "Transférer"
+        else -> "Nouveau mail"
+    }
+    Column(Modifier.fillMaxSize().background(a.fond).statusBarsPadding().navigationBarsPadding().imePadding()) {
+        // La tête : « Annuler » (le brouillon reste sur le téléphone), le titre, joindre et envoyer.
+        Box(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp)) {
+            BasicText(
+                "Annuler",
+                modifier = Modifier.align(Alignment.CenterStart).clip(RoundedCornerShape(14.dp)).clickable(onClickLabel = "Annuler et garder le brouillon", role = Role.Button) { garderEtQuitter() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                style = st(17f, a.accentTexte),
+            )
+            BasicText(titre, modifier = Modifier.align(Alignment.Center), style = st(17f, a.encre, FontWeight.SemiBold))
+            Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                Rond(IconesMail.TROMBONE, "Joindre un fichier") { joindre.launch(arrayOf("*/*")) }
+                Spacer(Modifier.width(8.dp))
+                Rond(Icones.ENVOYER, "Envoyer", plein = true) { envoyer() }
+            }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Ligne("De") {
-                BasicText(
-                    compte.adresse, modifier = Modifier.clickable(enabled = comptes.size > 1, role = Role.Button) { choixCompte = !choixCompte },
-                    style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = a.encre),
-                )
-            }
-            if (choixCompte) comptes.filter { it.id != compte.id }.forEach { autre ->
-                LigneAppli(autre.adresse, debut = { IconeTrait(IconesMail.ENVELOPPE, 20.dp, a.encre2) }) {
-                    compte = autre
-                    choixCompte = false
-                }
-            }
-            Filet()
             Ligne("À") {
                 Saisie(dest, Modifier.focusRequester(focusDest), { v ->
                     dest = v
@@ -163,35 +180,82 @@ internal fun PageEcrire(depart: Brouillon, retour: () -> Unit) {
                         permission.launch(Manifest.permission.READ_CONTACTS)
                     }
                 }, KeyboardType.Email)
-                if (!avecCc) BasicText("Cc", modifier = Modifier.clickable(role = Role.Button) { avecCc = true }.padding(8.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = a.accentTexte))
+                if (!avecCc) BasicText("Cc", modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClickLabel = "Ajouter des copies", role = Role.Button) { avecCc = true }.padding(horizontal = 10.dp, vertical = 8.dp), style = st(15f, a.accentTexte, FontWeight.SemiBold))
             }
-            suggestions.forEach { (nom, adresse) ->
-                LigneAppli(nom.ifBlank { adresse }, second = adresse, debut = { Avatar(nom.ifBlank { adresse }, 36.dp) }) {
-                    val avant = dest.substringBeforeLast(',', "").trim()
-                    dest = (if (avant.isEmpty()) "" else "$avant, ") + adresse + ", "
-                    suggestions = emptyList()
+            // Les contacts qui correspondent à ce qu'on tape.
+            suggestions.forEachIndexed { i, (nom, adresse) ->
+                Row(
+                    Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(forme(i, suggestions.size)).background(a.surface)
+                        .clickable(onClickLabel = "Écrire à ${nom.ifBlank { adresse }}", role = Role.Button) {
+                            val avant = dest.substringBeforeLast(',', "").trim()
+                            dest = (if (avant.isEmpty()) "" else "$avant, ") + adresse + ", "
+                            suggestions = emptyList()
+                        }.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(34.dp).clip(CircleShape).background(a.voile), contentAlignment = Alignment.Center) { IconeTrait(Icones.PERSONNE, 18.dp, a.accentTexte) }
+                    Column(Modifier.padding(start = 12.dp)) {
+                        BasicText(nom.ifBlank { adresse }, maxLines = 1, style = st(15.5f, a.encre, FontWeight.Medium))
+                        if (nom.isNotBlank()) BasicText(adresse, maxLines = 1, style = st(13f, a.encre2))
+                    }
                 }
             }
-            Filet()
+            Separateur(20.dp)
             if (avecCc) {
                 Ligne("Cc") { Saisie(cc, Modifier, { cc = it }, KeyboardType.Email) }
-                Filet()
+                Separateur(20.dp)
+            }
+            if (comptes.size > 1) {
+                Ligne("De") {
+                    BasicText(
+                        compte.adresse, modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button) { choixCompte = !choixCompte }.padding(vertical = 14.dp),
+                        style = st(16f, a.encre),
+                    )
+                    IconeTrait(Icones.CHEVRON, 14.dp, a.encre2, Modifier.padding(end = 8.dp), epaisseur = 2f)
+                }
+                AnimatedVisibility(choixCompte, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    Column {
+                        comptes.filter { it.id != compte.id }.forEach { autre ->
+                            BasicText(
+                                autre.adresse,
+                                modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) {
+                                    compte = autre
+                                    choixCompte = false
+                                }.padding(start = 82.dp, top = 12.dp, bottom = 12.dp),
+                                style = st(16f, a.accentTexte),
+                            )
+                        }
+                    }
+                }
+                Separateur(20.dp)
             }
             Ligne("Objet") { Saisie(sujet, Modifier, { sujet = it }, KeyboardType.Text) }
-            Filet()
-            Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-                if (texte.isEmpty()) BasicText("Votre message", style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = a.encre2))
+            Separateur(20.dp)
+            Box(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 16.dp)) {
+                if (texte.isEmpty()) BasicText("Votre message", style = st(16.5f, a.encre2))
                 // Tout le cadre est le champ : on touche n'importe où pour écrire.
                 BasicTextField(
                     texte, { texte = it }, modifier = Modifier.fillMaxWidth().heightIn(min = 240.dp).focusRequester(focusCorps),
-                    textStyle = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, lineHeight = 24.sp, color = a.encre), cursorBrush = SolidColor(a.accent),
+                    textStyle = st(16.5f, a.encre, interligne = 1.5f), cursorBrush = SolidColor(a.accent),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
             }
-            pieces.forEach { p ->
-                val f = File(p)
-                LigneAppli(f.name, second = taille(f.length()), debut = { IconeTrait(IconesMail.TROMBONE, 20.dp, a.encre2) }, fin = {
-                    BoutonAppli(Icones.FERMER, "Retirer ${f.name}", taille = 40.dp) { pieces = pieces - p }
-                })
+            if (pieces.isNotEmpty()) {
+                Section(if (pieces.size == 1) "Pièce jointe" else "Pièces jointes · ${pieces.size}")
+                pieces.forEachIndexed { i, p ->
+                    val f = File(p)
+                    Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(forme(i, pieces.size)).background(a.surface)) {
+                        Row(Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(start = 14.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            IconeTrait(IconesMail.TROMBONE, 19.dp, a.encre2)
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                BasicText(f.name, maxLines = 1, style = st(15.5f, a.encre, FontWeight.Medium))
+                                BasicText(taille(f.length()), style = st(13f, a.encre2))
+                            }
+                            BoutonAppli(Icones.FERMER, "Retirer ${f.name}", taille = 40.dp) { pieces = pieces - p }
+                        }
+                        if (i < pieces.size - 1) Separateur(46.dp)
+                    }
+                }
             }
             erreur?.let { Note(it, a.accentTexte) }
             Spacer(Modifier.width(1.dp).heightIn(min = 40.dp))
@@ -202,8 +266,8 @@ internal fun PageEcrire(depart: Brouillon, retour: () -> Unit) {
 @Composable
 private fun Ligne(etiquette: String, contenu: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
     val a = LocalIdentite.current
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 20.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        BasicText(etiquette, modifier = Modifier.width(52.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2))
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 22.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        BasicText(etiquette, modifier = Modifier.width(50.dp), style = st(15.5f, a.encre2))
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { contenu() }
     }
 }

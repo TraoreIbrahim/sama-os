@@ -12,6 +12,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import africa.samaos.banco.appli.BarreAvis
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -88,6 +100,7 @@ import java.util.Locale
 import java.util.UUID
 
 internal sealed interface Vue {
+    data object Boites : Vue
     data object Liste : Vue
     data class Lecture(val compte: String, val dossier: String, val uid: Long) : Vue
     data class Ecrire(val brouillon: Brouillon) : Vue
@@ -117,7 +130,8 @@ internal object IconesMail {
 
 /** Le Mail de Sama (maquette l2-mail). */
 class Mail : ComponentActivity() {
-    private var pile by mutableStateOf(listOf<Vue>(Vue.Liste))
+    /** On arrive dans la réception ; « ‹ Boîtes » mène aux dossiers et aux autres adresses. */
+    private var pile by mutableStateOf(listOf(Vue.Boites, Vue.Liste))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -143,13 +157,36 @@ class Mail : ComponentActivity() {
                     PageAjouter(premiere = true, retour = null) { pile = pile.toList() }
                     return@AvecIdentite
                 }
-                when (val v = pile.last()) {
-                    Vue.Liste -> PageListe(aller)
-                    is Vue.Lecture -> PageLecture(v.compte, v.dossier, v.uid, aller, retour)
-                    is Vue.Ecrire -> PageEcrire(v.brouillon, retour)
-                    Vue.Ajouter -> PageAjouter(premiere = false, retour = retour) { pile = listOf(Vue.Liste) }
-                    Vue.Reglages -> PageReglages(aller, retour)
-                    Vue.Brouillons -> PageBrouillons(aller, retour)
+                Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
+                    // Une page arrive de la droite ; un mail à écrire monte du bas ; le retour fait l'inverse.
+                    AnimatedContent(
+                        pile,
+                        transitionSpec = {
+                            val avance = targetState.size >= initialState.size
+                            val vertical = (if (avance) targetState.last() else initialState.last()) is Vue.Ecrire
+                            when {
+                                vertical && avance -> (slideInVertically(spring(dampingRatio = 0.9f, stiffness = 420f)) { it } + fadeIn(tween(120))) togetherWith fadeOut(tween(260, delayMillis = 100))
+                                vertical -> fadeIn(tween(160)) togetherWith (slideOutVertically(tween(260, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 80)))
+                                avance -> (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 480f)) { it } + fadeIn(tween(150))) togetherWith (slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut(tween(240)))
+                                else -> (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(220))) togetherWith (slideOutHorizontally(tween(250, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
+                            }.apply { targetContentZIndex = if (avance) targetState.size.toFloat() else -1f }
+                        },
+                        contentKey = { it.size to it.last() },
+                        label = "page",
+                    ) { p ->
+                        Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
+                            when (val v = p.last()) {
+                                Vue.Boites -> PageBoites(aller)
+                                Vue.Liste -> PageBoite(aller, retour)
+                                is Vue.Lecture -> PageLecture(v.compte, v.dossier, v.uid, aller, retour)
+                                is Vue.Ecrire -> PageEcrire(v.brouillon, retour)
+                                Vue.Ajouter -> PageAjouter(premiere = false, retour = retour) { pile = listOf(Vue.Boites, Vue.Liste) }
+                                Vue.Reglages -> PageReglages(aller, retour)
+                                Vue.Brouillons -> PageBrouillons(aller, retour)
+                            }
+                        }
+                    }
+                    BarreAvis(Modifier.align(Alignment.BottomCenter), bas = 84.dp)
                 }
             }
         }
@@ -169,7 +206,7 @@ class Mail : ComponentActivity() {
                 val dossier = i.getStringExtra("dossier") ?: "INBOX"
                 Ecran.dossier = dossier
                 Comptes.de(this, compte)?.let { Comptes.choisir(this, it) }
-                pile = listOf(Vue.Liste, Vue.Lecture(compte, dossier, i.getLongExtra("uid", 0)))
+                pile = listOf(Vue.Boites, Vue.Liste, Vue.Lecture(compte, dossier, i.getLongExtra("uid", 0)))
             }
             Intent.ACTION_SENDTO, Intent.ACTION_VIEW -> i.data?.takeIf { it.scheme == "mailto" }?.let { pile = pile + Vue.Ecrire(depuisMailto(it)) }
             Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE -> {
@@ -322,148 +359,6 @@ internal fun Note(texte: String, couleur: androidx.compose.ui.graphics.Color? = 
     BasicText(texte, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, lineHeight = 20.sp, color = couleur ?: a.encre2))
 }
 
-// ——— La boîte (maquette l2-mail) ———
-
-@Composable
-private fun PageListe(aller: (Vue) -> Unit) {
-    val c = LocalContext.current
-    val a = LocalIdentite.current
-    val version = Courrier.version
-    val compte = remember(version) { Comptes.courant(c) } ?: return
-    var liste by remember { mutableStateOf<List<Lettre>>(emptyList()) }
-    var premieres by remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
-    var verdicts by remember { mutableStateOf<Map<Long, Verdict>>(emptyMap()) }
-    var nonLus by remember { mutableStateOf(0) }
-    var dossiers by remember { mutableStateOf<List<Dossier>>(emptyList()) }
-    var feuille by remember { mutableStateOf(false) }
-    val dossier = Ecran.dossier
-    LaunchedEffect(version, compte.id, dossier, Ecran.filtre, Ecran.recherche) {
-        withContext(Dispatchers.IO) {
-            val l = Base.lettres(c, compte.id, dossier, Ecran.filtre, Ecran.recherche)
-            premieres = Base.premieresPieces(c, compte.id, dossier)
-            verdicts = l.mapNotNull { x -> verdictDe(c, x, if (x.pj) Base.pieces(c, x.compte, x.dossier, x.uid) else emptyList())?.let { x.uid to it } }.toMap()
-            nonLus = Base.nonLus(c, compte.id, dossier)
-            dossiers = Base.dossiers(c, compte.id)
-            liste = l
-        }
-    }
-    // Relever à l'ouverture, puis toutes les deux minutes tant que la boîte est à l'écran.
-    LaunchedEffect(compte.id, dossier) {
-        while (true) {
-            withContext(Dispatchers.IO) {
-                try {
-                    Courrier.envoyerEnAttente(c)
-                    Courrier.relever(c, compte, dossier)
-                } catch (_: Exception) {
-                }
-            }
-            delay(120_000)
-        }
-    }
-    LaunchedEffect(Courrier.dernierMessage) {
-        if (Courrier.dernierMessage != null) {
-            delay(4000)
-            Courrier.dernierMessage = null
-        }
-    }
-    val d = dossiers.firstOrNull { it.nom == dossier }
-    Box(Modifier.fillMaxSize()) {
-        EcranAppli {
-            Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 8.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(
-                    Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(24.dp)).background(a.champ).padding(start = 4.dp, end = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BoutonAppli(IconesMail.MENU, "Dossiers", taille = 40.dp) { feuille = true }
-                    Box(Modifier.weight(1f).padding(horizontal = 4.dp)) {
-                        if (Ecran.recherche.isEmpty()) BasicText("Rechercher dans le courrier", maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = a.encre2))
-                        BasicTextField(
-                            Ecran.recherche, { Ecran.recherche = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                            textStyle = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = a.encre), cursorBrush = SolidColor(a.accent),
-                        )
-                    }
-                    if (Ecran.recherche.isNotEmpty()) BoutonAppli(Icones.FERMER, "Effacer la recherche", taille = 36.dp) { Ecran.recherche = "" }
-                    Box(Modifier.size(34.dp).clip(CircleShape).clickable(onClickLabel = "Comptes et dossiers", role = Role.Button) { feuille = true }) {
-                        Avatar(compte.nom.ifBlank { compte.adresse }, 34.dp)
-                    }
-                }
-            }
-            if (d != null && d.role != "reception") Rub(Courrier.nomLisible(d))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PuceFiltre(if (d == null || d.role == "reception") "Principale" else "Tous", Ecran.filtre == "") { Ecran.filtre = "" }
-                PuceFiltre(if (nonLus > 0) "Non lus · $nonLus" else "Non lus", Ecran.filtre == "nonlus") { Ecran.filtre = "nonlus" }
-                PuceFiltre("Pièces jointes", Ecran.filtre == "pj") { Ecran.filtre = "pj" }
-            }
-            val etat = Courrier.dernierMessage ?: Courrier.erreurs[compte.id]?.let { "Pas de relève : $it" }
-            if (etat != null) Note(etat, if (Courrier.dernierMessage == null) a.accentTexte else null)
-            LazyColumn(Modifier.fillMaxSize()) {
-                if (liste.isEmpty()) item {
-                    Note(
-                        when {
-                            Courrier.releves[compte.id] == true -> "Relève du courrier…"
-                            Ecran.recherche.isNotBlank() -> "Aucun mail ne correspond."
-                            Ecran.filtre == "nonlus" -> "Tout est lu."
-                            else -> "Aucun mail ici."
-                        },
-                    )
-                }
-                items(liste, key = { it.uid }) { l -> LigneMail(l, premieres[l.uid], verdicts[l.uid]) { aller(Vue.Lecture(l.compte, l.dossier, l.uid)) } }
-                item { Spacer(Modifier.height(96.dp)) }
-            }
-        }
-        Fab("Écrire", "M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4") {
-            aller(Vue.Ecrire(Brouillon(compte = compte.id, a = "", sujet = "", texte = "")))
-        }
-    }
-    if (feuille) FeuilleDossiers(compte, dossiers, aller) { feuille = false }
-}
-
-@Composable
-private fun LigneMail(l: Lettre, piece: String?, verdict: Verdict?, ouvrir: () -> Unit) {
-    val a = LocalIdentite.current
-    val gras = !l.lu
-    Row(
-        Modifier.fillMaxWidth().clickable(onClickLabel = "Lire", role = Role.Button, onClick = ouvrir).padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Avatar(l.nomAffiche, 40.dp)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                BasicText(
-                    l.nomAffiche, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(fontFamily = Polices.corps, fontWeight = if (gras) FontWeight.Bold else FontWeight.Medium, fontSize = 17.sp, lineHeight = 23.sp, color = a.encre),
-                )
-                if (l.etoile) IconeTrait(IconesMail.ETOILE, 14.dp, a.accentTexte)
-                BasicText(
-                    dateCourte(l.date),
-                    style = TextStyle(fontFamily = Polices.corps, fontWeight = if (gras) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp, color = if (gras) a.accentTexte else a.encre2),
-                )
-            }
-            BasicText(
-                l.sujet.ifBlank { "(sans objet)" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                style = TextStyle(fontFamily = Polices.corps, fontWeight = if (gras) FontWeight.SemiBold else FontWeight.Normal, fontSize = 15.sp, color = a.encre),
-            )
-            if (l.extrait.isNotBlank()) BasicText(l.extrait, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, lineHeight = 19.sp, color = a.encre2))
-            if (verdict != null || piece != null) Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (verdict != null) Pastille(Icones.ALERTE, verdict.titre, a.accentTexte, a.voile)
-                if (piece != null) Pastille(IconesMail.TROMBONE, piece, a.encre, null)
-            }
-        }
-    }
-}
-
-@Composable
-internal fun Pastille(icone: String, texte: String, couleur: androidx.compose.ui.graphics.Color, fond: androidx.compose.ui.graphics.Color?) {
-    val a = LocalIdentite.current
-    Row(
-        Modifier.height(30.dp).clip(RoundedCornerShape(15.dp)).then(if (fond != null) Modifier.background(fond) else Modifier.background(a.champ)).padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        IconeTrait(icone, 14.dp, couleur)
-        BasicText(texte, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 220.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = couleur))
-    }
-}
-
 internal fun iconeDossier(role: String) = when (role) {
     "reception" -> IconesMail.RECEPTION
     "envoyes" -> Icones.ENVOYER
@@ -472,44 +367,4 @@ internal fun iconeDossier(role: String) = when (role) {
     "indesirables" -> Icones.ALERTE
     "archives" -> IconesMail.ARCHIVES
     else -> Icones.DOSSIER
-}
-
-/** Les dossiers de la boîte, les autres boîtes, et les réglages. */
-@Composable
-private fun FeuilleDossiers(compte: Compte, dossiers: List<Dossier>, aller: (Vue) -> Unit, fermer: () -> Unit) {
-    val c = LocalContext.current
-    val comptes = remember { Comptes.liste(c) }
-    val brouillons = remember { Base.brouillons(c).size }
-    FeuilleAppli(fermer, titre = compte.adresse) {
-        Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState())) {
-            val l = dossiers.ifEmpty { listOf(Dossier(compte.id, "INBOX", "reception", 0)) }
-            l.forEach { d ->
-                ActionFeuille(iconeDossier(d.role), Courrier.nomLisible(d), second = if (d.nonLus > 0 && d.role != "envoyes" && d.role != "corbeille") "${d.nonLus} non lu${if (d.nonLus > 1) "s" else ""}" else null) {
-                    Ecran.dossier = d.nom
-                    Ecran.filtre = ""
-                    fermer()
-                }
-            }
-            if (brouillons > 0) ActionFeuille(Icones.CRAYON, "Sur ce téléphone", second = "$brouillons brouillon${if (brouillons > 1) "s" else ""} ou envoi${if (brouillons > 1) "s" else ""} en attente") {
-                fermer()
-                aller(Vue.Brouillons)
-            }
-            comptes.filter { it.id != compte.id }.forEach { autre ->
-                ActionFeuille(IconesMail.ENVELOPPE, autre.adresse, second = "Passer à cette boîte") {
-                    Comptes.choisir(c, autre)
-                    Ecran.dossier = "INBOX"
-                    Courrier.changer()
-                    fermer()
-                }
-            }
-            ActionFeuille(Icones.PLUS, "Ajouter une boîte mail") {
-                fermer()
-                aller(Vue.Ajouter)
-            }
-            ActionFeuille(Icones.REGLAGES, "Réglages de Mail") {
-                fermer()
-                aller(Vue.Reglages)
-            }
-        }
-    }
 }

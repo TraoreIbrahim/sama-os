@@ -66,6 +66,7 @@ class Camera(private val c: Context) {
     private var usage = Usage.PHOTO
     private var zoom = 1f
     private var lampe = false
+    private var ev = 0
     @Volatile private var dernierScan = 0L
 
     /** Les deux caméras : arrière, avant. */
@@ -111,6 +112,7 @@ class Camera(private val c: Context) {
         apercu = choisirApercu()
         usage = u
         zoom = 1f
+        ev = 0
         texture = st
         st.setDefaultBufferSize(apercu.width, apercu.height)
         surfaceApercu = Surface(st)
@@ -195,6 +197,16 @@ class Camera(private val c: Context) {
         }
     }
 
+    /** La luminosité qu'on peut corriger (en pas d'exposition), 0 au milieu. */
+    val expositions: Range<Int> get() = caracs.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE) ?: Range(0, 0)
+
+    /** Plus clair (positif) ou plus sombre (négatif) : l'aperçu change tout de suite, la photo suivra. */
+    fun exposer(pas: Int) = h.post {
+        ev = pas.coerceIn(expositions.lower, expositions.upper)
+        requete?.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, ev)
+        repeter()
+    }
+
     fun lampe(oui: Boolean) = h.post {
         lampe = oui
         requete?.set(CaptureRequest.FLASH_MODE, if (oui) CaptureRequest.FLASH_MODE_TORCH else CaptureRequest.FLASH_MODE_OFF)
@@ -243,6 +255,7 @@ class Camera(private val c: Context) {
             set(CaptureRequest.JPEG_ORIENTATION, orientationCapteur)
             set(CaptureRequest.JPEG_QUALITY, 92.toByte())
             set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+            set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, ev)
             if (flashPossible) {
                 set(
                     CaptureRequest.CONTROL_AE_MODE,

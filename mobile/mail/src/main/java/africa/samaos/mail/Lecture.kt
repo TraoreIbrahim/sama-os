@@ -12,6 +12,24 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.em
+import africa.samaos.banco.appli.ActionFeuille
+import africa.samaos.banco.appli.FeuilleAppli
+import africa.samaos.banco.appli.LocalFermerFeuille
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -181,74 +199,96 @@ internal fun PageLecture(compteId: String, dossier: String, uid: Long, aller: (V
         }
     }
     val corbeille = roles["corbeille"]
-    EcranAppli {
-        Tete("", retour = retour, petit = true) {
-            val archives = roles["archives"]
-            if (archives != null && dossier != archives) BoutonAppli(IconesMail.ARCHIVES, "Archiver") {
-                portee.launch { withContext(Dispatchers.IO) { runCatching { Courrier.deplacer(c, compte, dossier, uid, "archives") } } }
-                retour()
-            }
-            BoutonAppli(Icones.CORBEILLE, if (dossier == corbeille) "Supprimer définitivement" else "Mettre à la corbeille") {
-                if (dossier == corbeille) {
-                    effacer = true
-                } else {
-                    portee.launch { withContext(Dispatchers.IO) { runCatching { Courrier.deplacer(c, compte, dossier, uid, "corbeille") } } }
-                    retour()
+    val archives = roles["archives"]
+    var details by remember { mutableStateOf(false) }
+    val piege = verdict != null && dossier != corbeille
+    var repondre by remember { mutableStateOf(false) }
+    val nomDossier = remember(roles, dossier) {
+        when (dossier) {
+            roles["reception"], "INBOX" -> "Réception"
+            corbeille -> "Corbeille"
+            archives -> "Archives"
+            roles["envoyes"] -> "Envoyés"
+            roles["indesirables"] -> "Indésirables"
+            else -> dossier.substringAfterLast('/').substringAfterLast('.')
+        }
+    }
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        Barre(nomDossier, retour) {
+            if (lettre != null) {
+                val suivi = lettre.etoile
+                Rond(IconesMail.ETOILE, if (suivi) "Ne plus suivre" else "Suivre ce mail", plein = suivi) {
+                    portee.launch(Dispatchers.IO) { runCatching { Courrier.marquer(c, compte, dossier, uid, etoile = !suivi) } }
                 }
-            }
-            BoutonAppli(IconesMail.ENVELOPPE, "Marquer comme non lu") {
-                portee.launch { withContext(Dispatchers.IO) { runCatching { Courrier.marquer(c, compte, dossier, uid, lu = false) } } }
-                retour()
             }
         }
         if (lettre == null) {
             Note("Ce mail n'est plus là.")
-            return@EcranAppli
+            return@Column
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             BasicText(
-                lettre.sujet.ifBlank { "(sans objet)" }, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp),
-                style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, color = a.encre),
+                lettre.sujet.ifBlank { "(sans objet)" }, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 2.dp, bottom = 14.dp),
+                style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 30.sp, letterSpacing = (-0.01).em, color = a.encre),
             )
+            // L'expéditeur ; un toucher montre les destinataires et la date entière.
+            Column(
+                Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = if (details) "Masquer les détails" else "Voir les détails", role = Role.Button) { details = !details }
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        BasicText(lettre.nomAffiche, maxLines = 1, overflow = TextOverflow.Ellipsis, style = st(17f, a.encre, FontWeight.SemiBold))
+                        BasicText(
+                            if (details) lettre.de else "à " + destinatairesCourts(lettre, compte.adresse),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, style = st(14f, a.encre2),
+                        )
+                    }
+                    BasicText(dateCourte(lettre.date), style = st(13.5f, a.encre2))
+                    val tour by androidx.compose.animation.core.animateFloatAsState(if (details) 90f else 0f, label = "chevron")
+                    IconeTrait(Icones.CHEVRON, 14.dp, a.encre2, Modifier.padding(start = 6.dp).graphicsLayer { rotationZ = tour }, epaisseur = 2f)
+                }
+                AnimatedVisibility(details, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        listOf("À" to lettre.a, "Cc" to lettre.cc).filter { it.second.isNotBlank() }.forEach { (e, v) ->
+                            Row {
+                                BasicText(e, modifier = Modifier.width(34.dp), style = st(13.5f, a.encre2, FontWeight.SemiBold))
+                                BasicText(v, style = st(13.5f, a.encre2))
+                            }
+                        }
+                        BasicText(dateLongue(lettre.date).replaceFirstChar { it.uppercase() }, style = st(13.5f, a.encre2))
+                    }
+                }
+            }
             verdict?.let { v ->
                 Column(
-                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(a.voile).padding(16.dp),
+                    Modifier.padding(horizontal = 16.dp, vertical = 10.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(a.voile).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconeTrait(Icones.BOUCLIER, 20.dp, a.accentTexte)
-                        BasicText(v.titre, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = a.accentTexte))
+                        BasicText(v.titre, style = st(17f, a.accentTexte, FontWeight.Bold))
                     }
-                    BasicText(v.raison, style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 21.sp, color = a.encre))
-                    BasicText(
-                        "Ne répondez pas, n'ouvrez ni ses liens ni ses pièces jointes, et ne donnez jamais de code.",
-                        style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, lineHeight = 20.sp, color = a.encre2),
-                    )
+                    BasicText(v.raison, style = st(15f, a.encre, interligne = 1.4f))
+                    BasicText("Ne répondez pas, n'ouvrez ni ses liens ni ses pièces jointes, et ne donnez jamais de code.", style = st(14f, a.encre2, interligne = 1.4f))
                 }
             }
-            Row(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Avatar(lettre.nomAffiche, 44.dp)
-                Column(Modifier.weight(1f)) {
-                    BasicText(lettre.nomAffiche, maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = a.encre))
-                    BasicText(lettre.de, maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = a.encre2))
-                }
-                BasicText(dateCourte(lettre.date), style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = a.encre2))
-            }
-            val destinataires = listOf("À : " to lettre.a, "Cc : " to lettre.cc).filter { it.second.isNotBlank() }.joinToString("\n") { it.first + it.second }
-            if (destinataires.isNotBlank()) BasicText(destinataires, modifier = Modifier.padding(horizontal = 20.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, lineHeight = 18.sp, color = a.encre2))
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.padding(horizontal = 22.dp).fillMaxWidth().height(0.6.dp).background(a.trait))
+            Spacer(Modifier.height(14.dp))
             when {
                 !lettre.charge && erreur != null -> Note("Le texte n'a pas pu être relevé : $erreur", a.accentTexte)
                 !lettre.charge -> Note("Relève du texte…")
                 lettre.html != null && (lettre.texte.isNullOrBlank() || imagesDistantes(lettre.html)) -> {
                     if (imagesDistantes(lettre.html) && !images) {
                         Row(
-                            Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(a.champ).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                            Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(a.champ).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            IconeTrait(Icones.IMAGE, 18.dp, a.encre2)
                             BasicText(
                                 "Images non chargées : elles coûtent de la data et diraient à l'expéditeur que vous avez ouvert ce mail.",
-                                modifier = Modifier.weight(1f), style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, lineHeight = 18.sp, color = a.encre2),
+                                modifier = Modifier.weight(1f).padding(start = 10.dp), style = st(13f, a.encre2, interligne = 1.4f),
                             )
                             BoutonTexteAppli("Afficher", style = 't') { images = true }
                         }
@@ -260,28 +300,81 @@ internal fun PageLecture(compteId: String, dossier: String, uid: Long, aller: (V
                 else -> Note("Ce mail n'a pas de texte.")
             }
             if (pieces.isNotEmpty()) {
-                Rub(if (pieces.size == 1) "Pièce jointe" else "Pièces jointes · ${pieces.size}")
-                pieces.forEach { p ->
+                Section(if (pieces.size == 1) "Pièce jointe" else "Pièces jointes · ${pieces.size}")
+                pieces.forEachIndexed { i, p ->
                     val dangereuse = Bouclier.pieceJointe(p.nom) != null
-                    LigneAppli(
-                        p.nom,
-                        second = etatsPieces[p.n] ?: if (dangereuse) "Bloquée : une appli ne s'installe jamais depuis un mail" else "${taille(p.taille)} · touchez pour ouvrir",
-                        couleurSecond = if (dangereuse) a.accentTexte else null,
-                        debut = { IconeTrait(if (dangereuse) Icones.ALERTE else if (p.type.startsWith("image/")) Icones.IMAGE else Icones.DOCUMENT, 22.dp, if (dangereuse) a.accentTexte else a.encre2) },
-                        fin = { if (!dangereuse) BoutonAppli(Icones.TELECHARGE, "Enregistrer dans Téléchargements", taille = 44.dp) { enregistrer(p) } },
-                    ) { if (!dangereuse) demanderPiece(p) }
+                    Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(forme(i, pieces.size)).background(a.surface).clickable(enabled = !dangereuse, onClickLabel = "Ouvrir ${p.nom}", role = Role.Button) { demanderPiece(p) }) {
+                        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 14.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (dangereuse) a.voile else a.champ), contentAlignment = Alignment.Center) {
+                                IconeTrait(if (dangereuse) Icones.ALERTE else if (p.type.startsWith("image/")) Icones.IMAGE else Icones.DOCUMENT, 20.dp, if (dangereuse) a.accentTexte else a.encre2)
+                            }
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                BasicText(p.nom, maxLines = 1, overflow = TextOverflow.Ellipsis, style = st(15.5f, a.encre, FontWeight.Medium))
+                                BasicText(
+                                    etatsPieces[p.n] ?: if (dangereuse) "Bloquée : une appli ne s'installe jamais depuis un mail" else "${taille(p.taille)} · touchez pour ouvrir",
+                                    maxLines = 2, style = st(13f, if (dangereuse) a.accentTexte else a.encre2),
+                                )
+                            }
+                            if (!dangereuse) BoutonAppli(Icones.TELECHARGE, "Enregistrer dans Téléchargements", taille = 44.dp) { enregistrer(p) }
+                        }
+                        if (i < pieces.size - 1) Separateur(66.dp)
+                    }
                 }
             }
             Spacer(Modifier.height(24.dp))
         }
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp).navigationBarsPadding(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            BoutonTexteAppli("Répondre", style = 's', icone = IconesMail.REPONDRE) { aller(Vue.Ecrire(reponse(compte, lettre, tous = false))) }
+        // La barre d'actions, posée en bas : ranger, marquer, répondre.
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.clip(RoundedCornerShape(26.dp)).background(a.surface).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (archives != null && dossier != archives) Action(IconesMail.ARCHIVES, "Archiver") {
+                    Rangement.ranger(c, compte, dossier, uid, "archives")
+                    retour()
+                }
+                // Un mail signalé : jeter est l'action principale, répondre reste possible mais discret.
+                if (piege) Action(IconesMail.REPONDRE, "Répondre") { repondre = true }
+                else Action(Icones.CORBEILLE, if (dossier == corbeille) "Supprimer pour de bon" else "Mettre à la corbeille") {
+                    if (dossier == corbeille) {
+                        effacer = true
+                    } else {
+                        Rangement.ranger(c, compte, dossier, uid, "corbeille")
+                        retour()
+                    }
+                }
+                Action(IconesBoite.NON_LU, "Marquer comme non lu") {
+                    portee.launch(Dispatchers.IO) { runCatching { Courrier.marquer(c, compte, dossier, uid, lu = false) } }
+                    retour()
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            val (icone, nom) = if (piege) Icones.CORBEILLE to "Jeter ce mail" else IconesMail.REPONDRE to "Répondre"
+            Row(
+                Modifier.height(50.dp).clip(RoundedCornerShape(25.dp)).background(a.accent).clickable(onClickLabel = nom, role = Role.Button) {
+                    if (piege) {
+                        Rangement.ranger(c, compte, dossier, uid, "corbeille")
+                        retour()
+                    } else repondre = true
+                }.padding(start = 16.dp, end = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconeTrait(icone, 20.dp, a.surAccent, epaisseur = 2f)
+                BasicText(nom, modifier = Modifier.padding(start = 8.dp), style = st(16f, a.surAccent, FontWeight.SemiBold, 1.1f))
+            }
+        }
+    }
+    if (repondre && lettre != null) {
+        FeuilleAppli(fermer = { repondre = false }, titre = lettre.sujet.ifBlank { "(sans objet)" }) {
+            val f = LocalFermerFeuille.current
+            ActionFeuille(IconesMail.REPONDRE, "Répondre", second = "À ${lettre.nomAffiche}") {
+                f()
+                aller(Vue.Ecrire(reponse(compte, lettre, tous = false)))
+            }
             val plusieurs = (lettre.a + "," + lettre.cc).split(',').count { it.contains('@') } > 1
-            if (plusieurs) BoutonTexteAppli("À tous", style = 's', icone = IconesMail.REPONDRE_TOUS) { aller(Vue.Ecrire(reponse(compte, lettre, tous = true))) }
-            BoutonTexteAppli("Transférer", style = 's', icone = IconesMail.TRANSFERER) {
+            if (plusieurs) ActionFeuille(IconesMail.REPONDRE_TOUS, "Répondre à tous") {
+                f()
+                aller(Vue.Ecrire(reponse(compte, lettre, tous = true)))
+            }
+            ActionFeuille(IconesMail.TRANSFERER, "Transférer", second = if (pieces.isNotEmpty()) "Avec les pièces jointes" else null) {
+                f()
                 portee.launch {
                     val joints = withContext(Dispatchers.IO) {
                         pieces.filter { Bouclier.pieceJointe(it.nom) == null }.mapNotNull { p ->
@@ -328,6 +421,24 @@ internal fun PageLecture(compteId: String, dossier: String, uid: Long, aller: (V
             }
         }
     }
+}
+
+/** « moi », « moi et 2 autres », « awa@… » : à qui le mail a été écrit. */
+private fun destinatairesCourts(l: Lettre, moi: String): String {
+    val tous = (l.a + "," + l.cc).split(',').map { it.trim() }.filter { it.contains('@') }
+    if (tous.isEmpty()) return "vous"
+    val premier = tous.first().let { x -> if (x.contains(moi, true)) "moi" else x.substringBefore('<').trim().trim('"').ifBlank { x } }
+    return if (tous.size > 1) "$premier et ${tous.size - 1} autre${if (tous.size > 2) "s" else ""}" else premier
+}
+
+/** Une action de la barre du bas : une icône dans la capsule. */
+@Composable
+private fun Action(icone: String, nom: String, onClick: () -> Unit) {
+    val a = LocalIdentite.current
+    Box(
+        Modifier.size(48.dp, 42.dp).clip(RoundedCornerShape(21.dp)).clickable(onClickLabel = nom, role = Role.Button, onClick = onClick).semantics { contentDescription = nom },
+        contentAlignment = Alignment.Center,
+    ) { IconeTrait(icone, 21.dp, a.encre, epaisseur = 1.9f) }
 }
 
 private fun imagesDistantes(html: String) = Regex("(?i)<img[^>]+src\\s*=\\s*[\"']?https?:").containsMatchIn(html)

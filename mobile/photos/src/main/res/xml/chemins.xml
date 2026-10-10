@@ -2,4 +2,6 @@
 <!-- Les copies sans le lieu, préparées pour le partage. -->
 <paths>
     <cache-path name="partage" path="partage/" />
+    <!-- Les Masquées, quand on choisit de les partager depuis l'album. -->
+    <files-path name="masquees" path="masquees/" />
 </paths>
