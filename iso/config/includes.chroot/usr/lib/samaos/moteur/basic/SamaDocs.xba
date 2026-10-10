@@ -473,21 +473,195 @@ Erreur:
 	Encadre = "!" & Error$
 End Function
 
-' La signature : décalée vers la droite, un espace pour signer, puis le nom (Mes informations)
-Function Signature(sNom As String) As String
-	Dim oVC As Object, oText As Object
+' La signature : décalée vers la droite ; l'image de la signature (Mes informations), sinon un espace pour signer ;
+' puis le nom
+Function Signature(sNom As String, sImage As String) As String
+	Dim oDoc As Object, oVC As Object, oText As Object, oImage As Object, oFournisseur As Object, oGraphique As Object
+	Dim aP(0) As New com.sun.star.beans.PropertyValue, oTaille As Object, oTailleImage As New com.sun.star.awt.Size
 	On Error GoTo Erreur
-	oVC = ThisComponent.CurrentController.ViewCursor
+	oDoc = ThisComponent
+	oVC = oDoc.CurrentController.ViewCursor
 	oText = oVC.Text
 	oVC.ParaLeftMargin = 11300
-	oText.insertString(oVC, "Signature", False)
-	oText.insertControlCharacter(oVC, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+	If sImage <> "" And FileExists(sImage) Then
+		oFournisseur = createUnoService("com.sun.star.graphic.GraphicProvider")
+		aP(0).Name = "URL"
+		aP(0).Value = ConvertToURL(sImage)
+		oGraphique = oFournisseur.queryGraphic(aP())
+		oImage = oDoc.createInstance("com.sun.star.text.TextGraphicObject")
+		oImage.Graphic = oGraphique
+		oImage.AnchorType = com.sun.star.text.TextContentAnchorType.AS_CHARACTER
+		' (4,5 cm de large, la hauteur à proportion)
+		oTaille = oGraphique.SizePixel
+		oTailleImage.Width = 4500
+		oTailleImage.Height = 1500
+		If oTaille.Width > 0 Then oTailleImage.Height = CLng(4500 * oTaille.Height / oTaille.Width)
+		oImage.Size = oTailleImage
+		oText.insertTextContent(oVC, oImage, False)
+	Else
+		oText.insertString(oVC, "Signature", False)
+		oText.insertControlCharacter(oVC, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+	End If
 	oText.insertControlCharacter(oVC, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
 	oText.insertString(oVC, IIf(sNom <> "", sNom, "[Votre nom]"), False)
 	Signature = ""
 	Exit Function
 Erreur:
 	Signature = "!" & Error$
+End Function
+
+' ——— Un tableau de Sama Sheet, lié ———
+' Le tableau est copié dans le document (Word le lit comme un tableau ordinaire) ; un signet dans sa première case le
+' retrouve (« SamaSheet1 » : Word garde les signets, pas le nom des tableaux) ; d'où il vient est noté dans les
+' propriétés du document (« Sama.Sheet.SamaSheet1 » : le fichier, le tableau, la date du fichier lu) : quand le
+' classeur change, Sama propose de le mettre à jour. (Le classeur est lu à part, par lire-classeur.py : ce moteur, ouvert
+' sur un texte, ne sait pas ouvrir un classeur à côté. Ses cases arrivent ici en une chaîne : lignes séparées par
+' Chr(30), cases par Chr(31) ; sNombres : pour chaque ligne, « 0101… », 1 pour une case de nombre.)
+
+' Le tableau du document reçoit ces cases : autant de lignes et de colonnes, les nombres à droite, les titres teintés,
+' la ligne des totaux en gras
+Private Sub RemplirTable(oTable As Object, sDonnees As String, sNombres As String, bTotaux As Boolean)
+	Dim aLignes As Variant, aNombres As Variant, nL As Long, nC As Long, nR As Long, nK As Long, r As Long, c As Long
+	Dim aL As Variant, sN As String, oCellule As Object, oCurs As Object
+	' (IIf calcule ses deux branches : un If pour ce qui peut dépasser)
+	aLignes = Split(sDonnees, Chr(30))
+	aNombres = Split(sNombres, Chr(30))
+	nL = UBound(aLignes) + 1
+	aL = Split(aLignes(0), Chr(31))
+	nC = UBound(aL) + 1
+	nR = oTable.getRows().getCount()
+	nK = oTable.getColumns().getCount()
+	If nR < nL Then oTable.getRows().insertByIndex(nR, nL - nR)
+	If nR > nL Then oTable.getRows().removeByIndex(nL, nR - nL)
+	If nK < nC Then oTable.getColumns().insertByIndex(nK, nC - nK)
+	If nK > nC Then oTable.getColumns().removeByIndex(nC, nK - nC)
+	For r = 0 To nL - 1
+		aL = Split(aLignes(r), Chr(31))
+		sN = ""
+		If r <= UBound(aNombres) Then sN = aNombres(r)
+		For c = 0 To nC - 1
+			oCellule = oTable.getCellByPosition(c, r)
+			If c <= UBound(aL) Then oCellule.setString(aL(c)) Else oCellule.setString("")
+			oCurs = oCellule.createTextCursor()
+			oCurs.gotoEnd(True)
+			oCurs.ParaAdjust = IIf(Mid(sN, c + 1, 1) = "1" And r > 0, com.sun.star.style.ParagraphAdjust.RIGHT, com.sun.star.style.ParagraphAdjust.LEFT)
+			oCurs.CharWeight = IIf(r = nL - 1 And bTotaux And nL > 1, com.sun.star.awt.FontWeight.BOLD, com.sun.star.awt.FontWeight.NORMAL)
+		Next c
+	Next r
+	Habiller(oTable)
+End Sub
+
+' Le signet du tableau, au début de sa première case (remis après chaque remplissage, qui efface le texte des cases)
+Private Sub Marquer(oDoc As Object, oTable As Object, sCle As String)
+	Dim oMarque As Object, oCase As Object
+	If oDoc.Bookmarks.hasByName(sCle) Then oDoc.Bookmarks.getByName(sCle).dispose()
+	oCase = oTable.getCellByPosition(0, 0)
+	oMarque = oDoc.createInstance("com.sun.star.text.Bookmark")
+	oMarque.Name = sCle
+	oCase.insertTextContent(oCase.getStart(), oMarque, False)
+End Sub
+
+' Le tableau d'un signet (rien s'il a été supprimé)
+Private Function TableDe(oDoc As Object, sCle As String) As Object
+	Dim oAncre As Object
+	TableDe = Nothing
+	If Not oDoc.Bookmarks.hasByName(sCle) Then Exit Function
+	oAncre = oDoc.Bookmarks.getByName(sCle).getAnchor()
+	On Error Resume Next
+	TableDe = oAncre.TextTable
+End Function
+
+Private Sub NoterLien(oDoc As Object, sTable As String, sChemin As String, sNom As String)
+	Dim oProps As Object, sCle As String, sValeur As String
+	oProps = oDoc.DocumentProperties.UserDefinedProperties
+	sCle = "Sama.Sheet." & sTable
+	sValeur = sChemin & Chr(9) & sNom & Chr(9) & FileDateTime(sChemin)
+	If oProps.getPropertySetInfo().hasPropertyByName(sCle) Then
+		oProps.setPropertyValue(sCle, sValeur)
+	Else
+		oProps.addProperty(sCle, 128, sValeur)      ' (128 : REMOVABLE)
+	End If
+End Sub
+
+' Insérer au curseur le tableau sNom du classeur sChemin, d'après ses cases ; rend le nom du tableau dans le document
+Function InsererDonnees(sChemin As String, sNom As String, sDonnees As String, sNombres As String, sTotaux As String) As String
+	Dim oDoc As Object, oVC As Object, oTable As Object, aLignes As Variant, aL As Variant, sCle As String, n As Long
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oVC = oDoc.CurrentController.ViewCursor
+	aLignes = Split(sDonnees, Chr(30))
+	aL = Split(aLignes(0), Chr(31))
+	oDoc.UndoManager.enterUndoContext("Tableau de Sheet")
+	oTable = oDoc.createInstance("com.sun.star.text.TextTable")
+	oTable.initialize(UBound(aLignes) + 1, UBound(aL) + 1)
+	oVC.Text.insertTextContent(oVC, oTable, False)
+	RemplirTable(oTable, sDonnees, sNombres, sTotaux = "true")
+	n = 1
+	Do While oDoc.Bookmarks.hasByName("SamaSheet" & n)
+		n = n + 1
+	Loop
+	sCle = "SamaSheet" & n
+	Marquer(oDoc, oTable, sCle)
+	NoterLien(oDoc, sCle, sChemin, sNom)
+	oDoc.UndoManager.leaveUndoContext()
+	InsererDonnees = sCle
+	Exit Function
+Erreur:
+	InsererDonnees = "!" & Error$
+End Function
+
+' Les tableaux liés du document : [{"table", "fichier", "nom", "change" : le classeur a changé depuis, "manque" : il
+' n'est plus là}]
+Function LiensSheet() As String
+	Dim oDoc As Object, oProps As Object, aInfos As Variant, i As Long, s As String, sCle As String, aV As Variant
+	Dim sTable As String, bManque As Boolean, bChange As Boolean
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oProps = oDoc.DocumentProperties.UserDefinedProperties
+	aInfos = oProps.getPropertySetInfo().getProperties()
+	s = ""
+	For i = 0 To UBound(aInfos)
+		sCle = aInfos(i).Name
+		If Left(sCle, 11) = "Sama.Sheet." Then
+			sTable = Mid(sCle, 12)
+			aV = Split(oProps.getPropertyValue(sCle), Chr(9))
+			If UBound(aV) >= 2 And Not IsNull(TableDe(oDoc, sTable)) Then
+				bManque = Not FileExists(aV(0))
+				bChange = False
+				If Not bManque Then bChange = (FileDateTime(aV(0)) <> aV(2))
+				If s <> "" Then s = s & ","
+				s = s & "{""table"":" & Texte(sTable) & ",""fichier"":" & Texte(aV(0)) & ",""nom"":" & Texte(aV(1)) _
+				      & ",""change"":" & IIf(bChange, "true", "false") & ",""manque"":" & IIf(bManque, "true", "false") & "}"
+			End If
+		End If
+	Next i
+	LiensSheet = "[" & s & "]"
+	Exit Function
+Erreur:
+	LiensSheet = "!" & Error$
+End Function
+
+' Mettre à jour un tableau lié d'après les cases relues dans son classeur (un seul Ctrl+Z le défait)
+Function MettreAJourDonnees(sTable As String, sDonnees As String, sNombres As String, sTotaux As String) As String
+	Dim oDoc As Object, oProps As Object, aV As Variant, oTable As Object
+	On Error GoTo Erreur
+	oDoc = ThisComponent
+	oProps = oDoc.DocumentProperties.UserDefinedProperties
+	aV = Split(oProps.getPropertyValue("Sama.Sheet." & sTable), Chr(9))
+	oTable = TableDe(oDoc, sTable)
+	If IsNull(oTable) Then
+		MettreAJourDonnees = "!Ce tableau n'est plus dans le document"
+		Exit Function
+	End If
+	oDoc.UndoManager.enterUndoContext("Mettre à jour le tableau")
+	RemplirTable(oTable, sDonnees, sNombres, sTotaux = "true")
+	Marquer(oDoc, oTable, sTable)
+	NoterLien(oDoc, sTable, aV(0), aV(1))
+	oDoc.UndoManager.leaveUndoContext()
+	MettreAJourDonnees = ""
+	Exit Function
+Erreur:
+	MettreAJourDonnees = "!" & Error$
 End Function
 
 ' ——— Les liens ———

@@ -33,6 +33,8 @@ chromium
 libreoffice-writer
 libreoffice-calc
 libreoffice-impress
+# Sama Docs lit les classeurs (le bloc « Tableau de Sheet ») dans un LibreOffice à part, par Python (lire-classeur.py)
+python3-uno
 # LibreOffice en Wayland natif, avec les fenêtres de Plasma (sans lui : rendu X11, parfois noir sous XWayland),
 # en français, avec l'orthographe et la césure
 libreoffice-kf6

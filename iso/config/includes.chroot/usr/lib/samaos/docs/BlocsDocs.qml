@@ -29,6 +29,7 @@ Item {
         { cle: "puces", nom: "Liste à puces", detail: "", mots: "liste points", picto: "M9 7h11 M9 12h11 M9 17h11 M4.5 7v.1 M4.5 12v.1 M4.5 17v.1" },
         { cle: "numeros", nom: "Liste numérotée", detail: "1, 2, 3", mots: "liste numeros", picto: "M10 7h10 M10 12h10 M10 17h10 M4 5l1.5-1v5 M3.5 14.5a1.5 1.5 0 0 1 3 0c0 1-3 2-3 3.5h3" },
         { cle: "tableau", nom: "Tableau", detail: "Lignes et colonnes", mots: "grille", picto: "M4 5h16v14H4z M4 10h16 M10 5v14" },
+        { cle: "sheet", nom: "Tableau de Sheet", detail: "Lié, à jour", mots: "classeur excel tableur lien lie membres stock", picto: "M5 4h14v16H5z M5 9h14 M5 14h14 M10 4v16" },
         { cle: "presence", nom: "Liste de présence", detail: "Noms et signatures", mots: "presents membres emargement reunion", picto: "M9 4a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z M3 19c.8-3.2 3.2-5 6-5s5.2 1.8 6 5 M15 12l2 2 4-4" },
         { cle: "encadre", nom: "Encadré", detail: "À retenir", mots: "important note cadre", picto: "M4 5h16v14H4z M8 10h8 M8 14h5" },
         { cle: "citation", nom: "Citation", detail: "En retrait", mots: "citer", picto: "M7 8h4v5H8l-1 3 M14 8h4v5h-3l-1 3" },
@@ -202,7 +203,8 @@ Item {
             else if (b.cle === "saut") actions.lancer("sautPage")
             else if (b.cle === "presence") fenetre.appeler("SamaDocs.ListePresence", [])
             else if (b.cle === "encadre") fenetre.appeler("SamaDocs.Encadre", [])
-            else if (b.cle === "signature") fenetre.appeler("SamaDocs.Signature", [fenetre.moi.nom])
+            else if (b.cle === "signature") fenetre.appeler("SamaDocs.Signature", [fenetre.moi.nom, fenetre.moi.signature])
+            else if (b.cle === "sheet") fenetre.tableauSheet.choisir()
         })
     }
 

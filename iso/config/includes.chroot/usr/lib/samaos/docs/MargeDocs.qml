@@ -60,7 +60,7 @@ Item {
         if (s < 3600) return "Il y a " + Math.floor(s / 60) + " min"
         var jours = Math.round((new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000)
         var h = Qt.formatTime(d, "hh:mm")
-        return jours === 0 ? "Aujourd'hui, " + h : jours === 1 ? "Hier, " + h : Qt.formatDate(d, "d MMM") + ", " + h
+        return jours === 0 ? "Aujourd'hui, " + h : jours === 1 ? "Hier, " + h : d.toLocaleDateString(Qt.locale("fr_FR"), "d MMM") + ", " + h
     }
     function initiales(nom) { return fenetre.initiales(nom) }
     // (une teinte par personne, toujours la même)

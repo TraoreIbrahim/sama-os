@@ -12,7 +12,7 @@ Rectangle {
     signal enregistrer()
     visible: reprise !== null
     implicitHeight: visible ? ligne.implicitHeight + 16 : 0
-    color: Qt.rgba(fenetre.accent.r, fenetre.accent.g, fenetre.accent.b, Couleurs.sombre ? 0.2 : 0.09)
+    color: Qt.tint(Couleurs.fond, Qt.rgba(fenetre.accent.r, fenetre.accent.g, fenetre.accent.b, Couleurs.sombre ? 0.2 : 0.09))
     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: Couleurs.bord }
 
     function quand(secondes) {
@@ -20,7 +20,7 @@ Rectangle {
         var jours = Math.floor((new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate())
                                 - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000)
         var h = Qt.formatTime(d, "hh:mm")
-        return jours <= 0 ? "de " + h : jours === 1 ? "d'hier à " + h : "du " + Qt.formatDate(d, "d MMMM") + " à " + h
+        return jours <= 0 ? "de " + h : jours === 1 ? "d'hier à " + h : "du " + d.toLocaleDateString(Qt.locale("fr_FR"), "d MMMM") + " à " + h
     }
 
     RowLayout {

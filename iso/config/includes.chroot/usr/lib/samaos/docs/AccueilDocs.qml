@@ -37,7 +37,7 @@ Rectangle {
                 var quand = new Date(Number(p[0]) * 1000)
                 var jours = Math.floor((new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate()) - new Date(quand.getFullYear(), quand.getMonth(), quand.getDate())) / 86400000)
                 var texte = jours <= 0 ? "Aujourd'hui, " + Qt.formatTime(quand, "hh:mm") : jours === 1 ? "Hier"
-                            : jours < 7 ? Qt.locale("fr_FR").dayName(quand.getDay()) : Qt.formatDate(quand, "d MMMM")
+                            : jours < 7 ? Qt.locale("fr_FR").dayName(quand.getDay()) : quand.toLocaleDateString(Qt.locale("fr_FR"), "d MMMM")
                 return { chemin: p[2], nom: p[2].split("/").pop().replace(/\.(docx|doc|odt|rtf)$/i, ""), quand: texte }
             })
         })

@@ -120,6 +120,24 @@ Window {
     // (la carte d'un nouveau commentaire, dans la marge, à la hauteur de la sélection)
     function commenter() { page.margeOuverte = true; page.marge.commenter() }
 
+    // ——— Les tableaux de Sama Sheet liés : quand leur classeur a changé, le bandeau propose de les mettre à jour ———
+    readonly property alias tableauSheet: leTableauSheet
+    property var liensChanges: []       // [{ table, fichier, nom }]
+    property var liensIgnores: []       // (« Plus tard » : pas avant le prochain changement du fichier)
+    function verifierLiens() {
+        if (doc.etat !== DocumentLO.Pret || accueilOuvert) return
+        appeler("SamaDocs.LiensSheet", [], function (ok, v) {
+            if (!ok || !v || v.charAt(0) !== "[") return
+            fenetre.liensChanges = JSON.parse(v).filter(function (l) { return l.change && !l.manque && fenetre.liensIgnores.indexOf(l.table) < 0 })
+        })
+    }
+    function mettreAJourLiens() {
+        var l = liensChanges
+        liensChanges = []
+        l.forEach(function (lien) { leTableauSheet.mettreAJour(lien) })
+    }
+    onActiveChanged: if (active) verifierLiens()
+
     // ——— Les documents guidés : un seul à la fois (un second clic le referait) ———
     property string modeleEnCours: ""
     property var modeleEnAttente: null
@@ -204,6 +222,7 @@ Window {
             fenetre.doc.commande(".uno:SpellOnline", { Enable: { type: "boolean", value: fenetre.orthographe } })
             // (récupéré : pas encore enregistré à son emplacement)
             if (fenetre.reprise) fenetre.doc.commande(".uno:Modified", { Modified: { type: "boolean", value: true } })
+            fenetre.verifierLiens()
             if (fenetre.modeleEnAttente) {
                 var m = fenetre.modeleEnAttente
                 fenetre.modeleEnAttente = null
@@ -255,6 +274,47 @@ Window {
         spacing: 0
         EnTeteDocs { id: entete; Layout.fillWidth: true }
         BandeauSecours { Layout.fillWidth: true; reprise: fenetre.reprise; onEnregistrer: fenetre.enregistrer() }
+        // Un tableau lié dont le classeur a changé
+        Rectangle {
+            visible: fenetre.liensChanges.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? ligneLiens.implicitHeight + 16 : 0
+            color: Qt.tint(Couleurs.fond, Qt.rgba(fenetre.accent.r, fenetre.accent.g, fenetre.accent.b, Couleurs.sombre ? 0.2 : 0.09))
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 0.5; color: Couleurs.bord }
+            RowLayout {
+                id: ligneLiens
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 18
+                anchors.rightMargin: 12
+                spacing: 10
+                Text {
+                    Layout.fillWidth: true
+                    readonly property var l: fenetre.liensChanges
+                    text: l.length === 1 ? "<b>Le tableau « " + l[0].nom + " » a changé</b> dans " + l[0].fichier.split("/").pop() + " depuis qu'il est dans ce document."
+                          : "<b>" + l.length + " tableaux ont changé</b> dans leurs classeurs : " + l.map(function (x) { return x.nom }).join(", ") + "."
+                    textFormat: Text.StyledText
+                    font.pixelSize: 13
+                    color: Couleurs.texte
+                    wrapMode: Text.Wrap
+                }
+                Outil {
+                    text: "Plus tard"
+                    onClicked: { fenetre.liensIgnores = fenetre.liensIgnores.concat(fenetre.liensChanges.map(function (x) { return x.table })); fenetre.liensChanges = [] }
+                }
+                QQC2.AbstractButton {
+                    id: boutonLiens
+                    implicitHeight: 30
+                    implicitWidth: texteLiens.implicitWidth + 26
+                    hoverEnabled: true
+                    focusPolicy: Qt.NoFocus
+                    onClicked: fenetre.mettreAJourLiens()
+                    background: Rectangle { radius: 9; color: boutonLiens.hovered ? Qt.darker(fenetre.accent, 1.1) : fenetre.accent }
+                    contentItem: Text { id: texteLiens; text: "Mettre à jour"; font.pixelSize: 13; font.weight: Font.DemiBold; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                }
+            }
+        }
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -283,7 +343,8 @@ Window {
                 anchors.leftMargin: 16
                 anchors.rightMargin: 12
                 spacing: 8
-                readonly property string pageNo: String(fenetre.doc.etats[".uno:StatePageNumber"] || "").replace(/\s*\(.*\)\s*$/, "")
+                // (« Page 1 sur 2 », comme dans les maquettes ; le moteur dit « de »)
+                readonly property string pageNo: String(fenetre.doc.etats[".uno:StatePageNumber"] || "").replace(/\s*\(.*\)\s*$/, "").replace(/ de /, " sur ")
                 readonly property string mots: String(fenetre.doc.etats[".uno:StateWordCount"] || "").split(",")[0].replace(/\s*mot(s)?\b.*/, " mots").trim()
                 readonly property string langue: String(fenetre.doc.etats[".uno:LanguageStatus"] || "").split(";")[0].replace(/\s*\(.*\)$/, "")
                 Text { text: [parent.pageNo, parent.mots, parent.langue].filter(function (x) { return x }).join("  ·  "); font.pixelSize: 12; color: Couleurs.texte2 }
@@ -327,6 +388,7 @@ Window {
         onOublier: copie => secours.oublier(copie)
     }
     MesInformations { id: mesInformations }
+    TableauSheet { id: leTableauSheet; onAnnonce: t => message.montrer(t) }
 
     // ——— Message bref ———
     Rectangle {

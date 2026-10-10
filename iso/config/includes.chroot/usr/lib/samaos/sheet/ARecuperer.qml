@@ -22,7 +22,7 @@ ColumnLayout {
         var h = Qt.formatTime(d, "hh:mm")
         var j = Qt.locale("fr_FR").dayName(d.getDay())
         return jours <= 0 ? "Aujourd'hui à " + h : jours === 1 ? "Hier à " + h
-               : jours < 7 ? j.charAt(0).toUpperCase() + j.slice(1) + " à " + h : "Le " + Qt.formatDate(d, "d MMMM")
+               : jours < 7 ? j.charAt(0).toUpperCase() + j.slice(1) + " à " + h : "Le " + d.toLocaleDateString(Qt.locale("fr_FR"), "d MMMM")
     }
 
     Text { text: "À récupérer"; font.pixelSize: 13; font.weight: Font.DemiBold; color: Couleurs.texte2; Layout.leftMargin: 10 }
