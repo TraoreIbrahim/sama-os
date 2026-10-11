@@ -338,7 +338,11 @@ private fun ChoixWidgets(disposition: Disposition, retour: () -> Unit, fini: () 
                     null
                 }
                 Propose(info, info.loadLabel(pm), appli, Widgets.taille(info, contexte), image)
-            }.sortedWith(compareBy({ it.appli }, { it.nom }))
+            }.let { l ->
+                // Par appli (dans l'ordre du dictionnaire : « À venir » avec les A), puis de la plus petite taille à la plus grande.
+                val ordre = java.text.Collator.getInstance(java.util.Locale.FRENCH)
+                l.sortedWith(compareBy<Propose, String>(ordre) { it.appli }.thenBy { Widgets.rangees(contexte, it.info) }.thenBy(ordre) { it.nom.toString() })
+            }
         }
     }
     val place = Widgets.RANGEES_MAX - disposition.widgets.sumOf { it.rangees }

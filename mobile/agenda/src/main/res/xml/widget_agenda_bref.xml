@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_bref"
+    android:previewImage="@drawable/apercu_agenda_bref"
+    android:initialLayout="@layout/widget_agenda_bref"
+    android:minWidth="250dp"
+    android:minHeight="70dp"
+    android:minResizeWidth="220dp"
+    android:minResizeHeight="70dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="3600000"
+    android:widgetCategory="home_screen" />

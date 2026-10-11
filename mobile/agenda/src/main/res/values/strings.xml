@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_bref">À venir</string>
+    <string name="widget_heures">Ma journée</string>
+    <string name="widget_semaine">Les prochains jours</string>
+</resources>

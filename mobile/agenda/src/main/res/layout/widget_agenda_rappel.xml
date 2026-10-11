@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une chose qui reste à faire, sous la date : « 1 devoir en retard », « Contrôle de SVT mardi ». -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rappel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="5dp"
+    android:ellipsize="end"
+    android:maxLines="2"
+    android:textColor="@color/widget_encre2"
+    android:textSize="12sp" />

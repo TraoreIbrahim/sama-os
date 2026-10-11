@@ -2,4 +2,9 @@
 <resources>
     <color name="fond">#FCFAF6</color>
     <color name="accent">#3D5A99</color>
+    <!-- Les widgets de l'Accueil : une page blanche le jour, l'ardoise de l'Agenda la nuit. -->
+    <color name="widget_fond">#FFFDF9</color>
+    <color name="widget_encre">#1F1C18</color>
+    <color name="widget_encre2">#665E54</color>
+    <color name="widget_rouge">#D9542F</color>
 </resources>

@@ -379,10 +379,11 @@ class Agenda : ComponentActivity() {
         version++
     }
 
-    /** Mon cycle se referme dès qu'on quitte l'appli. */
+    /** Mon cycle se referme dès qu'on quitte l'appli ; les widgets de l'Accueil reprennent ce qui a changé. */
     override fun onStop() {
         super.onStop()
         Cycle.ouvert = false
+        WidgetsAgenda.annoncer(this)
     }
 
     /** « Ajouter à l'agenda » (titre et heure donnés), ou un événement à voir. */
@@ -417,7 +418,7 @@ private val VERT = Color(0xFF2E8A6E)
 private val BLEU = Color(0xFF3D5A99)
 private val OR = Color(0xFFE2A62B)
 /** La couleur d'un évènement : celle qu'on lui a donnée, sinon une couleur tirée de son titre, toujours la même. */
-private fun couleurEvenement(e: Evenement) = e.couleur?.let { Color(it) } ?: listOf(VERT, BLEU, OR, Color(0xFF5D4CC0), Color(0xFFE9805A))[Math.floorMod(e.titre.hashCode(), 5)]
+internal fun couleurEvenement(e: Evenement) = e.couleur?.let { Color(it) } ?: listOf(VERT, BLEU, OR, Color(0xFF5D4CC0), Color(0xFFE9805A))[Math.floorMod(e.titre.hashCode(), 5)]
 
 /** Les couleurs qu'on peut donner à un évènement. */
 private val COULEURS_EVENEMENT = listOf(BLEU, VERT, OR, Color(0xFFE9805A), ROSE, Color(0xFF5D4CC0), Color(0xFF3FB6A8), Color(0xFF6B6F7E))

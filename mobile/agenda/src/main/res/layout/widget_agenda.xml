@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Les widgets « Ma journée » (deux rangées) et « Les prochains jours » (trois) : à gauche la date et ce qui reste
+  à faire (devoirs, tâches) ; à droite ce qui vient, jour par jour (posé par le code).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/racine"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_page"
+    android:clipToOutline="true"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="12dp">
+
+    <LinearLayout
+        android:layout_width="92dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/semaine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontVariationSettings="'wght' 650"
+            android:singleLine="true"
+            android:textColor="@color/widget_rouge"
+            android:textSize="12.5sp" />
+
+        <TextView
+            android:id="@+id/numero"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontVariationSettings="'wght' 300"
+            android:includeFontPadding="false"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre"
+            android:textSize="38sp" />
+
+        <TextView
+            android:id="@+id/mois"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre2"
+            android:textSize="12.5sp" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Ce qui reste à faire, une chose par ligne (posé par le code). -->
+        <LinearLayout
+            android:id="@+id/resume"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/liste"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical" />
+</LinearLayout>

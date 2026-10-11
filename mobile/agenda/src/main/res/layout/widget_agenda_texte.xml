@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une phrase dans la liste : « Rien de prévu aujourd'hui. » -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/texte"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="4dp"
+    android:paddingBottom="6dp"
+    android:textColor="@color/widget_encre2"
+    android:textSize="13sp" />

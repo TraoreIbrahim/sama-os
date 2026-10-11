@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Les anniversaires des contacts, lus (jamais copiés) pour les montrer le bon jour. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Les widgets se redessinent à la minute où un moment commence ou finit (réveil qui ne réveille pas le téléphone). -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <application
         android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Agenda" android:supportsRtl="true" android:theme="@style/Theme.Appli">
         <activity android:name=".Agenda" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
@@ -34,6 +36,26 @@
                 <action android:name="android.intent.action.EVENT_REMINDER" />
                 <data android:scheme="content" />
             </intent-filter>
+        </receiver>
+
+        <!-- Les widgets de l'Accueil, en trois tailles (une, deux ou trois rangées). -->
+        <receiver android:name=".WidgetAgendaBref" android:exported="false" android:label="@string/widget_bref">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_agenda_bref" />
+        </receiver>
+        <receiver android:name=".WidgetAgenda" android:exported="false" android:label="@string/widget_heures">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_agenda_heures" />
+        </receiver>
+        <receiver android:name=".WidgetAgendaSemaine" android:exported="false" android:label="@string/widget_semaine">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_agenda_semaine" />
         </receiver>
     </application>
 </manifest>

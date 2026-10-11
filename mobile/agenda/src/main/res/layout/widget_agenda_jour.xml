@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le nom d'un jour dans la liste : « Demain », « Mardi 13 ». -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/jour"
+    android:layout_width="match_parent"
+    android:layout_height="22dp"
+    android:fontVariationSettings="'wght' 600"
+    android:gravity="bottom"
+    android:paddingBottom="2dp"
+    android:singleLine="true"
+    android:textColor="@color/widget_encre2"
+    android:textSize="12sp" />

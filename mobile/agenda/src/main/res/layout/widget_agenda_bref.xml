@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Le widget « À venir » (une rangée) : la date comme une page d'éphéméride, puis ce qui vient, et ce qu'il y a ensuite.
+  Pas de police propre : l'Accueil ouvre les widgets en contexte restreint, où Android ignore les polices des applis.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/racine"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_page"
+    android:clipToOutline="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="18dp">
+
+    <LinearLayout
+        android:layout_width="58dp"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/semaine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontVariationSettings="'wght' 650"
+            android:singleLine="true"
+            android:textColor="@color/widget_rouge"
+            android:textSize="12.5sp" />
+
+        <TextView
+            android:id="@+id/numero"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontVariationSettings="'wght' 300"
+            android:includeFontPadding="false"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre"
+            android:textSize="34sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/barre"
+        android:layout_width="4dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="12dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_barre" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/titre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontVariationSettings="'wght' 600"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre2"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/puis"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre2"
+            android:textSize="12.5sp" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_heures"
+    android:previewImage="@drawable/apercu_agenda_heures"
+    android:initialLayout="@layout/widget_agenda"
+    android:minWidth="250dp"
+    android:minHeight="170dp"
+    android:minResizeWidth="220dp"
+    android:minResizeHeight="170dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="3600000"
+    android:widgetCategory="home_screen" />
