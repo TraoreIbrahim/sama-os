@@ -164,10 +164,10 @@ fun Recherche(valeur: String, indication: String, changer: (String) -> Unit, mod
 
 /** Des choix côte à côte dans une capsule ; le choisi est posé sur un galet qui glisse de l'un à l'autre. */
 @Composable
-fun Segments(choix: List<String>, choisi: Int, modifier: Modifier = Modifier, changer: (Int) -> Unit) {
+fun Segments(choix: List<String>, choisi: Int, modifier: Modifier = Modifier, bord: Dp = 16.dp, changer: (Int) -> Unit) {
     val a = LocalIdentite.current
     val retour = LocalHapticFeedback.current
-    BoxWithConstraints(modifier.padding(horizontal = 16.dp).fillMaxWidth().height(38.dp).clip(RoundedCornerShape(19.dp)).background(a.champ).padding(3.dp)) {
+    BoxWithConstraints(modifier.padding(horizontal = bord).fillMaxWidth().height(38.dp).clip(RoundedCornerShape(19.dp)).background(a.champ).padding(3.dp)) {
         val large = maxWidth / choix.size
         val x by animateDpAsState(large * choisi, spring(dampingRatio = 0.8f, stiffness = 520f), label = "galet")
         Box(Modifier.offset(x = x).width(large).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(if (a.sombre) a.voile else a.surface))

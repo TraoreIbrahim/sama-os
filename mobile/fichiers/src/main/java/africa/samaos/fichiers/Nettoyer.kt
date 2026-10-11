@@ -44,7 +44,7 @@ import africa.samaos.banco.appli.CaseAppli
 import africa.samaos.banco.appli.EcranAppli
 import africa.samaos.banco.appli.FeuilleAppli
 import africa.samaos.banco.appli.LocalIdentite
-import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.GrandTitre
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -77,7 +77,7 @@ fun Nettoyer() {
     }
     val portee = rememberCoroutineScope()
     EcranAppli {
-        Tete("Nettoyer")
+        GrandTitre("Nettoyer", sousBarre = true)
         val an = analyse
         if (an == null) {
             BasicText("Recherche de ce qui peut partir…", modifier = Modifier.weight(1f).padding(20.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2))

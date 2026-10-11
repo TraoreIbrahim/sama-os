@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Icones
 import africa.samaos.banco.Polices
+import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.couleurDe
 import africa.samaos.banco.appli.initiales
 import androidx.core.content.res.ResourcesCompat
@@ -47,18 +48,19 @@ fun PhotoContact(nom: String?, photo: ImageBitmap?, taille: Dp, modifier: Modifi
         Image(photo, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier.size(taille).clip(CircleShape))
         return
     }
+    // Sans photo : les initiales, de la couleur tirée du nom, sur une teinte pâle de la même couleur (comme les visages de Banco).
+    val a = LocalIdentite.current
     val c = if (nom.isNullOrBlank()) Color(0xFF8F8476) else couleurDe(nom)
-    Box(
-        modifier.size(taille).clip(CircleShape).background(Brush.verticalGradient(listOf(lerp(c, Color.White, 0.22f), c))),
-        contentAlignment = Alignment.Center,
-    ) {
+    val fond = if (a.sombre) lerp(Color(0xFF241D17), c, 0.42f) else lerp(Color.White, c, 0.17f)
+    val encre = if (a.sombre) lerp(c, Color.White, 0.62f) else lerp(c, Color.Black, 0.12f)
+    Box(modifier.size(taille).clip(CircleShape).background(fond), contentAlignment = Alignment.Center) {
         if (nom.isNullOrBlank()) {
-            IconeTrait(Icones.PERSONNE, taille * 0.46f, Color.White.copy(alpha = 0.9f))
+            IconeTrait(Icones.PERSONNE, taille * 0.46f, encre.copy(alpha = 0.8f))
             return@Box
         }
         BasicText(
             initiales(nom),
-            style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = (taille.value * 0.36f).sp, color = Color.White),
+            style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = (taille.value * 0.36f).sp, letterSpacing = (taille.value * 0.01f).sp, color = encre),
         )
     }
 }

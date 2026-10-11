@@ -49,7 +49,9 @@ import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.Rub
-import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.BarreRetour
+import africa.samaos.banco.appli.GrandTitre
+import africa.samaos.banco.appli.Rond
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,7 +88,8 @@ fun Recus() {
     }
     val portee = rememberCoroutineScope()
     EcranAppli {
-        Tete("Reçus", retour = x.retour, petit = true) { BoutonAppli(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) } }
+        BarreRetour("Fichiers", x.retour, Modifier.padding(top = 0.dp)) { Rond(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) } }
+        GrandTitre("Reçus", sousBarre = true)
         Row(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Tout", "Téléchargés", "Reçus à proximité").forEachIndexed { i, nom -> PuceFiltre(nom, filtre == i) { filtre = i } }
         }
@@ -186,9 +189,10 @@ fun Corbeille() {
     var effacer by remember { mutableStateOf<Stockage.Jete?>(null) }
     val portee = rememberCoroutineScope()
     EcranAppli {
-        Tete("Corbeille", retour = x.retour, petit = true) {
+        BarreRetour("Fichiers", x.retour, Modifier.padding(top = 0.dp)) {
             if (!l.isNullOrEmpty()) BoutonTexteAppli("Vider", style = 't') { vider = true }
         }
+        GrandTitre("Corbeille", sousBarre = true)
         val liste = l ?: return@EcranAppli
         BasicText(
             if (liste.isEmpty()) "La corbeille est vide." else "Les fichiers restent 30 jours, puis s'effacent d'eux-mêmes. ${liste.size} fichier${if (liste.size > 1) "s" else ""} · ${taille(liste.sumOf { it.taille })}.",

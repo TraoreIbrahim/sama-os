@@ -98,7 +98,12 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.InterAppli
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
-import africa.samaos.banco.appli.NavAppli
+import africa.samaos.banco.appli.NavFlottante
+import africa.samaos.banco.appli.BarreRetour
+import africa.samaos.banco.appli.GrandTitre
+import africa.samaos.banco.appli.Rond
+import africa.samaos.banco.appli.Section
+import africa.samaos.banco.appli.styleDoux
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
 import africa.samaos.banco.appli.AvecIdentite
@@ -127,6 +132,7 @@ internal object Ic {
     const val TELEPHONE = "M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M10.5 18h3"
     const val NOUVEAU_DOSSIER = "M4 6.5A1.5 1.5 0 0 1 5.5 5H10l2 2h6.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z M12 10.5v5 M9.5 13h5"
     const val WIFI = "M5 10a10 10 0 0 1 14 0 M8 13.5a5.5 5.5 0 0 1 8 0 M12 17.5h.01"
+    const val AUTRES = "M6.5 12h.01 M12 12h.01 M17.5 12h.01"
 }
 
 fun iconeDe(g: Genre) = when (g) {
@@ -149,12 +155,9 @@ class Actions(
     val version: Int,
 )
 
-/** Les deux onglets, en bas des écrans Parcourir et Nettoyer (les feuilles passent par-dessus). */
+/** La place des deux onglets flottants (Parcourir, Nettoyer), posés par la racine au-dessus des écrans. */
 @Composable
-fun Onglets(courant: Int) {
-    val x = LocalActions.current
-    NavAppli(listOf("Parcourir" to Icones.DOSSIER, "Nettoyer" to Ic.BALAI), courant, x.onglet)
-}
+fun Onglets(@Suppress("UNUSED_PARAMETER") courant: Int) = Spacer(Modifier.navigationBarsPadding().height(80.dp))
 
 val LocalActions = staticCompositionLocalOf<Actions> { error("Actions") }
 
@@ -263,6 +266,9 @@ private fun Racine(pile: SnapshotStateList<Vue>) {
                 Vue.Recus -> Recus()
                 Vue.Corbeille -> Corbeille()
                 Vue.Recherche -> Recherche()
+            }
+            if (vue == Vue.Parcourir || vue == Vue.Nettoyer) {
+                NavFlottante(listOf("Parcourir" to Icones.DOSSIER, "Nettoyer" to Ic.BALAI), if (vue == Vue.Parcourir) 0 else 1, actions.onglet, Modifier.align(Alignment.BottomCenter))
             }
             message?.let { (texte, annuler) ->
                 LaunchedEffect(texte) {
@@ -385,7 +391,7 @@ fun partager(c: Context, f: Fichier) {
 private fun Bandeau(texte: String, annuler: (() -> Unit)?, modifier: Modifier) {
     val a = LocalIdentite.current
     Row(
-        modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 160.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(a.encre)
+        modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 92.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(a.encre)
             .padding(start = 18.dp, end = 6.dp).heightIn(min = 52.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -468,7 +474,12 @@ fun LigneFichier(f: Fichier, second: String? = null, couleurSecond: Color? = nul
         second ?: if (f.dossier) (if (f.enfants == 0) "vide" else if (f.enfants == 1) "1 élément" else "${f.enfants} éléments") else "${taille(f.taille)} · ${quand(f.date)}",
         couleurSecond = couleurSecond,
         debut = { Vignette(f) },
-        fin = { if (f.dossier) IconeTrait(Icones.CHEVRON, 20.dp, LocalIdentite.current.encre2) else BoutonAppli(Icones.OPTIONS, "Options du fichier") { x.options(f) } },
+        fin = {
+            if (f.dossier) IconeTrait(Icones.CHEVRON, 20.dp, LocalIdentite.current.encre2)
+            else Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClickLabel = "Options du fichier", role = Role.Button) { x.options(f) }, contentAlignment = Alignment.Center) {
+                IconeTrait(Ic.AUTRES, 22.dp, LocalIdentite.current.encre2, epaisseur = 2.6f)
+            }
+        },
         surAppuiLong = { x.options(f) },
     ) { x.ouvrir(f) }
 }
@@ -488,25 +499,21 @@ private fun Accueil() {
         value = withContext(Dispatchers.IO) { Stockage.vieillesVideos(c).sumOf { it.taille } + (Stockage.etat(c)?.caches ?: 0) }
     }
     val jetes by produceState(0, x.version) { value = withContext(Dispatchers.IO) { Stockage.corbeille(c).size } }
-    var menu by remember { mutableStateOf(false) }
+    var caches by remember { mutableStateOf(cachesVisibles(c)) }
     EcranAppli {
-        Tete("Fichiers") {
-            BoutonAppli(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) }
-            BoutonAppli(Icones.OPTIONS, "Plus d'options") { menu = true }
+        val e = etat
+        GrandTitre("Fichiers", if (e == null) " " else "${taille(e.libre)} libres sur ${taille(e.total)}", sousBarre = true) {
+            Rond(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            val e = etat
             Column(
                 Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(a.surface)
                     .clickable(onClickLabel = "Parcourir le téléphone") { x.aller(Vue.Dossier(Stockage.racine.absolutePath)) }.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    BasicText("Ce téléphone", modifier = Modifier.weight(1f), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = a.encre))
-                    if (e != null) {
-                        BasicText(taille(e.libre), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = a.encre))
-                        BasicText(" libres sur ${taille(e.total)}", style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2))
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText("Ce téléphone", modifier = Modifier.weight(1f), style = styleDoux(17f, a.encre, FontWeight.SemiBold))
+                    if (e != null) BasicText("${taille(e.total - e.libre)} pris", style = styleDoux(14f, a.encre2))
                 }
                 Row(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)).background(a.champ)) {
                     if (e != null) {
@@ -560,8 +567,7 @@ private fun Accueil() {
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Rub("Ailleurs")
+            Section("Ailleurs")
             LigneAppli("Tous les dossiers", "Téléchargements, Documents, Appareil photo…", debut = { IconeTrait(Icones.DOSSIER, 24.dp, a.encre2) }, fin = { IconeTrait(Icones.CHEVRON, 20.dp, a.encre2) }) {
                 x.aller(Vue.Dossier(Stockage.racine.absolutePath))
             }
@@ -575,33 +581,14 @@ private fun Accueil() {
                 "Corbeille", if (jetes == 0) "Vide" else "$jetes fichier${if (jetes > 1) "s" else ""} · gardés 30 jours",
                 debut = { IconeTrait(Icones.CORBEILLE, 24.dp, a.encre2) }, fin = { IconeTrait(Icones.CHEVRON, 20.dp, a.encre2) },
             ) { x.aller(Vue.Corbeille) }
+            LigneAppli("Fichiers cachés", "Ceux dont le nom commence par un point", debut = { IconeTrait(Icones.OEIL_BARRE, 24.dp, a.encre2) }, fin = { InterAppli(caches) }) {
+                caches = !caches
+                prefs(c).edit().putBoolean("caches", caches).apply()
+                x.dire(if (caches) "Les fichiers cachés sont affichés" else "Les fichiers cachés sont masqués", null)
+            }
             Spacer(Modifier.height(16.dp))
         }
         Onglets(0)
-    }
-    if (menu) MenuOptions(fermer = { menu = false }, dossier = null)
-}
-
-@Composable
-private fun MenuOptions(fermer: () -> Unit, dossier: File?, nouveau: (() -> Unit)? = null) {
-    val c = LocalContext.current
-    val x = LocalActions.current
-    var caches by remember { mutableStateOf(cachesVisibles(c)) }
-    FeuilleAppli(fermer = fermer) {
-        if (nouveau != null) ActionFeuille(Ic.NOUVEAU_DOSSIER, "Nouveau dossier") {
-            fermer()
-            nouveau()
-        }
-        LigneAppli("Afficher les fichiers cachés", "Ceux dont le nom commence par un point", fin = { InterAppli(caches) }) {
-            caches = !caches
-            prefs(c).edit().putBoolean("caches", caches).apply()
-            x.dire(if (caches) "Les fichiers cachés sont affichés" else "Les fichiers cachés sont masqués", null)
-            fermer()
-        }
-        if (dossier == null) ActionFeuille(Icones.CORBEILLE, "Corbeille") {
-            fermer()
-            x.aller(Vue.Corbeille)
-        }
     }
 }
 
@@ -614,18 +601,18 @@ private fun Dossier(d: File) {
     val x = LocalActions.current
     var tri by remember { mutableStateOf(Tri.entries[prefs(c).getInt("tri", 0)]) }
     var grille by remember { mutableStateOf(prefs(c).getBoolean("grille", false)) }
-    var menu by remember { mutableStateOf(false) }
     var creer by remember { mutableStateOf(false) }
     var maj by remember { mutableIntStateOf(0) }
     val contenu by produceState<List<Fichier>?>(null, d, tri, x.version, maj) { value = withContext(Dispatchers.IO) { Stockage.lister(d, tri, cachesVisibles(c)) } }
+    // Le fil : Ce téléphone › Documents › École ; chaque étape ramène à ce dossier.
+    val etapes = generateSequence(d) { f -> f.parentFile?.takeIf { f.absolutePath != Stockage.racine.absolutePath && it.absolutePath.startsWith("/storage") } }.toList().reversed()
     EcranAppli {
-        Tete(Stockage.nomDossier(d), retour = x.retour, petit = true) {
-            BoutonAppli(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) }
-            BoutonAppli(Icones.OPTIONS, "Plus d'options") { menu = true }
+        BarreRetour(etapes.getOrNull(etapes.size - 2)?.let { Stockage.nomDossier(it) } ?: "Fichiers", x.retour, Modifier.padding(top = 0.dp)) {
+            Rond(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) }
+            Rond(Ic.NOUVEAU_DOSSIER, "Nouveau dossier") { creer = true }
         }
-        // Le fil : Ce téléphone › Documents › École ; chaque étape ramène à ce dossier.
-        val etapes = generateSequence(d) { f -> f.parentFile?.takeIf { f.absolutePath != Stockage.racine.absolutePath && it.absolutePath.startsWith("/storage") } }.toList().reversed()
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        GrandTitre(Stockage.nomDossier(d), sousBarre = true)
+        if (etapes.size > 1) Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 22.dp, end = 20.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             etapes.forEachIndexed { i, e ->
                 val dernier = i == etapes.lastIndex
                 BasicText(
@@ -668,7 +655,6 @@ private fun Dossier(d: File) {
             }
         }
     }
-    if (menu) MenuOptions(fermer = { menu = false }, dossier = d, nouveau = { creer = true })
     if (creer) NouveauDossier(fermer = { creer = false }) { nom ->
         creer = false
         if (Stockage.nouveauDossier(d, nom)) maj++ else x.dire("Impossible de créer « $nom »", null)
@@ -719,12 +705,10 @@ private fun Sorte(cat: Categorie) {
     val x = LocalActions.current
     val l by produceState<List<Fichier>?>(null, cat, x.version) { value = withContext(Dispatchers.IO) { Stockage.categorie(c, cat) } }
     EcranAppli {
-        Tete(cat.nom, retour = x.retour, petit = true) { BoutonAppli(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) } }
-        val liste = l ?: return@EcranAppli
-        BasicText(
-            if (liste.isEmpty()) "Aucun fichier." else "${liste.size} fichier${if (liste.size > 1) "s" else ""} · ${taille(liste.sumOf { it.taille })}",
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2),
-        )
+        BarreRetour("Fichiers", x.retour, Modifier.padding(top = 0.dp)) { Rond(Icones.RECHERCHE, "Rechercher") { x.aller(Vue.Recherche) } }
+        val liste = l
+        GrandTitre(cat.nom, if (liste == null) " " else if (liste.isEmpty()) "Aucun fichier" else "${liste.size} fichier${if (liste.size > 1) "s" else ""} · ${taille(liste.sumOf { it.taille })}", sousBarre = true)
+        if (liste == null) return@EcranAppli
         if (cat == Categorie.IMAGES || cat == Categorie.VIDEOS) Grille(liste)
         else LazyColumn(Modifier.fillMaxSize()) {
             items(liste, key = { it.chemin }) { f -> LigneFichier(f, "${taille(f.taille)} · ${quand(f.date)} · ${File(f.chemin).parentFile?.let { Stockage.nomDossier(it) }.orEmpty()}") }

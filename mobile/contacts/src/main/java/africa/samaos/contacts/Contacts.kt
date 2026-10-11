@@ -92,8 +92,13 @@ import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Icones
 import africa.samaos.banco.Polices
 import africa.samaos.banco.appli.ActionFeuille
+import africa.samaos.banco.appli.BarreRetour
+import africa.samaos.banco.appli.GrandTitre
+import africa.samaos.banco.appli.Recherche
+import africa.samaos.banco.appli.Rond
+import africa.samaos.banco.appli.Segments
+import africa.samaos.banco.appli.styleDoux
 import africa.samaos.banco.appli.AvecIdentite
-import africa.samaos.banco.appli.BlocAppli
 import africa.samaos.banco.appli.BoutonAppli
 import africa.samaos.banco.appli.BoutonTexteAppli
 import africa.samaos.banco.appli.CaseAppli
@@ -211,10 +216,20 @@ private val EPINGLE = "M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z M12 8.
 private val ENVELOPPE = "M4 6h16v12H4z M4 7l8 6l8-6"
 private val COEUR = "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"
 
+/** Un groupe de lignes sur le fond : coins doux, ni bord ni ombre. */
 @Composable
-private fun TitreEcran(texte: String, modifier: Modifier = Modifier) {
+private fun Bloc(modifier: Modifier = Modifier, contenu: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(LocalIdentite.current.surface), content = contenu)
+}
+
+/** Un bouton rond avec son nom dessous (Appeler, Message, Partager). */
+@Composable
+private fun Action(icone: String, texte: String, plein: Boolean = false, actif: Boolean = true, onClick: () -> Unit) {
     val a = LocalIdentite.current
-    BasicText(texte, modifier = modifier, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp, color = a.encre))
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Rond(icone, texte, plein = plein, taille = 54.dp, actif = actif, onClick = onClick)
+        BasicText(texte, maxLines = 1, style = styleDoux(12.5f, if (actif) a.encre2 else a.encre2.copy(alpha = 0.5f), FontWeight.Medium, 1.1f))
+    }
 }
 
 // ——— Liste (maquette contacts-1) ———
@@ -246,22 +261,17 @@ private fun PageListe(reprise: Int, aller: (Vue) -> Unit) {
         m
     }
     EcranAppli {
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            TitreEcran("Contacts", Modifier.weight(1f))
-            BoutonAppli(Icones.SIM, "Importer depuis la SIM") { aller(Vue.Import) }
-            Box(
-                Modifier.padding(start = 4.dp).size(46.dp).clip(CircleShape).background(a.accent)
-                    .clickable(onClickLabel = "Nouveau contact", role = Role.Button) { aller(Vue.Modifier(null)) },
-                contentAlignment = Alignment.Center,
-            ) { IconeTrait(Icones.PLUS, 22.dp, a.surAccent, epaisseur = 2.2f) }
+        GrandTitre("Contacts", if (contacts.isEmpty()) " " else "${contacts.size} contact${if (contacts.size > 1) "s" else ""}", sousBarre = true) {
+            Rond(Icones.SIM, "Importer depuis la SIM") { aller(Vue.Import) }
+            Rond(Icones.PLUS, "Nouveau contact", plein = true, epaisseur = 2.2f) { aller(Vue.Modifier(null)) }
         }
-        ChampAppli(recherche, "Rechercher parmi ${contacts.size} contacts", { recherche = it })
+        Recherche(recherche, "Un nom, un lien (Maman, Collègue)", { recherche = it }, Modifier.padding(bottom = 4.dp))
         Box(Modifier.fillMaxSize()) {
             val avecIndex = recherche.isBlank() && positions.size > 3
             LazyColumn(Modifier.fillMaxSize().padding(start = 16.dp, end = if (avecIndex) 24.dp else 16.dp), state = etat) {
                 if (recherche.isBlank()) {
                     item(key = "moi") {
-                        BlocAppli(Modifier.padding(top = 14.dp)) {
+                        Bloc(Modifier.padding(top = 14.dp)) {
                             val f = moi
                             Row(
                                 Modifier.fillMaxWidth().clickable(onClickLabel = "Ma fiche", role = Role.Button) { aller(if (f == null) Vue.ModifierMaFiche else Vue.MaFiche) }
@@ -305,17 +315,15 @@ private fun PageListe(reprise: Int, aller: (Vue) -> Unit) {
                     }
                     item(key = "groupes") {
                         if (groupes.isNotEmpty()) {
-                            Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                PuceFiltre("Tous", groupe == null) { groupe = null }
-                                groupes.forEach { g -> PuceFiltre(g, groupe == g) { groupe = if (groupe == g) null else g } }
-                            }
+                            val choix = listOf("Tous") + groupes
+                            Segments(choix, choix.indexOf(groupe ?: "Tous").coerceAtLeast(0), Modifier.padding(top = 16.dp), bord = 0.dp) { groupe = if (it == 0) null else choix[it] }
                         }
                     }
                 }
                 parLettre.forEach { (lettre, l) ->
                     item(key = "l$lettre") { Rubrique(lettre, lettre = true) }
                     item(key = "b$lettre") {
-                        BlocAppli {
+                        Bloc {
                             l.forEachIndexed { i, ct ->
                                 if (i > 0) FiletBloc(70.dp)
                                 Row(
@@ -328,7 +336,7 @@ private fun PageListe(reprise: Int, aller: (Vue) -> Unit) {
                                         BasicText(ct.nom, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = a.encre))
                                         ct.lien?.let { BasicText(listOfNotNull(ct.groupe?.takeIf { g -> g != "Famille" }, it).joinToString(" · "), style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = a.encre2)) }
                                     }
-                                    if (ct.favori) IconeTrait(ETOILE, 17.dp, a.accentTexte)
+                                    if (ct.favori) IconeTrait(ETOILE, 17.dp, a.accentTexte, epaisseur = 2f)
                                 }
                             }
                         }
@@ -354,15 +362,7 @@ private fun PageListe(reprise: Int, aller: (Vue) -> Unit) {
 
 @Composable
 private fun Rubrique(texte: String, lettre: Boolean = false) {
-    val a = LocalIdentite.current
-    BasicText(
-        if (lettre) texte else texte.uppercase(),
-        modifier = Modifier.padding(start = 6.dp, top = 18.dp, bottom = 8.dp),
-        style = TextStyle(
-            fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = if (lettre) 0.sp else 0.6.sp,
-            color = if (lettre) a.accentTexte else a.encre2,
-        ),
-    )
+    BasicText(texte, modifier = Modifier.padding(start = 10.dp, top = 20.dp, bottom = 8.dp), style = styleDoux(15f, LocalIdentite.current.encre, FontWeight.SemiBold))
 }
 
 /** L'index des lettres, sur le bord droit : on y glisse le doigt pour sauter. */
@@ -387,7 +387,7 @@ private fun androidx.compose.foundation.layout.BoxScope.IndexLettres(lettres: Li
             BasicText(
                 l,
                 modifier = Modifier.clip(CircleShape).clickable(onClickLabel = "Aller à $l") { aller(l) }.padding(horizontal = 5.dp, vertical = 1.dp),
-                style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = a.accentTexte),
+                style = styleDoux(11f, a.encre2, FontWeight.SemiBold, 1.15f),
             )
         }
     }
@@ -411,15 +411,13 @@ private fun PageFiche(id: Long, reprise: Int, aller: (Vue) -> Unit, retour: () -
     fun appeler(n: String) = c.startActivity(Intent(Intent.ACTION_CALL, Uri.fromParts("tel", n, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     fun ecrire(n: String) = c.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", n, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     EcranAppli {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            BoutonAppli("M15 6l-6 6l6 6", "Retour", onClick = retour)
-            Spacer(Modifier.weight(1f))
-            BoutonAppli(ETOILE, if (f.favori) "Retirer des favoris" else "Ajouter aux favoris", style = if (f.favori) 'v' else ' ') {
+        BarreRetour("Contacts", retour, Modifier.padding(top = 0.dp)) {
+            Rond(ETOILE, if (f.favori) "Retirer des favoris" else "Ajouter aux favoris", plein = f.favori, epaisseur = 2f) {
                 Carnet.favori(c, f.id, !f.favori)
                 version++
             }
-            BoutonAppli(Icones.CRAYON, "Modifier") { aller(Vue.Modifier(f.id)) }
-            BoutonAppli(Icones.CORBEILLE, "Supprimer") { supprimer = true }
+            Rond(Icones.CRAYON, "Modifier") { aller(Vue.Modifier(f.id)) }
+            Rond(Icones.CORBEILLE, "Supprimer") { supprimer = true }
         }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -432,16 +430,16 @@ private fun PageFiche(id: Long, reprise: Int, aller: (Vue) -> Unit, retour: () -
                     style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2),
                 )
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionFiche("Appeler", Icones.APPEL, principal != null, Modifier.weight(1f)) { principal?.let { appeler(it.numero) } }
-                ActionFiche("Message", Icones.MESSAGE, principal != null, Modifier.weight(1f)) { principal?.let { ecrire(it.numero) } }
-                ActionFiche("Partager", "M12 4v12 M7 9l5-5l5 5 M5 14v5h14v-5", true, Modifier.weight(1f)) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 20.dp, horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                Action(Icones.APPEL, "Appeler", plein = true, actif = principal != null) { principal?.let { appeler(it.numero) } }
+                Action(Icones.MESSAGE, "Message", actif = principal != null) { principal?.let { ecrire(it.numero) } }
+                Action("M12 4v12 M7 9l5-5l5 5 M5 14v5h14v-5", "Partager") {
                     val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_VCARD_URI, f.cle)
                     c.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(ContactsContract.Contacts.CONTENT_VCARD_TYPE).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Partager ${f.nom}").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
             }
             if (f.numeros.isNotEmpty()) {
-                BlocAppli {
+                Bloc {
                     f.numeros.forEachIndexed { i, n ->
                         if (i > 0) FiletBloc(16.dp)
                         val op = Carnet.operateur(n.numero)
@@ -456,7 +454,7 @@ private fun PageFiche(id: Long, reprise: Int, aller: (Vue) -> Unit, retour: () -
                             }
                             if (op != null && op != "Fixe") PuceOperateur(op)
                             if (sim != null) Box(Modifier.padding(start = 6.dp)) { PuceSim(sim.first, sim.second) }
-                            BoutonAppli(Icones.MESSAGE, "Message", style = 'v') { ecrire(n.numero) }
+                            Rond(Icones.MESSAGE, "Message", taille = 38.dp) { ecrire(n.numero) }
                         }
                     }
                 }
@@ -466,7 +464,7 @@ private fun PageFiche(id: Long, reprise: Int, aller: (Vue) -> Unit, retour: () -
                 f.adresse?.let { Triple(EPINGLE, "Où la trouver", it) },
             ) + f.emails.map { Triple(ENVELOPPE, "E-mail", it) }
             if (infos.isNotEmpty()) {
-                BlocAppli(Modifier.padding(top = 12.dp)) {
+                Bloc(Modifier.padding(top = 12.dp)) {
                     infos.forEachIndexed { i, (icone, titre, valeur) ->
                         if (i > 0) FiletBloc(52.dp)
                         Row(
@@ -530,20 +528,6 @@ private fun anniversaireLisible(d: String): String = try {
     d
 }
 
-@Composable
-private fun ActionFiche(nom: String, icone: String, actif: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val a = LocalIdentite.current
-    Column(
-        modifier.clip(RoundedCornerShape(18.dp)).background(a.surface).border(1.dp, a.trait, RoundedCornerShape(18.dp))
-            .clickable(enabled = actif, onClickLabel = nom, role = Role.Button, onClick = onClick).semantics { contentDescription = nom }
-            .padding(vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        IconeTrait(icone, 24.dp, if (actif) a.accentTexte else a.encre2)
-        BasicText(nom, modifier = Modifier.padding(top = 6.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = a.encre))
-    }
-}
-
 // ——— Créer ou modifier (maquette contacts-2) ———
 
 @Composable
@@ -552,7 +536,7 @@ private fun BarreFormulaire(titre: String, peut: Boolean, annuler: () -> Unit, e
     Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicText(
             "Annuler", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClick = annuler).padding(10.dp),
-            style = TextStyle(fontFamily = Polices.corps, fontSize = 16.sp, color = a.encre2),
+            style = TextStyle(fontFamily = Polices.corps, fontSize = 16.5.sp, color = a.accentTexte),
         )
         BasicText(titre, modifier = Modifier.weight(1f), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = a.encre, textAlign = TextAlign.Center))
         BasicText(
@@ -633,7 +617,7 @@ private fun PageModifier(id: Long?, numeroDonne: String?, nomDonne: String?, ret
         }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             EnTetePhoto(nom, apercu) { feuillePhoto = true }
-            BlocAppli {
+            Bloc {
                 ChampLigne("Prénom", prenom) { prenom = it }
                 FiletBloc()
                 ChampLigne("Nom", famille) { famille = it }
@@ -645,7 +629,7 @@ private fun PageModifier(id: Long?, numeroDonne: String?, nomDonne: String?, ret
                     }
                 }
             }
-            BlocAppli {
+            Bloc {
                 numeros.forEachIndexed { i, (n, t) ->
                     if (i > 0) FiletBloc()
                     val op = Carnet.operateur(n)
@@ -668,7 +652,7 @@ private fun PageModifier(id: Long?, numeroDonne: String?, nomDonne: String?, ret
                     BasicText("Ajouter un numéro", modifier = Modifier.padding(start = 10.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = a.accentTexte))
                 }
             }
-            BlocAppli {
+            Bloc {
                 Row(
                     Modifier.fillMaxWidth().clickable(role = Role.Button) { feuilleDate = true }.padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -694,7 +678,7 @@ private fun PageModifier(id: Long?, numeroDonne: String?, nomDonne: String?, ret
                     Box(Modifier.weight(1f)) { ChampLigne("E-mail", email, KeyboardType.Email, indication = "facultatif") { email = it } }
                 }
             }
-            BlocAppli {
+            Bloc {
                 Row(
                     Modifier.fillMaxWidth().clickable(role = Role.Switch) { favori = !favori }.padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -882,7 +866,7 @@ private fun FeuillePhoto(nom: String, aUnePhoto: Boolean, fermer: () -> Unit, ch
 private fun TuileChoix(icone: String, texte: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val a = LocalIdentite.current
     Column(
-        modifier.clip(RoundedCornerShape(20.dp)).background(a.surface).border(1.dp, a.trait, RoundedCornerShape(20.dp))
+        modifier.clip(RoundedCornerShape(20.dp)).background(a.champ)
             .clickable(onClickLabel = texte, role = Role.Button, onClick = onClick).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -966,12 +950,14 @@ private fun PageMaFiche(reprise: Int, aller: (Vue) -> Unit, retour: () -> Unit) 
     val fiche = f ?: return
     val qr = remember(fiche.vcard()) { MaFiche.qr(fiche.vcard()) }
     EcranAppli {
-        Tete("Ma fiche", retour = retour, petit = true) { BoutonAppli(Icones.CRAYON, "Modifier") { aller(Vue.ModifierMaFiche) } }
+        BarreRetour("Contacts", retour, Modifier.padding(top = 0.dp), milieu = { BasicText("Ma fiche", style = styleDoux(17f, a.encre, FontWeight.SemiBold)) }) {
+            Rond(Icones.CRAYON, "Modifier") { aller(Vue.ModifierMaFiche) }
+        }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             PhotoContact(fiche.nom, fiche.photo, 104.dp)
             BasicText(fiche.nom, modifier = Modifier.padding(top = 12.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 26.sp, color = a.encre))
             BasicText(Carnet.formater(fiche.numero), style = TextStyle(fontFamily = Polices.corps, fontSize = 17.sp, color = a.encre2))
-            BlocAppli(Modifier.padding(top = 20.dp)) {
+            Bloc(Modifier.padding(top = 20.dp)) {
                 Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Image(qr.asImageBitmap(), contentDescription = "Code QR de ma fiche", modifier = Modifier.size(220.dp))
                     BasicText(
@@ -1019,7 +1005,7 @@ private fun PageModifierMaFiche(retour: () -> Unit) {
         }
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             EnTetePhoto(nom, apercu) { feuille = true }
-            BlocAppli {
+            Bloc {
                 ChampLigne("Prénom", prenom) { prenom = it }
                 FiletBloc()
                 ChampLigne("Nom", famille) { famille = it }
@@ -1054,7 +1040,8 @@ private fun PageImport(retour: () -> Unit) {
     }
     val l = liste
     EcranAppli {
-        Tete("Importer depuis la SIM", retour = retour, petit = true)
+        BarreRetour("Contacts", retour, Modifier.padding(top = 0.dp))
+        GrandTitre("Importer depuis la SIM", sousBarre = true)
         if (l == null) return@EcranAppli
         if (l.isEmpty()) {
             BasicText(
