@@ -63,6 +63,7 @@ import africa.samaos.banco.Icones
 import africa.samaos.banco.Polices
 import africa.samaos.banco.appli.BlocAppli
 import africa.samaos.banco.appli.BoutonAppli
+import africa.samaos.banco.appli.Rond
 import africa.samaos.banco.appli.BoutonTexteAppli
 import africa.samaos.banco.appli.FeuilleAppli
 import africa.samaos.banco.appli.FiletBloc
@@ -114,8 +115,8 @@ fun EnTete(sous: String, titre: String, modifier: Modifier = Modifier, surSous: 
 fun Section(texte: String, modifier: Modifier = Modifier) {
     val a = LocalIdentite.current
     BasicText(
-        texte.uppercase(), modifier = modifier.padding(start = 4.dp, top = 20.dp, bottom = 8.dp),
-        style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 0.5.sp, color = a.encre2),
+        texte, modifier = modifier.padding(start = 4.dp, top = 20.dp, bottom = 8.dp),
+        style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = a.encre),
     )
 }
 
@@ -166,7 +167,7 @@ fun PageSemaine(version: Int, changer: () -> Unit, pied: @Composable () -> Unit)
             Modifier.clickable(onClickLabel = "Nommer la classe", role = Role.Button) { nomClasse = true },
             surSous = if (etat.currentPage == centre) null else ({ portee.launch { etat.animateScrollToPage(centre) } }),
         ) {
-            BoutonAppli(Icones.PLUS, "Ajouter un cours") { edition = Triple(null, auj.dayOfWeek.takeIf { it in jours } ?: DayOfWeek.MONDAY, LocalTime.of(8, 0)) }
+            Rond(Icones.PLUS, "Ajouter un cours", plein = true, epaisseur = 2.2f) { edition = Triple(null, auj.dayOfWeek.takeIf { it in jours } ?: DayOfWeek.MONDAY, LocalTime.of(8, 0)) }
         }
         // Une page par semaine : on glisse pour voir les dates des autres semaines (les cours reviennent chaque semaine).
         HorizontalPager(etat, Modifier.fillMaxWidth().weight(1f), beyondViewportPageCount = 1) { page ->
@@ -498,7 +499,7 @@ fun PageAFaire(usages: Set<Usage>, version: Int, changer: () -> Unit, pied: @Com
             ).joinToString(" · ") + " à faire",
             if (ecole && travail) "À faire" else if (ecole) "Devoirs" else "Tâches",
         ) {
-            BoutonAppli(Icones.PLUS, if (ecole && !travail) "Ajouter un devoir" else "Ajouter une tâche") { ajout = if (ecole && !travail) "devoir" else "tache" }
+            Rond(Icones.PLUS, if (ecole && !travail) "Ajouter un devoir" else "Ajouter une tâche", plein = true, epaisseur = 2.2f) { ajout = if (ecole && !travail) "devoir" else "tache" }
         }
         Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             if (ecole) {
@@ -561,7 +562,7 @@ fun PageAFaire(usages: Set<Usage>, version: Int, changer: () -> Unit, pied: @Com
 private fun Vide(texte: String, ajouter: () -> Unit) {
     val a = LocalIdentite.current
     Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(20.dp)).border(1.dp, a.trait, RoundedCornerShape(20.dp)).clickable(role = Role.Button, onClick = ajouter).padding(16.dp),
+        Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(20.dp)).clickable(role = Role.Button, onClick = ajouter).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(texte, modifier = Modifier.weight(1f), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.5.sp, lineHeight = 20.sp, color = a.encre2))

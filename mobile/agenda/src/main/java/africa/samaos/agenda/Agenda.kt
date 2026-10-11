@@ -105,6 +105,7 @@ import africa.samaos.banco.appli.ActionFeuille
 import africa.samaos.banco.appli.AvecIdentite
 import africa.samaos.banco.appli.BlocAppli
 import africa.samaos.banco.appli.BoutonAppli
+import africa.samaos.banco.appli.Rond
 import africa.samaos.banco.appli.BoutonTexteAppli
 import africa.samaos.banco.appli.EcranAppli
 import africa.samaos.banco.appli.FeuilleAppli
@@ -436,7 +437,7 @@ private fun PageUsages(actuels: Set<Usage>?, premiere: Boolean, fermer: () -> Un
             Spacer(Modifier.height(30.dp))
             Column(
                 Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(if (a.sombre) Brush.verticalGradient(listOf(a.surface, a.surface)) else Brush.verticalGradient(listOf(Color.White, Color(0xFFEFE9E1))))
-                    .border(1.dp, a.trait, RoundedCornerShape(16.dp)),
+                    ,
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
                 BasicText(auj.dayOfWeek.getDisplayName(StyleDate.SHORT, Locale.FRENCH).uppercase(), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = Color(0xFFD9542F)))
@@ -541,8 +542,8 @@ private fun PageAujourdhui(
                 revenir++
             }),
         ) {
-            BoutonAppli(Icones.REGLAGES, "Ce que fait l'Agenda", onClick = reglerUsages)
-            BoutonAppli(Icones.PLUS, "Ajouter") { ajout = "menu" }
+            Rond(Icones.REGLAGES, "Ce que fait l'Agenda", onClick = reglerUsages)
+            Rond(Icones.PLUS, "Ajouter", plein = true, epaisseur = 2.2f) { ajout = "menu" }
         }
         // La semaine : un point par chose prévue (cours, évènement, devoir, règles prévues) ; on glisse pour changer de semaine.
         BandeSemaines(jour, revenir, { jour = it }, { lundiVu = it }) { d ->
@@ -610,7 +611,7 @@ private fun PageAujourdhui(
             }
             if (Usage.CYCLE in u) {
                 Row(
-                    Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (a.sombre) a.surface else Color.White).border(1.dp, a.trait, RoundedCornerShape(22.dp))
+                    Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (a.sombre) a.surface else Color.White)
                         .clickable(role = Role.Button) { versOnglet(Onglet.CYCLE) }.padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -698,7 +699,7 @@ private fun CoursDuJour(jour: LocalDate, cours: List<Cours>, remplir: () -> Unit
     if (cours.isEmpty()) {
         Section("Emploi du temps")
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).border(1.dp, a.trait, RoundedCornerShape(20.dp)).clickable(role = Role.Button, onClick = remplir).padding(16.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable(role = Role.Button, onClick = remplir).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText("Remplissez votre emploi du temps une fois : chaque jour, l'Agenda montre le cours en cours et le suivant.", modifier = Modifier.weight(1f), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.5.sp, lineHeight = 20.sp, color = a.encre2))
@@ -723,7 +724,7 @@ private fun CoursDuJour(jour: LocalDate, cours: List<Cours>, remplir: () -> Unit
             val actuel = co == enCours
             val suivant = l.getOrNull(l.indexOf(co) + 1)
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (a.sombre) a.surface else Color.White).border(1.dp, a.trait, RoundedCornerShape(22.dp)).padding(horizontal = 16.dp, vertical = 14.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (a.sombre) a.surface else Color.White).padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.width(5.dp).height(44.dp).clip(RoundedCornerShape(3.dp)).background(co.couleur))
@@ -869,7 +870,7 @@ private fun PageMois(jour: LocalDate, version: Int, choisir: (LocalDate) -> Unit
                     choisir(LocalDate.now())
                 }
             }
-            BoutonAppli(Icones.PLUS, "Nouvel évènement") { aller(Vue.Edition(null, jour)) }
+            Rond(Icones.PLUS, "Nouvel évènement", plein = true, epaisseur = 2.2f) { aller(Vue.Edition(null, jour)) }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
             listOf("L", "M", "M", "J", "V", "S", "D").forEach { l ->
@@ -1090,7 +1091,7 @@ private fun Edition(v: Vue.Edition, fermer: () -> Unit) {
                                 val oui = duree == m
                                 BasicText(
                                     n, modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(if (oui) teinte(couleur, 0.16f) else Color.Transparent)
-                                        .border(1.dp, if (oui) couleur.copy(alpha = 0.6f) else a.trait, RoundedCornerShape(16.dp))
+                                        
                                         .clickable(onClickLabel = "Durée $n", role = Role.RadioButton) { fin = debut.plusMinutes(m) }.padding(horizontal = 13.dp, vertical = 7.dp),
                                     style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = if (oui) encreDe(couleur) else a.encre),
                                 )
@@ -1238,7 +1239,7 @@ private fun ChoixLigne(icone: String, choix: List<String>, choisi: Int, couleur:
                 val oui = i == choisi
                 BasicText(
                     n, modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(if (oui) teinte(couleur, 0.16f) else Color.Transparent)
-                        .border(1.dp, if (oui) couleur.copy(alpha = 0.6f) else a.trait, RoundedCornerShape(16.dp))
+                        
                         .clickable(role = Role.RadioButton) { choisir(i) }.padding(horizontal = 13.dp, vertical = 7.dp),
                     style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = if (oui) encreDe(couleur) else a.encre),
                 )

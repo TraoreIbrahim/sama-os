@@ -285,11 +285,11 @@ fun BoutonAppli(icone: String, description: String, style: Char = ' ', taille: D
 fun ChampAppli(valeur: String, indication: String, changer: (String) -> Unit, modifier: Modifier = Modifier) {
     val a = LocalIdentite.current
     Row(
-        modifier.padding(horizontal = 16.dp).fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(a.champ).padding(horizontal = 16.dp),
+        modifier.padding(horizontal = 16.dp).fillMaxWidth().height(42.dp).clip(RoundedCornerShape(14.dp)).background(a.champ).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconeTrait("M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z M20 20l-4.8-4.8", 20.dp, a.encre2)
-        Spacer(Modifier.width(10.dp))
+        IconeTrait("M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z M20 20l-4.8-4.8", 18.dp, a.encre2)
+        Spacer(Modifier.width(8.dp))
         BasicTextField(
             value = valeur,
             onValueChange = changer,
@@ -307,12 +307,11 @@ fun ChampAppli(valeur: String, indication: String, changer: (String) -> Unit, mo
     }
 }
 
-/** Un bloc aux coins doux, pour regrouper des lignes (comme les groupes d'Apple) : la surface de l'appli, un filet fin. */
+/** Un bloc aux coins doux, pour regrouper des lignes (comme les groupes d'Apple) : la surface de l'appli, ni bord ni ombre. */
 @Composable
 fun BlocAppli(modifier: Modifier = Modifier, contenu: @Composable ColumnScope.() -> Unit) {
     val a = LocalIdentite.current
-    val forme = RoundedCornerShape(20.dp)
-    Column(modifier.fillMaxWidth().clip(forme).background(a.surface).border(1.dp, a.trait, forme), content = contenu)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(a.surface), content = contenu)
 }
 
 /** Le filet entre deux lignes d'un bloc ; il commence après l'icône ou l'avatar ([debut]). */
@@ -539,13 +538,13 @@ fun BoxScope.Fab(texte: String?, icone: String, onClick: () -> Unit) {
 @Composable
 fun PuceFiltre(texte: String, choisie: Boolean, debut: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     val a = LocalIdentite.current
-    val fond by androidx.compose.animation.animateColorAsState(if (choisie) a.voile else a.voile.copy(alpha = 0f), label = "puce")
-    val bord by androidx.compose.animation.animateColorAsState(if (choisie) a.trait.copy(alpha = 0f) else a.trait, label = "bord")
+    // Une pastille douce : voilée de l'accent quand elle est choisie, sur le champ sinon ; jamais de bord.
+    val fond by androidx.compose.animation.animateColorAsState(if (choisie) a.voile else a.champ, label = "puce")
     Row(
         Modifier
             .height(36.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(fond).border(1.dp, bord, RoundedCornerShape(18.dp))
+            .background(fond)
             .clickable(onClickLabel = texte, role = Role.RadioButton, onClick = onClick)
             .semantics { selected = choisie }
             .padding(horizontal = 14.dp),

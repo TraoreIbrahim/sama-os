@@ -363,7 +363,7 @@ private fun ChoixJour(choisi: LocalDate?, modifier: Modifier = Modifier, choisir
     val a = LocalIdentite.current
     val auj = LocalDate.now()
     val lundi = auj.minusDays(41).let { it.minusDays((it.dayOfWeek.value - 1).toLong()) }
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(a.surface).border(1.dp, a.trait, RoundedCornerShape(20.dp)).padding(10.dp)) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(a.surface).padding(10.dp)) {
         Row(Modifier.fillMaxWidth()) {
             listOf("L", "M", "M", "J", "V", "S", "D").forEach { BasicText(it, modifier = Modifier.weight(1f), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = a.encre2, textAlign = TextAlign.Center)) }
         }
@@ -449,7 +449,7 @@ private fun CycleEnCours(d: DonneesCycle, version: Int, garder: (DonneesCycle) -
             }
         }
     }
-    Row(Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(20.dp)).background(a.surface).border(1.dp, a.trait, RoundedCornerShape(20.dp)).padding(vertical = 14.dp)) {
+    Row(Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(20.dp)).background(a.surface).padding(vertical = 14.dp)) {
         listOf(dateCourte(p.prochaines) to "Prochaines règles", "${p.moyenne} jours" to "Cycle moyen", "${p.regles} jours" to "Règles").forEachIndexed { i, (v, n) ->
             if (i > 0) Box(Modifier.width(1.dp).height(38.dp).background(a.trait))
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -472,8 +472,8 @@ private fun CycleEnCours(d: DonneesCycle, version: Int, garder: (DonneesCycle) -
         ) { BasicText("Un autre jour", style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = if (a.sombre) Color(0xFFF0A3B2) else Color(0xFFA8364D))) }
     }
     BasicText(
-        "AUJOURD'HUI, JE NOTE", modifier = Modifier.padding(start = 4.dp, top = 22.dp, bottom = 10.dp),
-        style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 0.5.sp, color = a.encre2),
+        "Aujourd'hui, je note", modifier = Modifier.padding(start = 4.dp, top = 22.dp, bottom = 10.dp),
+        style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = a.encre),
     )
     val notes = d.symptomes[auj].orEmpty()
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -481,7 +481,7 @@ private fun CycleEnCours(d: DonneesCycle, version: Int, garder: (DonneesCycle) -
             val oui = s in notes
             BasicText(
                 s,
-                modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(if (oui) ROSE else a.surface).border(1.dp, if (oui) ROSE else a.trait, RoundedCornerShape(18.dp))
+                modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(if (oui) ROSE else a.champ)
                     .clickable(role = Role.Checkbox) {
                         val m = d.symptomes.toMutableMap()
                         m[auj] = if (oui) notes - s else notes + s
@@ -494,8 +494,8 @@ private fun CycleEnCours(d: DonneesCycle, version: Int, garder: (DonneesCycle) -
     // Les derniers cycles, du plus récent au plus ancien.
     val faits = d.debuts.sorted().zipWithNext { x, y -> x to ChronoUnit.DAYS.between(x, y) }.reversed().take(4)
     if (faits.isNotEmpty()) {
-        BasicText("DERNIERS CYCLES", modifier = Modifier.padding(start = 4.dp, top = 22.dp, bottom = 8.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 0.5.sp, color = a.encre2))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(a.surface).border(1.dp, a.trait, RoundedCornerShape(20.dp))) {
+        BasicText("Derniers cycles", modifier = Modifier.padding(start = 4.dp, top = 22.dp, bottom = 8.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = a.encre))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(a.surface)) {
             faits.forEachIndexed { i, (debut, n) ->
                 if (i > 0) Box(Modifier.padding(start = 16.dp).fillMaxWidth().height(1.dp).background(a.trait))
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {

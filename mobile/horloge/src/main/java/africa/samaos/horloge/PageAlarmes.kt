@@ -251,7 +251,7 @@ fun EditeurAlarme(depart: Alarme, nouvelle: Boolean, fermer: () -> Unit) {
     Box(Modifier.fillMaxSize().background(a.fond)) {
         Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                BasicText("Annuler", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClick = fermer).padding(10.dp), style = texte(16f, a.encre2))
+                BasicText("Annuler", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClick = fermer).padding(10.dp), style = texte(16f, a.accentTexte))
                 BasicText(if (nouvelle) "Nouvelle alarme" else "L'alarme", modifier = Modifier.weight(1f), style = texte(17f, a.encre, FontWeight.Bold).copy(textAlign = TextAlign.Center))
                 BasicText("Garder", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(role = Role.Button) { garder() }.padding(10.dp), style = texte(16f, a.accent, FontWeight.Bold))
             }
@@ -348,5 +348,5 @@ fun EditeurAlarme(depart: Alarme, nouvelle: Boolean, fermer: () -> Unit) {
 @Composable
 fun Section(titre: String) {
     val a = LocalIdentite.current
-    BasicText(titre.uppercase(), modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 22.dp, bottom = 10.dp), style = texte(13f, a.encre2, FontWeight.Bold).copy(letterSpacing = 0.6.sp))
+    BasicText(titre, modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 22.dp, bottom = 10.dp), style = texte(15f, a.encre, FontWeight.SemiBold))
 }

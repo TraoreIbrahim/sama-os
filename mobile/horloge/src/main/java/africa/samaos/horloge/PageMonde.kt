@@ -248,7 +248,7 @@ private fun FeuilleVilles(deja: List<Ville>, fermer: () -> Unit, choisir: (Ville
         val dispo = CATALOGUE.filter { v -> v.nom != ici && deja.none { it.nom == v.nom } && (recherche.isBlank() || simple(v.nom).contains(simple(recherche.trim()))) }
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp).padding(top = 8.dp)) {
             dispo.groupBy { it.region }.forEach { (region, l) ->
-                item(key = "r$region") { BasicText(region.uppercase(), modifier = Modifier.padding(start = 24.dp, top = 14.dp, bottom = 4.dp), style = texte(12.5f, a.encre2, FontWeight.Bold)) }
+                item(key = "r$region") { BasicText(region, modifier = Modifier.padding(start = 24.dp, top = 14.dp, bottom = 4.dp), style = texte(14f, a.encre2, FontWeight.SemiBold)) }
                 items(l, key = { it.nom }) { v ->
                     val la = instant.withZoneSameInstant(ZoneId.of(v.zone))
                     Row(
