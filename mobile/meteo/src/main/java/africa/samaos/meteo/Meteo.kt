@@ -1,6 +1,7 @@
 package africa.samaos.meteo
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -55,9 +56,7 @@ import androidx.core.view.WindowCompat
 import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Icones
 import africa.samaos.banco.Polices
-import africa.samaos.banco.appli.ActionFeuille
 import africa.samaos.banco.appli.AvecIdentite
-import africa.samaos.banco.appli.BoutonAppli
 import africa.samaos.banco.appli.ChampAppli
 import africa.samaos.banco.appli.FeuilleAppli
 import africa.samaos.banco.appli.Identites
@@ -95,28 +94,6 @@ class Meteo : ComponentActivity() {
     }
 }
 
-// Les pictos de la maquette, au trait.
-private const val EPINGLE = "M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z M12 7.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z"
-private const val SOLEIL_NUAGE = "M9 4v1.5 M3.8 6.3l1 1 M2.5 11.5H4 M7 13a3 3 0 1 1 4.7-2.5 M9 20a3.5 3.5 0 0 1-.5-7A5 5 0 0 1 18 12a3.5 3.5 0 0 1 0 8z"
-private const val NUAGE = "M7 18a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9z"
-private const val PLUIE = "M7 15a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 6a4.5 4.5 0 0 1 0 9z M9 18l-1 2.5 M13 18l-1 2.5 M17 18l-1 2.5"
-private const val ORAGE = "M7 15a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 6a4.5 4.5 0 0 1 0 9z M12.5 14l-2 3.5h3l-2 3.5"
-private const val LUNE = "M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"
-private const val BROUILLARD = "M4 9h16 M6 13h12 M4 17h16"
-private const val GOUTTE = "M12 3.5s6 6.5 6 10.5a6 6 0 0 1-12 0c0-4 6-10.5 6-10.5z"
-private const val VENT = "M3 9h11a3 3 0 1 0-3-3 M3 15h15a3 3 0 1 1-3 3"
-
-private fun picto(code: Int, jour: Boolean): String = when {
-    code >= 95 -> ORAGE
-    Ciel.pluvieux(code) -> PLUIE
-    code == 45 || code == 48 -> BROUILLARD
-    code <= 1 -> if (jour) Icones.SOLEIL else LUNE
-    code == 2 -> if (jour) SOLEIL_NUAGE else NUAGE
-    else -> NUAGE
-}
-
-private fun degres(t: Double) = "${t.roundToInt()}°"
-
 @Composable
 private fun Ecran(nuit: Boolean) {
     val c = LocalContext.current
@@ -152,6 +129,18 @@ private fun Ecran(nuit: Boolean) {
         chargement = false
     }
 
+    val t = remember(nuit) { Teintes(nuit) }
+    // Les dernières prévisions de chaque ville, pour la page des villes.
+    var gardees by remember { mutableStateOf<Map<String, Previsions?>>(emptyMap()) }
+    LaunchedEffect(menu, villes, prev) {
+        if (menu) gardees = withContext(Dispatchers.IO) { villes.associate { v -> v.cle to ((if (v.cle == ville?.cle) prev else null) ?: MoteurMeteo.gardees(c, v)) } }
+    }
+    fun partager() {
+        val v = ville ?: return
+        val p = prev ?: return
+        val texte = phrasePartage(v, p)
+        c.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, texte), "Partager la météo"))
+    }
     Box(Modifier.fillMaxSize().ciel(nuit)) {
         if (ville != null) {
             PageVille(
@@ -159,49 +148,34 @@ private fun Ecran(nuit: Boolean) {
                 prev = prev,
                 chargement = chargement,
                 erreur = erreur,
-                nuit = nuit,
+                t = t,
                 menu = { menu = true },
             )
         }
         if (menu && ville != null) {
-            FeuilleAppli(fermer = { menu = false }, titre = "Vos villes") {
-                villes.forEachIndexed { i, v ->
-                    LigneAppli(
-                        v.nom,
-                        second = v.region.ifBlank { if (v.position) "Position arrondie à 10 km" else null },
-                        debut = { IconeTrait(if (v.position) Icones.BOUSSOLE else EPINGLE, 22.dp, LocalIdentite.current.encre2) },
-                        fin = if (i == active) {
-                            { IconeTrait(Icones.COCHE, 22.dp, LocalIdentite.current.accentTexte) }
-                        } else {
-                            null
-                        },
-                        surAppuiLong = if (villes.size > 1) {
-                            {
-                                MoteurMeteo.retirer(c, v)
-                                recharger()
-                            }
-                        } else {
-                            null
-                        },
-                    ) {
-                        MoteurMeteo.choisir(c, i)
-                        active = i
-                        menu = false
-                    }
-                }
-                ActionFeuille(Icones.PLUS, "Ajouter une ville") {
+            PageVilles(
+                villes = villes, active = active, previsions = gardees, t = t,
+                fermer = { menu = false },
+                choisir = { i ->
+                    MoteurMeteo.choisir(c, i)
+                    active = i
+                    menu = false
+                },
+                retirer = { v ->
+                    MoteurMeteo.retirer(c, v)
+                    recharger()
+                },
+                ajouter = {
                     menu = false
                     ajout = true
-                }
-                ActionFeuille(Icones.MISE_A_JOUR, "Actualiser", second = "Quelques kilo-octets de data") {
+                },
+                actualiser = {
                     menu = false
                     demande++
-                }
-                ActionFeuille(Icones.INFO, "D'où viennent les prévisions") {
-                    menu = false
-                    aPropos = true
-                }
-            }
+                },
+                partager = { partager() },
+                aPropos = { aPropos = true },
+            )
         }
         if (aPropos) {
             FeuilleAppli(fermer = { aPropos = false }, titre = "D'où viennent les prévisions") {
@@ -209,7 +183,9 @@ private fun Ecran(nuit: Boolean) {
                 BasicText(
                     "Les prévisions viennent d'Open-Meteo, un service ouvert, sans compte ni publicité. Seule la ville choisie part, " +
                         "ou votre position arrondie à une dizaine de kilomètres : jamais votre nom ni votre numéro. Elles restent sur le " +
-                        "téléphone et se lisent sans réseau. Une mise à jour coûte quelques kilo-octets.\n\nDonnées météo : Open-Meteo.com (CC BY 4.0).",
+                        "téléphone et se lisent sans réseau. Une mise à jour coûte quelques dizaines de kilo-octets (dix jours heure par heure, et l'air).\n\n" +
+                        "Les alertes (fortes pluies, chaleur, vent, air) sont calculées sur le téléphone d'après ces prévisions : ce sont des repères, pas des bulletins officiels.\n\n" +
+                        "Données météo : Open-Meteo.com (CC BY 4.0). Qualité de l'air : Open-Meteo, d'après CAMS.",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                     style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 22.sp, color = a.encre),
                 )
@@ -230,8 +206,22 @@ private fun Ecran(nuit: Boolean) {
     }
 }
 
+/** La météo en une phrase, à envoyer : la ville, le temps, la pluie qui vient, demain. */
+private fun phrasePartage(v: Ville, p: Previsions): String {
+    val ac = p.actuel
+    val jour = ac.heure.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH))
+    val demain = p.jours.getOrNull(p.jours.indexOf(p.aujourdhui) + 1)
+    return listOfNotNull(
+        "Météo à ${v.nom}, $jour : ${degres(ac.temp)}, ${Ciel.description(ac.code, ac.jour).lowercase()} (ressenti ${degres(ac.ressenti)}).",
+        Ciel.pluieAVenir(p)?.let { "$it." },
+        demain?.let { "Demain : ${Ciel.description(it.code).lowercase()}, ${degres(it.min)} à ${degres(it.max)}" + (it.pluie?.takeIf { x -> x >= 40 }?.let { x -> ", $x % de pluie" } ?: "") + "." },
+        Alertes.pour(p).firstOrNull()?.let { "${it.titre} : ${it.texte}" },
+        "— Sama Météo, d'après Open-Meteo.",
+    ).joinToString(" ")
+}
+
 /** Le ciel de la maquette : un dégradé d'après-midi et une lueur en haut à droite ; la nuit, bleu et doré. */
-private fun Modifier.ciel(nuit: Boolean) = drawBehind {
+internal fun Modifier.ciel(nuit: Boolean) = drawBehind {
     val (haut, milieu, bas, lueur) = if (nuit) {
         listOf(Color(0xFF10152A), Color(0xFF1B2240), Color(0xFF232A44), Color(0x29F2C879))
     } else {
@@ -242,11 +232,9 @@ private fun Modifier.ciel(nuit: Boolean) = drawBehind {
 }
 
 @Composable
-private fun PageVille(ville: Ville, prev: Previsions?, chargement: Boolean, erreur: String?, nuit: Boolean, menu: () -> Unit) {
+private fun PageVille(ville: Ville, prev: Previsions?, chargement: Boolean, erreur: String?, t: Teintes, menu: () -> Unit) {
     val a = LocalIdentite.current
-    val carte = if (nuit) Color(0x14FFFFFF) else Color(0x8CFFFFFF)
-    val puce = if (nuit) Color(0x1AFFFFFF) else Color(0x80FFFFFF)
-    val bleu = if (nuit) Color(0xFF9DB4E8) else Color(0xFF3D5A99)
+    var jourOuvert by remember { mutableStateOf<Jour?>(null) }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconeTrait(if (ville.position) Icones.BOUSSOLE else EPINGLE, 20.dp, a.encre)
@@ -256,7 +244,7 @@ private fun PageVille(ville: Ville, prev: Previsions?, chargement: Boolean, erre
                 modifier = Modifier.weight(1f).padding(start = 8.dp),
                 style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, color = a.encre),
             )
-            Rond("M6.5 12h.01 M12 12h.01 M17.5 12h.01", "Autres villes", epaisseur = 2.6f, onClick = menu)
+            Rond("M6.5 12h.01 M12 12h.01 M17.5 12h.01", "Vos villes", epaisseur = 2.6f, onClick = menu)
         }
         if (prev == null) {
             BasicText(
@@ -278,77 +266,31 @@ private fun PageVille(ville: Ville, prev: Previsions?, chargement: Boolean, erre
                 IconeTrait(picto(ac.code, ac.jour), 84.dp, a.encre, epaisseur = 1.4f)
             }
             Column(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                BasicText(Ciel.phrase(p), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, color = a.encre))
-                val aujourdhui = p.jours.firstOrNull()
-                val demain = p.jours.getOrNull(1)
+                BasicText(Ciel.description(ac.code, ac.jour), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, color = a.encre))
+                val aujourdhui = p.aujourdhui
                 BasicText(
                     listOfNotNull(
                         "Ressenti ${degres(ac.ressenti)}",
-                        listOfNotNull(aujourdhui?.let { "${degres(it.max)} au plus" }, demain?.let { "${degres(it.min)} cette nuit" }).joinToString(", ").ifBlank { null },
+                        aujourdhui?.let { "${degres(it.max)} au plus, ${degres(it.min)} au moins" },
                     ).joinToString(" · "),
                     style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2),
                 )
             }
             Row(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Puce(GOUTTE, "${ac.humidite} %", puce)
-                Puce(VENT, "${ac.vent.roundToInt()} km/h", puce)
+                Puce(GOUTTE, "${ac.humidite} %", t.puce)
+                Puce(VENT, "${ac.vent.roundToInt()} km/h", t.puce)
                 val uv = ac.uv
                 // L'indice UV, quand le soleil compte encore (pas « UV 0 » en fin de journée).
-                if (ac.jour && uv != null && uv >= 1) Puce(Icones.SOLEIL, Ciel.uv(uv), puce)
+                if (ac.jour && uv != null && uv >= 1) Puce(Icones.SOLEIL, Ciel.uv(uv), t.puce)
             }
-            // Les six prochaines heures, avec la chance de pluie quand elle compte.
-            val heures = p.heures.filter { it.heure.isAfter(ac.heure) }.take(6)
-            if (heures.isNotEmpty()) {
-                Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(carte).padding(horizontal = 6.dp, vertical = 14.dp)) {
-                    heures.forEach { h ->
-                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            BasicText("${h.heure.hour} h", style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre))
-                            IconeTrait(picto(h.code, h.jour), 24.dp, a.encre)
-                            BasicText(degres(h.temp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = a.encre))
-                            BasicText(
-                                h.pluie?.takeIf { it >= 30 }?.let { "$it %" } ?: "",
-                                modifier = Modifier.heightIn(min = 16.dp),
-                                style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = bleu),
-                            )
-                        }
-                    }
-                }
-            }
-            // Les cinq jours suivants, et l'écart du plus frais au plus chaud.
-            val jours = p.jours.drop(1).take(5)
-            if (jours.isNotEmpty()) {
-                val bas = jours.minOf { it.min }
-                val haut = jours.maxOf { it.max }.coerceAtLeast(bas + 1)
-                Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(carte).padding(horizontal = 18.dp, vertical = 6.dp)) {
-                    jours.forEach { j ->
-                        Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            BasicText(
-                                j.date.dayOfWeek.getDisplayName(StyleDate.FULL, Locale.FRENCH).replaceFirstChar { it.uppercase() },
-                                modifier = Modifier.width(84.dp),
-                                style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = a.encre),
-                            )
-                            IconeTrait(picto(j.code, true), 22.dp, a.encre)
-                            BasicText(degres(j.min), modifier = Modifier.width(30.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2, textAlign = TextAlign.End))
-                            Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(a.encre.copy(alpha = 0.1f))) {
-                                val debut = ((j.min - bas) / (haut - bas)).toFloat().coerceIn(0f, 1f)
-                                val fin = ((j.max - bas) / (haut - bas)).toFloat().coerceIn(debut, 1f)
-                                Row(Modifier.fillMaxSize()) {
-                                    if (debut > 0f) Spacer(Modifier.weight(debut))
-                                    Box(
-                                        Modifier
-                                            .weight((fin - debut).coerceAtLeast(0.04f))
-                                            .fillMaxHeight()
-                                            .clip(RoundedCornerShape(3.dp))
-                                            .background(Brush.horizontalGradient(listOf(Color(0xFFE2A62B), Color(0xFFB5532F)))),
-                                    )
-                                    if (fin < 1f) Spacer(Modifier.weight(1f - fin))
-                                }
-                            }
-                            BasicText(degres(j.max), modifier = Modifier.width(30.dp), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = a.encre))
-                        }
-                    }
-                }
-            }
+            // Les alertes de Sama, s'il y en a.
+            Alertes.pour(p).forEach { CarteAlerte(it, t) }
+            // Les 24 prochaines heures, les 10 jours, la pluie qui vient, puis le détail.
+            Heures(p, t)
+            Spacer(Modifier.height(10.dp))
+            Jours(p, t) { jourOuvert = it }
+            CartePluie(p, t)
+            Tuiles(p, t)
             val vieille = System.currentTimeMillis() - p.recues
             BasicText(
                 listOfNotNull(
@@ -362,6 +304,7 @@ private fun PageVille(ville: Ville, prev: Previsions?, chargement: Boolean, erre
             )
         }
     }
+    jourOuvert?.let { FeuilleJour(prev ?: return, it, t) { jourOuvert = null } }
 }
 
 private fun depuis(ms: Long): String = when {
