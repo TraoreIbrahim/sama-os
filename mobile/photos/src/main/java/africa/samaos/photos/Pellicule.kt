@@ -14,6 +14,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.horizontalScroll
@@ -102,6 +105,7 @@ fun GrilleMedias(l: List<Media>, choix: SnapshotStateList<Long>?, enChoix: Boole
     val x = LocalActions.current
     val vibreur = LocalHapticFeedback.current
     var colonnes by rememberSaveable { mutableIntStateOf(colonnesDepart) }
+    val etat = rememberLazyGridState()
     Box(
         Modifier.fillMaxSize().pointerInput(Unit) {
             awaitEachGesture {
@@ -128,7 +132,35 @@ fun GrilleMedias(l: List<Media>, choix: SnapshotStateList<Long>?, enChoix: Boole
         },
     ) {
         val ecart = if (colonnes <= 3) 3.dp else if (colonnes == 5) 2.dp else 1.dp
-        LazyVerticalGrid(GridCells.Fixed(colonnes), Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(ecart), verticalArrangement = Arrangement.spacedBy(ecart)) {
+        // En mode Choisir, glisser le doigt sur les vignettes les prend d'un geste (ou les lâche, si la première était déjà prise) ;
+        // le geste commence de côté pour ne pas se confondre avec le défilement.
+        val glisser = if (enChoix && choix != null) Modifier.pointerInput(choix) {
+            awaitEachGesture {
+                val depart = awaitFirstDown(requireUnconsumed = false)
+                val glisse = awaitHorizontalTouchSlopOrCancellation(depart.id) { change, _ -> change.consume() } ?: return@awaitEachGesture
+                fun sous(pos: androidx.compose.ui.geometry.Offset): Long? = etat.layoutInfo.visibleItemsInfo.firstOrNull { i ->
+                    i.key is Long && pos.x >= i.offset.x && pos.x < i.offset.x + i.size.width && pos.y >= i.offset.y && pos.y < i.offset.y + i.size.height
+                }?.key as? Long
+                val premier = sous(glisse.position) ?: sous(depart.position)
+                val prendre = premier == null || premier !in choix
+                var dernier: Long? = null
+                fun passer(pos: androidx.compose.ui.geometry.Offset) {
+                    val id = sous(pos) ?: return
+                    if (id == dernier) return
+                    dernier = id
+                    val deja = id in choix
+                    if (prendre && !deja) choix.add(id) else if (!prendre && deja) choix.remove(id) else return
+                    vibreur.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                }
+                passer(depart.position)
+                passer(glisse.position)
+                drag(glisse.id) { change ->
+                    change.consume()
+                    passer(change.position)
+                }
+            }
+        } else Modifier
+        LazyVerticalGrid(GridCells.Fixed(colonnes), Modifier.fillMaxSize().then(glisser), state = etat, horizontalArrangement = Arrangement.spacedBy(ecart), verticalArrangement = Arrangement.spacedBy(ecart)) {
             entete()
             val groupes: Map<String?, List<Media>> = when {
                 !parJour -> mapOf(null to l)

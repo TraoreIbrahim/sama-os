@@ -133,6 +133,33 @@ object Base {
         }
     }
 
+    /** La réception d'une adresse : son dossier au rôle « reception », ou INBOX tant qu'on ne l'a pas listée. */
+    private const val RECEPTIONS = "((compte, dossier) IN (SELECT compte, nom FROM dossiers WHERE role = 'reception') OR (dossier = 'INBOX' AND compte NOT IN (SELECT compte FROM dossiers)))"
+
+    /** Les réceptions de toutes les adresses, ensemble, du plus récent au plus ancien (la boîte commune). */
+    fun lettresToutes(c: Context, filtre: String = "", recherche: String = "", limite: Int = 300): List<Lettre> {
+        val conditions = mutableListOf(RECEPTIONS)
+        val args = mutableListOf<String>()
+        if (filtre == "nonlus") conditions += "lu = 0"
+        if (filtre == "pj") conditions += "pj = 1"
+        if (recherche.isNotBlank()) {
+            conditions += "(de LIKE ? OR deNom LIKE ? OR sujet LIKE ? OR extrait LIKE ? OR texte LIKE ?)"
+            repeat(5) { args += "%${recherche.trim()}%" }
+        }
+        return db(c).rawQuery("SELECT $COLONNES FROM lettres WHERE ${conditions.joinToString(" AND ")} ORDER BY date DESC LIMIT $limite", args.toTypedArray()).use { k ->
+            buildList { while (k.moveToNext()) add(lettre(k)) }
+        }
+    }
+
+    fun nonLusToutes(c: Context): Int =
+        db(c).rawQuery("SELECT COUNT(*) FROM lettres WHERE $RECEPTIONS AND lu = 0", emptyArray()).use { k -> if (k.moveToFirst()) k.getInt(0) else 0 }
+
+    /** La première pièce jointe de chaque mail des réceptions, par clé « compte/dossier/uid ». */
+    fun premieresPiecesToutes(c: Context): Map<String, String> =
+        db(c).rawQuery("SELECT compte, dossier, uid, nom FROM pieces WHERE $RECEPTIONS AND n = (SELECT MIN(n) FROM pieces p2 WHERE p2.compte = pieces.compte AND p2.dossier = pieces.dossier AND p2.uid = pieces.uid)", emptyArray()).use { k ->
+            buildMap { while (k.moveToNext()) put("${k.getString(0)}/${k.getString(1)}/${k.getLong(2)}", k.getString(3)) }
+        }
+
     fun lettre(c: Context, compte: String, dossier: String, uid: Long): Lettre? =
         db(c).rawQuery("SELECT $COLONNES FROM lettres WHERE compte = ? AND dossier = ? AND uid = ?", arrayOf(compte, dossier, uid.toString())).use { k ->
             if (k.moveToFirst()) lettre(k) else null

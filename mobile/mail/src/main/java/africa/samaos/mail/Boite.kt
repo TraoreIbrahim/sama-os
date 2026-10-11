@@ -133,32 +133,36 @@ internal fun PageBoite(aller: (Vue) -> Unit, retour: () -> Unit) {
     val portee = rememberCoroutineScope()
     val version = Courrier.version
     val compte = remember(version) { Comptes.courant(c) } ?: return
-    val plusieurs = remember(version) { Comptes.liste(c).size > 1 }
+    val comptes = remember(version) { Comptes.liste(c) }
+    val plusieurs = comptes.size > 1
+    // La boîte commune : les réceptions de toutes les adresses, ensemble.
+    val toutes = Ecran.toutes && plusieurs
     var liste by remember { mutableStateOf<List<Lettre>?>(null) }
-    var premieres by remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
-    var verdicts by remember { mutableStateOf<Map<Long, Verdict>>(emptyMap()) }
+    var premieres by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var verdicts by remember { mutableStateOf<Map<String, Verdict>>(emptyMap()) }
     var nonLus by remember { mutableIntStateOf(0) }
     var dossiers by remember { mutableStateOf<List<Dossier>>(emptyList()) }
     var releveA by remember { mutableStateOf<Long?>(null) }
     var relancer by remember { mutableIntStateOf(0) }
     val dossier = Ecran.dossier
-    LaunchedEffect(version, compte.id, dossier, Ecran.filtre, Ecran.recherche) {
+    LaunchedEffect(version, compte.id, dossier, toutes, Ecran.filtre, Ecran.recherche) {
         withContext(Dispatchers.IO) {
-            val l = Base.lettres(c, compte.id, dossier, Ecran.filtre, Ecran.recherche)
-            premieres = Base.premieresPieces(c, compte.id, dossier)
-            verdicts = l.mapNotNull { x -> verdictDe(c, x, if (x.pj) Base.pieces(c, x.compte, x.dossier, x.uid) else emptyList())?.let { x.uid to it } }.toMap()
-            nonLus = Base.nonLus(c, compte.id, dossier)
+            val l = if (toutes) Base.lettresToutes(c, Ecran.filtre, Ecran.recherche) else Base.lettres(c, compte.id, dossier, Ecran.filtre, Ecran.recherche)
+            premieres = if (toutes) Base.premieresPiecesToutes(c) else Base.premieresPieces(c, compte.id, dossier).mapKeys { (uid, _) -> Rangement.cle(compte.id, dossier, uid) }
+            verdicts = l.mapNotNull { x -> verdictDe(c, x, if (x.pj) Base.pieces(c, x.compte, x.dossier, x.uid) else emptyList())?.let { Rangement.cle(x) to it } }.toMap()
+            nonLus = if (toutes) Base.nonLusToutes(c) else Base.nonLus(c, compte.id, dossier)
             dossiers = Base.dossiers(c, compte.id)
             liste = l
         }
     }
-    // Relever à l'ouverture, puis toutes les deux minutes tant que la boîte est à l'écran (ou d'un toucher).
-    LaunchedEffect(compte.id, dossier, relancer) {
+    // Relever à l'ouverture, puis toutes les deux minutes tant que la boîte est à l'écran (ou d'un toucher). La boîte commune relève chaque adresse.
+    LaunchedEffect(compte.id, dossier, toutes, relancer) {
         while (true) {
             withContext(Dispatchers.IO) {
                 try {
                     Courrier.envoyerEnAttente(c)
-                    Courrier.relever(c, compte, dossier)
+                    if (toutes) comptes.forEach { x -> runCatching { Courrier.relever(c, x, Base.dossiers(c, x.id).firstOrNull { d -> d.role == "reception" }?.nom ?: "INBOX") } }
+                    else Courrier.relever(c, compte, dossier)
                 } catch (_: Exception) {
                 }
             }
@@ -173,22 +177,23 @@ internal fun PageBoite(aller: (Vue) -> Unit, retour: () -> Unit) {
         }
     }
     val d = dossiers.firstOrNull { it.nom == dossier }
-    val nom = d?.let { Courrier.nomLisible(it) }?.let { if (it == "Boîte de réception") "Réception" else it } ?: "Réception"
+    val nom = if (toutes) "Toutes les boîtes" else d?.let { Courrier.nomLisible(it) }?.let { if (it == "Boîte de réception") "Réception" else it } ?: "Réception"
     val roles = dossiers.associate { it.role to it.nom }
-    // Glisser vers la gauche : aux archives s'il y en a, sinon à la corbeille (rien depuis la corbeille).
+    // Glisser vers la gauche : aux archives s'il y en a, sinon à la corbeille (rien depuis la corbeille) ; dans la boîte commune, à la corbeille.
     val rangerVers = when {
+        toutes -> "corbeille"
         dossier == roles["corbeille"] -> null
         roles["archives"] != null && dossier != roles["archives"] -> "archives"
         else -> "corbeille"
     }
     val visibles = liste?.filter { Rangement.cle(it) !in Rangement.enAttente }
     val sous = listOfNotNull(
-        compte.adresse.takeIf { plusieurs },
-        when (nonLus) { 0 -> if (d?.role == "envoyes") null else "Tout est lu"; 1 -> "1 non lu"; else -> "$nonLus non lus" },
+        if (toutes) "${comptes.size} adresses" else compte.adresse.takeIf { plusieurs },
+        when (nonLus) { 0 -> if (d?.role == "envoyes" && !toutes) null else "Tout est lu"; 1 -> "1 non lu"; else -> "$nonLus non lus" },
     ).joinToString(" · ").ifEmpty { null }
     var adresses by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        Barre("Boîtes", retour) { CapsuleAdresse(compte.adresse) { adresses = true } }
+        Barre("Boîtes", retour) { CapsuleAdresse(if (toutes) "Toutes les boîtes" else compte.adresse) { adresses = true } }
         LazyColumn(Modifier.weight(1f)) {
             item(key = "tete") {
                 GrandTitre(nom, sous)
@@ -210,16 +215,18 @@ internal fun PageBoite(aller: (Vue) -> Unit, retour: () -> Unit) {
             }
             visibles.orEmpty().groupBy { sectionDe(it.date) }.forEach { (titre, l) ->
                 item(key = "s$titre") { Section(titre, Modifier.animateItem()) }
-                itemsIndexed(l, key = { _, x -> x.uid }) { i, x ->
-                    val ranger: () -> Unit = { rangerVers?.let { Rangement.ranger(c, compte, dossier, x.uid, it) } }
+                itemsIndexed(l, key = { _, x -> Rangement.cle(x) }) { i, x ->
+                    // Dans la boîte commune, chaque mail agit sur sa propre adresse.
+                    val sien = if (toutes) comptes.firstOrNull { it.id == x.compte } ?: compte else compte
+                    val ranger: () -> Unit = { rangerVers?.let { Rangement.ranger(c, sien, x.dossier, x.uid, it) } }
                     Glisse(
                         Modifier.animateItem().padding(horizontal = 16.dp).clip(forme(i, l.size)),
                         droite = Triple(if (x.lu) IconesBoite.NON_LU else IconesBoite.LU, if (x.lu) "Non lu" else "Lu", a.accent),
                         gauche = if (rangerVers == "archives") Triple(IconesMail.ARCHIVES, "Archiver", Color(0xFF6E8B74)) else Triple(Icones.CORBEILLE, "Corbeille", Color(0xFFC4573E)),
-                        faireDroite = { portee.launch(Dispatchers.IO) { runCatching { Courrier.marquer(c, compte, dossier, x.uid, lu = !x.lu) } } },
+                        faireDroite = { portee.launch(Dispatchers.IO) { runCatching { Courrier.marquer(c, sien, x.dossier, x.uid, lu = !x.lu) } } },
                         faireGauche = ranger,
                     ) {
-                        LigneMail(x, premieres[x.uid], verdicts[x.uid], derniere = i == l.lastIndex) { aller(Vue.Lecture(x.compte, x.dossier, x.uid)) }
+                        LigneMail(x, premieres[Rangement.cle(x)], verdicts[Rangement.cle(x)], derniere = i == l.lastIndex, adresse = if (toutes) sien.adresse else null) { aller(Vue.Lecture(x.compte, x.dossier, x.uid)) }
                     }
                 }
             }
@@ -274,6 +281,7 @@ internal fun FeuilleAdresses(courant: Compte, aller: (Vue) -> Unit, fermer: () -
                 Modifier.fillMaxWidth().clickable(onClickLabel = if (ici) x.adresse else "Lire le courrier de ${x.adresse}", role = Role.Button) {
                     if (!ici) {
                         Comptes.choisir(c, x)
+                        Ecran.toutes = false
                         Ecran.dossier = "INBOX"
                         Ecran.filtre = ""
                         Ecran.recherche = ""
@@ -319,7 +327,7 @@ private fun Vide(texte: String, modifier: Modifier) {
 
 /** Un mail dans la boîte : le point des non lus, l'expéditeur et l'heure, l'objet, deux lignes du texte ; le mot du bouclier s'il le faut. */
 @Composable
-private fun LigneMail(l: Lettre, piece: String?, verdict: Verdict?, derniere: Boolean, ouvrir: () -> Unit) {
+private fun LigneMail(l: Lettre, piece: String?, verdict: Verdict?, derniere: Boolean, adresse: String? = null, ouvrir: () -> Unit) {
     val a = LocalIdentite.current
     val nonLu = !l.lu
     val point by animateFloatAsState(if (nonLu) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = 500f), label = "point")
@@ -338,6 +346,11 @@ private fun LigneMail(l: Lettre, piece: String?, verdict: Verdict?, derniere: Bo
                 }
                 BasicText(l.sujet.ifBlank { "(sans objet)" }, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp), style = st(15f, a.encre, if (nonLu) FontWeight.Medium else FontWeight.Normal))
                 if (l.extrait.isNotBlank()) BasicText(l.extrait, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp), style = st(14f, a.encre2, interligne = 1.38f))
+                // Dans la boîte commune : à quelle adresse le mail est arrivé.
+                if (adresse != null) Row(Modifier.padding(top = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconeTrait(IconesMail.ENVELOPPE, 12.dp, a.encre2)
+                    BasicText(adresse, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 5.dp), style = st(12.5f, a.encre2))
+                }
                 // Le bouclier parle dans la ligne, sans pastille : un mot en latérite.
                 if (verdict != null) Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconeTrait(Icones.BOUCLIER, 15.dp, a.accentTexte)
@@ -401,6 +414,17 @@ internal fun PageBoites(aller: (Vue) -> Unit) {
         Barre(null)
         LazyColumn(Modifier.weight(1f)) {
             item(key = "titre") { GrandTitre("Boîtes") }
+            if (comptes.size > 1) {
+                item(key = "toutes") {
+                    LigneBoite(IconesMail.RECEPTION, a.accentTexte, "Toutes les boîtes", if (totalNonLus > 0) "$totalNonLus" else "", 0, 1, Modifier.animateItem().padding(bottom = 10.dp)) {
+                        Ecran.toutes = true
+                        Ecran.filtre = ""
+                        Ecran.recherche = ""
+                        Courrier.changer()
+                        aller(Vue.Liste)
+                    }
+                }
+            }
             comptes.forEach { compte ->
                 val l = dossiers[compte.id].orEmpty()
                 item(key = "c" + compte.id) { Section(if (compte.nom.isNotBlank()) "${compte.nom} · ${compte.adresse}" else compte.adresse, Modifier.animateItem()) }
@@ -412,6 +436,7 @@ internal fun PageBoites(aller: (Vue) -> Unit) {
                         if (compter && d.nonLus > 0) "${d.nonLus}" else "", i, l.size, Modifier.animateItem(),
                     ) {
                         Comptes.choisir(c, compte)
+                        Ecran.toutes = false
                         Ecran.dossier = d.nom
                         Ecran.filtre = ""
                         Ecran.recherche = ""

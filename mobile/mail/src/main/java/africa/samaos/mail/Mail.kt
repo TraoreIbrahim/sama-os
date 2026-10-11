@@ -112,6 +112,8 @@ internal sealed interface Vue {
 /** Ce que l'écran de la boîte garde quand on lit un mail et qu'on revient. */
 internal object Ecran {
     var dossier by mutableStateOf("INBOX")
+    /** La boîte commune : les réceptions de toutes les adresses ensemble. */
+    var toutes by mutableStateOf(false)
     var filtre by mutableStateOf("")
     var recherche by mutableStateOf("")
 }
@@ -206,6 +208,7 @@ class Mail : ComponentActivity() {
                 val dossier = i.getStringExtra("dossier") ?: "INBOX"
                 Ecran.dossier = dossier
                 Comptes.de(this, compte)?.let { Comptes.choisir(this, it) }
+                Ecran.toutes = false
                 pile = listOf(Vue.Boites, Vue.Liste, Vue.Lecture(compte, dossier, i.getLongExtra("uid", 0)))
             }
             Intent.ACTION_SENDTO, Intent.ACTION_VIEW -> i.data?.takeIf { it.scheme == "mailto" }?.let { pile = pile + Vue.Ecrire(depuisMailto(it)) }

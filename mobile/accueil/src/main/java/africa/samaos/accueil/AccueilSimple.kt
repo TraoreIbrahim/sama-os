@@ -59,6 +59,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -258,16 +260,13 @@ private fun TuileSimple(
             modifier = Modifier.align(Alignment.BottomStart),
             style = TextStyle(fontFamily = Polices.andika, fontWeight = FontWeight.Bold, fontSize = 23.sp, color = encre),
         )
+        // Du nouveau (un appel manqué, un message) : un point, sans chiffre à lire ; le lecteur d'écran, lui, dit combien.
         if (nouveaux > 0) {
             Box(
-                Modifier.align(Alignment.TopEnd).size(30.dp).clip(CircleShape).background(Color(0xFFFFFFFF)),
+                Modifier.align(Alignment.TopEnd).size(22.dp).clip(CircleShape).background(Color(0xFFFFFFFF))
+                    .semantics { contentDescription = if (nouveaux == 1) "1 nouveau" else "$nouveaux nouveaux" },
                 contentAlignment = Alignment.Center,
-            ) {
-                BasicText(
-                    if (nouveaux > 9) "9+" else nouveaux.toString(),
-                    style = TextStyle(fontFamily = Polices.andika, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF9A3B3B)),
-                )
-            }
+            ) { Box(Modifier.size(12.dp).clip(CircleShape).background(Color(0xFFC2412D))) }
         }
     }
 }
