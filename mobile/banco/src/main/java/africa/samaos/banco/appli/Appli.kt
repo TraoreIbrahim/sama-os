@@ -207,6 +207,15 @@ object Identites {
     )
 
     /** La Météo (maquette l2-meteo) : le ciel de l'après-midi, terre cuite. */
+    /** La Radio : crème et cuivre, comme un vieux poste. */
+    val Radio = Identite(
+        fond = Color(0xFFF5EFE6), champ = Color(0x0F2B1F14), encre = Color(0xFF2B1F14), encre2 = Color(0xFF6F6052),
+        trait = Color(0x1A2B1F14), accent = Color(0xFFB4643A), voile = Color(0x1FB4643A),
+    )
+    val RadioNuit = Identite(
+        fond = Color(0xFF1B1512), surface = Color(0xFF251E19), champ = Color(0x1AFFFFFF), encre = Color(0xFFF3ECE3), encre2 = Color(0xFFB5A696),
+        trait = Color(0x1FFFFFFF), accent = Color(0xFFE3A77C), surAccent = Color(0xFF2B1A10), voile = Color(0x29E3A77C), sombre = true,
+    )
     val Meteo = Identite(
         fond = Color(0xFFF6E3CF), surface = Color(0x8CFFFFFF), champ = Color(0x123A1D0F), encre = Color(0xFF3A1D0F), encre2 = Color(0xFF7A5340),
         trait = Color(0x1F3A1D0F), accent = Color(0xFF93401F), voile = Color(0x1A93401F),

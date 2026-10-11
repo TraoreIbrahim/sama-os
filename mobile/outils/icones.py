@@ -172,6 +172,16 @@ ICONES = {
             plein("M42,80 h30 a12,12 0 0 0 11.6,-9 H32 A13,13 0 0 0 42,80 z", "#DCE9F7"),
         ],
     ),
+    "radio": dict(
+        fond=fond("#E0A070", "#9A5A32"),
+        dessin=[
+            trace("M68,42 L84,22", "#FFFFFF", 3.5),
+            plein(rr(22, 40, 64, 42, 11), "#FFFFFF"),
+            plein(cercle(40, 61, 12), "#9A5A32"),
+            plein(cercle(40, 61, 4), "#FFFFFF"),
+            trace("M40,61 L47,53", "#FFFFFF", 2.5),
+        ] + [plein(rr(58, 50 + r * 6, 22, 3, 1.5), "#C98A62") for r in range(4)],
+    ),
     "notes": dict(
         fond=fond("#FFFFFF", "#F3EEE7", False) + [plein("M-27,-27 h162 v61 h-162 z", "#F4B940")],
         dessin=[trace(f"M20,{y} H88", "#DCD5CB", 2) for y in (48, 59, 70, 81)]
@@ -288,6 +298,7 @@ MODULES = {
     "mail": ("ic_appli", "mail"), "messages": ("ic_messages", "messages"), "meteo": ("ic_appli", "meteo"),
     "notes": ("ic_appli", "notes"), "photos": ("ic_appli", "photos"), "reglages": ("ic_reglages", "reglages"),
     "sugu": ("ic_appli", "sugu"), "telephone": ("ic_telephone", "telephone"), "clavier": ("ic_appli", "clavier"),
+    "radio": ("ic_appli", "radio"),
 }
 
 

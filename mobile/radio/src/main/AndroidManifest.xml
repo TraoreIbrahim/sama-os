@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- La radio continue écran éteint : un service au premier plan, avec sa notification. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- La puce FM du téléphone, quand le système en déclare une (droit réservé au système : Sama est signé avec sa clé). -->
+    <uses-permission android:name="android.permission.ACCESS_BROADCAST_RADIO" />
+
+    <application
+        android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Radio" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+        <activity android:name=".Radio" android:exported="true" android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <service android:name=".Antenne" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+    </application>
+</manifest>
