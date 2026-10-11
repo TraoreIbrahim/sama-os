@@ -311,7 +311,7 @@ private fun PageVille(ville: Ville, prev: Previsions?, chargement: Boolean, erre
     jourOuvert?.let { FeuilleJour(prev ?: return, it, t) { jourOuvert = null } }
 }
 
-private fun depuis(ms: Long): String = when {
+internal fun depuis(ms: Long): String = when {
     ms < 60_000 -> "à l'instant"
     ms < 3600_000 -> "il y a ${ms / 60_000} min"
     ms < 48 * 3600_000L -> "il y a ${ms / 3600_000} h"

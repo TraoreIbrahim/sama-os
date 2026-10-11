@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,6 +30,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -98,6 +102,17 @@ fun Accueil(
     var dossierOuvert by remember { mutableStateOf<String?>(null) }
     var modifierAccueil by remember { mutableStateOf<VueModifier?>(null) }
     var widgetTenu by remember { mutableStateOf<Int?>(null) }
+    // L'heure se fait plus petite quand les widgets n'ont plus la place entre elle et les applis : on compare la
+    // hauteur de l'écran à celles de la grande heure (mesurée tant qu'elle est grande), des widgets et de la grille.
+    var hauteurEcran by remember { mutableStateOf(0) }
+    var hauteurHorloge by remember { mutableStateOf(0) }
+    var hauteurGrille by remember { mutableStateOf(0) }
+    val barreNav = WindowInsets.navigationBars.getBottom(densite)
+    val horlogeCompacte = with(densite) {
+        val rangees = disposition.widgets.sumOf { it.rangees }
+        rangees > 0 && hauteurEcran > 0 && hauteurHorloge > 0 &&
+            barreEtat + hauteurHorloge + (Widgets.HAUTEUR_RANGEE * rangees + 24.dp).toPx() > hauteurEcran - barreNav - 132.dp.toPx() - hauteurGrille
+    }
     DisposableEffect(Unit) {
         val hote = Widgets.hote(contexte)
         hote.appuiLong = { widgetTenu = it }
@@ -187,6 +202,7 @@ fun Accueil(
         Box(
             Modifier
                 .fillMaxSize()
+                .onSizeChanged { hauteurEcran = it.height }
                 .graphicsLayer {
                     if (bascule.reduction > 0f) {
                         scaleX = bascule.echelle
@@ -226,7 +242,9 @@ fun Accueil(
                     Horloge(
                         espace = espace,
                         ouvrirEspaces = { nav = NavEspaces.Vue },
-                        modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 38.dp),
+                        compacte = horlogeCompacte,
+                        grande = { hauteurHorloge = it },
+                        modifier = Modifier.padding(start = 22.dp, end = 22.dp),
                     )
                     // Les widgets posés, sous l'heure.
                     ZoneWidgets(
@@ -249,7 +267,8 @@ fun Accueil(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(start = 12.dp, end = 12.dp, bottom = 132.dp),
+                        .padding(start = 12.dp, end = 12.dp, bottom = 132.dp)
+                        .onSizeChanged { hauteurGrille = it.height },
                 )
                 Natte(
                     applis = natteMaison,
@@ -403,19 +422,24 @@ fun dateDuJour(maintenant: LocalDateTime): String =
     maintenant.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH))
         .replaceFirstChar { it.titlecase(Locale.FRENCH) }
 
-/** L'heure fine et haute, la date, et le galet de l'Espace actif, qui ouvre la vue des Espaces. */
+/**
+ * L'heure fine et haute, la date, et le galet de l'Espace actif, qui ouvre la vue des Espaces. [compacte] : plus
+ * petite, pour laisser la place aux widgets ; [grande] reçoit la hauteur de la grande heure.
+ */
 @Composable
-private fun Horloge(espace: Espace, ouvrirEspaces: () -> Unit, modifier: Modifier = Modifier) {
+private fun Horloge(espace: Espace, ouvrirEspaces: () -> Unit, compacte: Boolean, grande: (Int) -> Unit, modifier: Modifier = Modifier) {
     val b = LocalBanco.current
     val maintenant = rememberMaintenant()
-    Column(modifier) {
+    val t by animateFloatAsState(if (compacte) 1f else 0f, tween(360), label = "horloge")
+    // Mesurée marge comprise, avant la marge : c'est toute la place que prend la grande heure.
+    Column(modifier.onSizeChanged { if (t == 0f) grande(it.height) }.padding(top = lerp(38.dp, 14.dp, t))) {
         BasicText(
             text = maintenant.format(DateTimeFormatter.ofPattern("HH:mm")),
             style = TextStyle(
                 fontFamily = Polices.horloge,
                 fontWeight = FontWeight(200),
-                fontSize = 112.sp,
-                lineHeight = 104.sp,
+                fontSize = (112f - 48f * t).sp,
+                lineHeight = (104f - 42f * t).sp,
                 letterSpacing = (-0.01).em,
                 color = b.encre,
             ),

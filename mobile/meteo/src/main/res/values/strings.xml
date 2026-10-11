@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_bref">En bref</string>
+    <string name="widget_heures">Heure par heure</string>
+    <string name="widget_semaine">Les jours qui viennent</string>
+</resources>

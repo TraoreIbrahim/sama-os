@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le ciel de la Météo dans un widget, la nuit : bleu profond et une lueur dorée. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <gradient android:angle="270" android:startColor="#161D3A" android:centerColor="#202A52" android:endColor="#2B3561" android:centerY="0.45" />
+        </shape>
+    </item>
+    <item android:gravity="top|end" android:width="260dp" android:height="260dp" android:top="-120dp" android:end="-90dp">
+        <shape android:shape="oval">
+            <gradient android:type="radial" android:gradientRadius="130dp" android:startColor="#3DF2C879" android:endColor="#00F2C879" />
+        </shape>
+    </item>
+</layer-list>

@@ -99,11 +99,17 @@ object MoteurMeteo {
         emptyList()
     }
 
-    private fun enregistrer(c: Context, l: List<Ville>) = prefs(c).edit().putString("villes", JSONArray(l.map { it.json() }).toString()).apply()
+    private fun enregistrer(c: Context, l: List<Ville>) {
+        prefs(c).edit().putString("villes", JSONArray(l.map { it.json() }).toString()).apply()
+        WidgetsMeteo.annoncer(c)
+    }
 
     fun active(c: Context): Int = prefs(c).getInt("active", 0)
 
-    fun choisir(c: Context, i: Int) = prefs(c).edit().putInt("active", i).apply()
+    fun choisir(c: Context, i: Int) {
+        prefs(c).edit().putInt("active", i).apply()
+        WidgetsMeteo.annoncer(c)
+    }
 
     /** Ajoute la ville (ou la remplace si elle y est déjà) et la rend active. */
     fun ajouter(c: Context, v: Ville) {
@@ -145,6 +151,8 @@ object MoteurMeteo {
         val maintenant = System.currentTimeMillis()
         val p = lire(JSONObject(texte), air?.let { JSONObject(it) }, maintenant, octets + octetsAir)
         prefs(c).edit().putString("cache_${v.cle}", JSONObject().put("texte", texte).put("air", air ?: "").put("recues", maintenant).put("octets", octets + octetsAir).toString()).apply()
+        // Les widgets de l'Accueil et la tuile du mode simplifié suivent.
+        WidgetsMeteo.annoncer(c)
         return p
     }
 

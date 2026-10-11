@@ -6,8 +6,11 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Telephony
@@ -40,6 +43,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -61,6 +66,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,6 +103,8 @@ fun AccueilSimple(
     LaunchedEffect(generation) { proches = withContext(Dispatchers.IO) { ProcheSimple.etoiles(contexte) } }
     val lampe = rememberLampe()
     val notifs by Notifications.liste.collectAsState()
+    // La tuile Météo montre le temps qu'il fait dans la ville suivie par la Météo de Sama.
+    val meteo = rememberMeteo(actif = tuiles.contains(ModeSimple.Action.METEO.cle) && applis.any { it.paquet == METEO }, generation)
     val paquetAppel = remember(generation) { paquetDefaut(contexte, Intent(Intent.ACTION_DIAL)) }
     val paquetSms = remember(generation) { Telephony.Sms.getDefaultSmsPackage(contexte) }
 
@@ -161,8 +169,10 @@ fun AccueilSimple(
                                                 action != null -> action.nom
                                                 else -> appli?.nom ?: "—"
                                             },
-                                            icone = action?.icone,
+                                            icone = if (action == ModeSimple.Action.METEO) meteo?.picto ?: action.icone else action?.icone,
                                             image = appli?.icone,
+                                            valeur = if (action == ModeSimple.Action.METEO) meteo?.temperature else null,
+                                            detail = if (action == ModeSimple.Action.METEO) meteo?.let { "${it.ville}, ${it.phrase}" } else null,
                                             nouveaux = nouveaux,
                                             allumee = action == ModeSimple.Action.LAMPE && lampe.allumee == true,
                                             disponible = when (action) {
@@ -220,6 +230,43 @@ fun AccueilSimple(
 }
 
 private const val METEO = "africa.samaos.meteo"
+private val ADRESSE_METEO: Uri = Uri.parse("content://africa.samaos.meteo.maintenant")
+
+/** Le temps qu'il fait dans la ville suivie par la Météo : sa température et son picto, pour la tuile. */
+private class MeteoTuile(val ville: String, val temperature: String, val picto: String, val phrase: String)
+
+private fun lireMeteo(c: Context): MeteoTuile? = try {
+    c.contentResolver.query(ADRESSE_METEO, null, null, null, null)?.use { k ->
+        if (k.moveToFirst()) MeteoTuile(k.getString(0), k.getString(1), k.getString(2), k.getString(3)) else null
+    }
+} catch (_: Exception) {
+    null
+}
+
+/** Relu quand la Météo annonce du nouveau (une ville, des prévisions), à chaque heure, et au retour sur l'Accueil. */
+@Composable
+private fun rememberMeteo(actif: Boolean, generation: Int): MeteoTuile? {
+    val c = LocalContext.current
+    var version by remember { mutableIntStateOf(0) }
+    DisposableEffect(actif) {
+        val veille = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                version++
+            }
+        }
+        val inscrit = actif && try {
+            c.contentResolver.registerContentObserver(ADRESSE_METEO, false, veille)
+            true
+        } catch (_: Exception) {
+            false
+        }
+        onDispose { if (inscrit) c.contentResolver.unregisterContentObserver(veille) }
+    }
+    val heure = rememberMaintenant().hour
+    var meteo by remember { mutableStateOf<MeteoTuile?>(null) }
+    LaunchedEffect(actif, version, heure, generation) { meteo = if (actif) withContext(Dispatchers.IO) { lireMeteo(c) } else null }
+    return meteo
+}
 
 /** Une grande tuile : la couleur de sa place, son picto (ou l'icône de l'appli), son nom en gros. */
 @Composable
@@ -232,6 +279,8 @@ private fun TuileSimple(
     allumee: Boolean,
     disponible: Boolean,
     modifier: Modifier = Modifier,
+    valeur: String? = null,
+    detail: String? = null,
     onClick: () -> Unit,
 ) {
     val b = LocalBanco.current
@@ -246,12 +295,22 @@ private fun TuileSimple(
             .clip(RoundedCornerShape(24.dp))
             .background(fond)
             .clickable(enabled = disponible, onClickLabel = nom, role = Role.Button, onClick = onClick)
+            .semantics { if (detail != null) stateDescription = detail }
             .graphicsLayer { alpha = if (disponible) 1f else 0.45f }
             .padding(horizontal = 18.dp, vertical = 16.dp),
     ) {
         when {
             icone != null -> IconeTrait(icone, 30.dp, encre)
             image != null -> Image(image, contentDescription = null, modifier = Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)))
+        }
+        // Une valeur à lire d'un coup d'œil : la température, pour la Météo.
+        if (valeur != null) {
+            BasicText(
+                valeur,
+                maxLines = 1,
+                modifier = Modifier.align(Alignment.TopEnd),
+                style = TextStyle(fontFamily = Polices.andika, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 32.sp, color = encre),
+            )
         }
         BasicText(
             nom,

@@ -15,5 +15,31 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Les widgets de l'Accueil, en trois tailles (une, deux ou trois rangées). -->
+        <receiver android:name=".WidgetMeteoBref" android:exported="false" android:label="@string/widget_bref">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_meteo_bref" />
+        </receiver>
+        <receiver android:name=".WidgetMeteo" android:exported="false" android:label="@string/widget_heures">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_meteo_heures" />
+        </receiver>
+        <receiver android:name=".WidgetMeteoSemaine" android:exported="false" android:label="@string/widget_semaine">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_meteo_semaine" />
+        </receiver>
+
+        <!-- Des prévisions fraîches pour les widgets, quand les gardées ont plus de 3 heures (6 sur les données mobiles). -->
+        <service android:name=".ReleveMeteo" android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <!-- Le temps qu'il fait, pour la tuile Météo du mode simplifié : réservé au système (vérifié à chaque lecture). -->
+        <provider android:name=".ResumeMeteo" android:authorities="africa.samaos.meteo.maintenant" android:exported="true" />
     </application>
 </manifest>

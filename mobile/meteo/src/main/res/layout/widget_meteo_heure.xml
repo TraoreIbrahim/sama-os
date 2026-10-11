@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une case des prochaines heures : l'heure, le temps, la température, la chance de pluie ; ou le lever ou le coucher du soleil. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/etiquette"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontVariationSettings="'wght' 400"
+        android:singleLine="true"
+        android:textColor="#3A1D0F"
+        android:textSize="12sp" />
+
+    <ImageView
+        android:id="@+id/icone"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginTop="3dp"
+        android:importantForAccessibility="no" />
+
+    <TextView
+        android:id="@+id/valeur"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:fontVariationSettings="'wght' 600"
+        android:singleLine="true"
+        android:textColor="#3A1D0F"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/pluie"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontVariationSettings="'wght' 600"
+        android:singleLine="true"
+        android:textColor="#3D5A99"
+        android:textSize="10.5sp" />
+</LinearLayout>

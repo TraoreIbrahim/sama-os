@@ -67,6 +67,8 @@ internal fun PageVilles(
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             villes.forEachIndexed { i, v ->
                 val p = previsions[v.cle]
+                // Le temps de l'heure qu'il est (comme les widgets), pas celui de la dernière mesure s'il a vieilli.
+                val m = p?.maintenant()
                 val ici = i == active
                 Glisse(
                     modifier = Modifier.clip(RoundedCornerShape(22.dp)),
@@ -88,19 +90,19 @@ internal fun PageVilles(
                                 listOfNotNull(p?.let { heureLocale(it) }, v.region.ifBlank { if (v.position) "Position arrondie à 10 km" else null }).joinToString(" · "),
                                 maxLines = 1, overflow = TextOverflow.Ellipsis, style = st(13f, a.encre2),
                             )
-                            if (p != null) {
+                            if (p != null && m != null) {
                                 BasicText(
-                                    Ciel.description(p.actuel.code, p.actuel.jour) + (p.aujourdhui?.let { " · ${degres(it.min)} à ${degres(it.max)}" } ?: ""),
+                                    Ciel.description(m.code, m.jour) + (p.jours.firstOrNull { it.date == m.ici.toLocalDate() }?.let { " · ${degres(it.min)} à ${degres(it.max)}" } ?: ""),
                                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp), style = st(13.5f, a.encre),
                                 )
                             } else {
-                                BasicText("Pas encore de prévisions", modifier = Modifier.padding(top = 6.dp), style = st(13.5f, a.encre2))
+                                BasicText(if (p == null) "Pas encore de prévisions" else "Prévisions trop anciennes", modifier = Modifier.padding(top = 6.dp), style = st(13.5f, a.encre2))
                             }
                         }
-                        if (p != null) {
+                        if (m != null) {
                             Column(horizontalAlignment = Alignment.End) {
-                                BasicText(degres(p.actuel.temp), style = TextStyle(fontFamily = Polices.fine, fontWeight = FontWeight(250), fontSize = 40.sp, lineHeight = 44.sp, color = a.encre))
-                                IconeTrait(picto(p.actuel.code, p.actuel.jour), 24.dp, a.encre)
+                                BasicText(degres(m.temp), style = TextStyle(fontFamily = Polices.fine, fontWeight = FontWeight(250), fontSize = 40.sp, lineHeight = 44.sp, color = a.encre))
+                                IconeTrait(picto(m.code, m.jour), 24.dp, a.encre)
                             }
                         }
                     }

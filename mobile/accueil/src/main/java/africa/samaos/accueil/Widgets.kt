@@ -114,6 +114,12 @@ class HoteSama(contexte: Context, id: Int) : AppWidgetHost(contexte, id) {
 /** Un widget à l'écran : ses boutons marchent comme dans l'appli ; tenu longtemps, il ouvre son menu. */
 class VueWidget(contexte: Context, private val tenu: () -> Unit) : AppWidgetHostView(contexte) {
     private var declenche = false
+
+    override fun setAppWidget(appWidgetId: Int, info: AppWidgetProviderInfo?) {
+        super.setAppWidget(appWidgetId, info)
+        // Android remet sa marge par défaut (8 dp) quand l'appli du widget est mise à jour : Sama pose ses widgets bord à bord.
+        setPadding(0, 0, 0, 0)
+    }
     private var departX = 0f
     private var departY = 0f
     private val seuil = ViewConfiguration.get(contexte).scaledTouchSlop
