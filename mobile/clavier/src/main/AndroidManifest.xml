@@ -9,6 +9,7 @@
         tools:ignore="ProtectedPermissions" />
 
     <application
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_appli"
         android:label="Clavier de Sama"
         android:supportsRtl="true"

@@ -7,7 +7,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <application android:icon="@mipmap/ic_appli" android:label="Lecteur" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+    <application
+        android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Lecteur" android:supportsRtl="true" android:theme="@style/Theme.Appli">
         <activity
             android:name=".Lecteur"
             android:exported="true"

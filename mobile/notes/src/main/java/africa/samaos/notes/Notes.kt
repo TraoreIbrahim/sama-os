@@ -72,6 +72,7 @@ import africa.samaos.banco.appli.AvecIdentite
 import africa.samaos.banco.appli.BarreAvis
 import africa.samaos.banco.appli.Identite
 import africa.samaos.banco.appli.LocalIdentite
+import africa.samaos.banco.appli.PileDoigt
 
 /** Le papier des Notes : un fond chaud et doux, le miel pour accent. */
 internal val Papier = Identite(
@@ -140,31 +141,14 @@ class Notes : ComponentActivity() {
             AvecIdentite(id) {
                 val aller: (Vue) -> Unit = { pile = pile + it }
                 val retour: () -> Unit = { if (pile.size > 1) pile = pile.dropLast(1) else finish() }
-                BackHandler(enabled = pile.size > 1 && pile.last() !is Vue.Edition) { retour() }
                 Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                    // Une page arrive de la droite, comme on tourne vers la suite ; le retour la renvoie.
-                    AnimatedContent(
-                        pile,
-                        transitionSpec = {
-                            val avance = targetState.size >= initialState.size
-                            if (avance) {
-                                (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 480f)) { it } + fadeIn(tween(160))) togetherWith
-                                    (slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut(tween(240)))
-                            } else {
-                                (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(220))) togetherWith
-                                    (slideOutHorizontally(tween(250, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
-                            }.apply { targetContentZIndex = if (avance) targetState.size.toFloat() else -1f }
-                        },
-                        contentKey = { it.size to it.last() },
-                        label = "page",
-                    ) { p ->
-                        Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                            when (val v = p.last()) {
-                                Vue.Dossiers -> PageDossiers(aller)
-                                is Vue.Liste -> PageListe(v.filtre, aller, retour)
-                                is Vue.Edition -> PageEdition(v, retour) { pile = pile.dropLast(1) + it }
-                                Vue.Corbeille -> PageCorbeille(retour)
-                            }
+                    // Une page arrive de la droite, comme on tourne vers la suite ; le retour la renvoie, en suivant le doigt (l'éditeur gère le sien).
+                    PileDoigt(pile, retour, actif = pile.size > 1 && pile.last() !is Vue.Edition) { v ->
+                        when (v) {
+                            Vue.Dossiers -> PageDossiers(aller)
+                            is Vue.Liste -> PageListe(v.filtre, aller, retour)
+                            is Vue.Edition -> PageEdition(v, retour) { pile = pile.dropLast(1) + it }
+                            Vue.Corbeille -> PageCorbeille(retour)
                         }
                     }
                     BarreAvis(Modifier.align(Alignment.BottomCenter), bas = 20.dp)

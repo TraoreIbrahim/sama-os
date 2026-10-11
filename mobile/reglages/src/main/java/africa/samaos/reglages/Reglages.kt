@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
+import africa.samaos.banco.appli.PileDoigt
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
@@ -66,19 +66,8 @@ class Reglages : ComponentActivity() {
                     retour = { if (pile.size > 1) pile = pile.dropLast(1) else finish() },
                     android = { versAndroid(it) },
                 )
-                BackHandler(enabled = pile.size > 1) { nav.retour() }
-                val profondeur = androidx.compose.runtime.remember { intArrayOf(pile.size) }
-                AnimatedContent(
-                    targetState = pile.last(),
-                    transitionSpec = {
-                        val avance = pile.size >= profondeur[0]
-                        profondeur[0] = pile.size
-                        val sens = if (avance) 1 else -1
-                        (slideInHorizontally(tween(260)) { it * sens / 4 } + fadeIn(tween(200)))
-                            .togetherWith(slideOutHorizontally(tween(260)) { -it * sens / 6 } + fadeOut(tween(160)))
-                    },
-                    label = "pages",
-                ) { page -> Afficher(page, nav) }
+                // Une page arrive de la droite ; le retour suit le doigt.
+                PileDoigt(pile, nav.retour, fond = banco.ciel) { page -> Afficher(page, nav) }
             }
         }
     }

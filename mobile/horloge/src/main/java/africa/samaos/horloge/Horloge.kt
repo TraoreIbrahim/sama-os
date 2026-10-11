@@ -35,6 +35,8 @@ import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.Avis
 import africa.samaos.banco.appli.BarreAvis
 import africa.samaos.banco.appli.NavFlottante
+import africa.samaos.banco.appli.PageDoigt
+import africa.samaos.banco.appli.Sens
 
 private enum class Onglet(val nom: String, val icone: String) {
     ALARMES("Alarmes", "M12 5a8 8 0 1 0 0 16a8 8 0 1 0 0-16z M12 9v4l2 2 M5 3L2 6 M19 3l3 3"),
@@ -82,11 +84,8 @@ class Horloge : ComponentActivity() {
                         }
                     }
                     NavFlottante(Onglet.entries.map { it.nom to it.icone }, onglet.ordinal, { onglet = Onglet.entries[it] }, Modifier.align(Alignment.BottomCenter))
-                    AnimatedVisibility(
-                        edition != null,
-                        enter = slideInVertically(spring(dampingRatio = 0.88f, stiffness = 420f)) { it },
-                        exit = slideOutVertically(tween(240, easing = FastOutLinearInEasing)) { it },
-                    ) {
+                    // L'alarme qu'on règle monte du bas ; elle redescend quand on a fini, ou avec le doigt.
+                    PageDoigt(edition != null, fermer = { edition = null; Etat.version++ }, sens = Sens.BAS) {
                         derniere?.let { (al, nouvelle) ->
                             EditeurAlarme(al, nouvelle) {
                                 edition = null

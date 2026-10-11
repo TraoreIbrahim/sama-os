@@ -14,7 +14,8 @@
     <!-- Proposer de désinstaller une appli inutilisée, d'installer une appli reçue (Android redemande). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <application android:icon="@mipmap/ic_appli" android:label="Fichiers" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+    <application
+        android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Fichiers" android:supportsRtl="true" android:theme="@style/Theme.Appli">
         <activity android:name=".Fichiers" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

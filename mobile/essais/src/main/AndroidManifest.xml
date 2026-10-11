@@ -5,7 +5,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
-    <application android:label="Essais Sama" android:icon="@android:drawable/ic_media_play">
+    <application
+        android:enableOnBackInvokedCallback="true" android:label="Essais Sama" android:icon="@android:drawable/ic_media_play">
         <!-- Lancée par adb avec un extra « essai » : lecture, arret ou message. -->
         <activity
             android:name=".Essais"

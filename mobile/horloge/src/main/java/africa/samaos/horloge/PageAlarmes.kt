@@ -225,7 +225,6 @@ fun EditeurAlarme(depart: Alarme, nouvelle: Boolean, fermer: () -> Unit) {
     val c = LocalContext.current
     var al by remember(depart.id) { mutableStateOf(depart) }
     val maintenant = rememberMaintenant(5000)
-    BackHandler(onBack = fermer)
     val choixSon = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         @Suppress("DEPRECATION")
         val uri = r.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)

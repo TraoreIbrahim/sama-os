@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:icon="@mipmap/ic_appli" android:label="Calculatrice" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+    <application
+        android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Calculatrice" android:supportsRtl="true" android:theme="@style/Theme.Appli">
         <!-- Tourner le téléphone ne recrée pas l'écran : la calculatrice passe de l'une à l'autre en fondu, sans rien perdre. -->
         <activity android:name=".Calculatrice" android:exported="true" android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden">
             <intent-filter>

@@ -1,6 +1,5 @@
 package africa.samaos.meteo
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +59,6 @@ internal fun PageVilles(
     aPropos: () -> Unit,
 ) {
     val a = LocalIdentite.current
-    BackHandler(onBack = fermer)
     Column(Modifier.fillMaxSize().ciel(t.nuit).statusBarsPadding()) {
         BarreRetour("Météo", fermer, Modifier.padding(top = 0.dp)) {
             Rond(Icones.PLUS, "Ajouter une ville", plein = true, epaisseur = 2.2f, onClick = ajouter)

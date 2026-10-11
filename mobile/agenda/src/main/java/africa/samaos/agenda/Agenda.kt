@@ -116,6 +116,8 @@ import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalFermerFeuille
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.NavFlottante
+import africa.samaos.banco.appli.PageDoigt
+import africa.samaos.banco.appli.Sens
 import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
@@ -345,12 +347,8 @@ class Agenda : ComponentActivity() {
                         }
                         if (liste.size > 1) NavFlottante(liste.map { nom(it, u) to it.icone }, liste.indexOf(onglet).coerceAtLeast(0), { onglet = liste[it] }, Modifier.align(Alignment.BottomCenter))
                     }
-                    // Écrire un évènement : la page monte du bas, par-dessus l'agenda, et redescend quand on a fini.
-                    AnimatedVisibility(
-                        vue is Vue.Edition,
-                        enter = slideInVertically(spring(dampingRatio = 0.88f, stiffness = 420f)) { it },
-                        exit = slideOutVertically(tween(240, easing = FastOutLinearInEasing)) { it },
-                    ) {
+                    // Écrire un évènement : la page monte du bas, par-dessus l'agenda, et redescend quand on a fini, ou avec le doigt.
+                    PageDoigt(vue is Vue.Edition, fermer = { vue = Vue.Onglets; version++ }, sens = Sens.BAS) {
                         derniere?.let { e ->
                             Edition(e) {
                                 vue = Vue.Onglets
@@ -999,7 +997,6 @@ private fun Edition(v: Vue.Edition, fermer: () -> Unit) {
         rappel = Agendas.rappel(c, id)
         couleurChoisie = couleurEvenement(e)
     }
-    BackHandler(onBack = fermer)
     val duree = ChronoUnit.MINUTES.between(debut, fin).let { if (it <= 0) it + 24 * 60 else it }
     fun enregistrer() {
         val d = if (journee) jour.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli() else ms(jour, debut)

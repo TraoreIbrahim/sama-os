@@ -83,6 +83,8 @@ import africa.samaos.banco.appli.Fab
 import africa.samaos.banco.appli.FeuilleAppli
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LocalIdentite
+import africa.samaos.banco.appli.PileDoigt
+import africa.samaos.banco.appli.Sens
 import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.AvecIdentite
@@ -152,7 +154,6 @@ class Mail : ComponentActivity() {
                 val c = LocalContext.current
                 val aller: (Vue) -> Unit = { pile = pile + it }
                 val retour: () -> Unit = { if (pile.size > 1) pile = pile.dropLast(1) else finish() }
-                BackHandler(enabled = pile.size > 1) { retour() }
                 // Sans boîte, on commence par en ajouter une (le mail à écrire attend derrière).
                 val sansCompte = remember(Courrier.version, pile) { Comptes.liste(c).isEmpty() }
                 if (sansCompte && pile.last() !is Vue.Ajouter) {
@@ -160,32 +161,16 @@ class Mail : ComponentActivity() {
                     return@AvecIdentite
                 }
                 Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                    // Une page arrive de la droite ; un mail à écrire monte du bas ; le retour fait l'inverse.
-                    AnimatedContent(
-                        pile,
-                        transitionSpec = {
-                            val avance = targetState.size >= initialState.size
-                            val vertical = (if (avance) targetState.last() else initialState.last()) is Vue.Ecrire
-                            when {
-                                vertical && avance -> (slideInVertically(spring(dampingRatio = 0.9f, stiffness = 420f)) { it } + fadeIn(tween(120))) togetherWith fadeOut(tween(260, delayMillis = 100))
-                                vertical -> fadeIn(tween(160)) togetherWith (slideOutVertically(tween(260, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 80)))
-                                avance -> (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 480f)) { it } + fadeIn(tween(150))) togetherWith (slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut(tween(240)))
-                                else -> (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(220))) togetherWith (slideOutHorizontally(tween(250, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
-                            }.apply { targetContentZIndex = if (avance) targetState.size.toFloat() else -1f }
-                        },
-                        contentKey = { it.size to it.last() },
-                        label = "page",
-                    ) { p ->
-                        Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                            when (val v = p.last()) {
-                                Vue.Boites -> PageBoites(aller)
-                                Vue.Liste -> PageBoite(aller, retour)
-                                is Vue.Lecture -> PageLecture(v.compte, v.dossier, v.uid, aller, retour)
-                                is Vue.Ecrire -> PageEcrire(v.brouillon, retour)
-                                Vue.Ajouter -> PageAjouter(premiere = false, retour = retour) { pile = listOf(Vue.Boites, Vue.Liste) }
-                                Vue.Reglages -> PageReglages(aller, retour)
-                                Vue.Brouillons -> PageBrouillons(aller, retour)
-                            }
+                    // Une page arrive de la droite ; un mail à écrire monte du bas ; le retour fait l'inverse, et suit le doigt.
+                    PileDoigt(pile, retour, sens = { if (it is Vue.Ecrire) Sens.BAS else Sens.DROITE }) { v ->
+                        when (v) {
+                            Vue.Boites -> PageBoites(aller)
+                            Vue.Liste -> PageBoite(aller, retour)
+                            is Vue.Lecture -> PageLecture(v.compte, v.dossier, v.uid, aller, retour)
+                            is Vue.Ecrire -> PageEcrire(v.brouillon, retour)
+                            Vue.Ajouter -> PageAjouter(premiere = false, retour = retour) { pile = listOf(Vue.Boites, Vue.Liste) }
+                            Vue.Reglages -> PageReglages(aller, retour)
+                            Vue.Brouillons -> PageBrouillons(aller, retour)
                         }
                     }
                     BarreAvis(Modifier.align(Alignment.BottomCenter), bas = 84.dp)

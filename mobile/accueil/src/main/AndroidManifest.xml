@@ -87,6 +87,7 @@
 
     <!-- directBootAware : l'Accueil démarre avec l'Espace, avant même son déverrouillage, sans écran d'attente d'Android. -->
     <application
+        android:enableOnBackInvokedCallback="true"
         android:directBootAware="true"
         android:icon="@drawable/ic_sama"
         android:label="Sama"

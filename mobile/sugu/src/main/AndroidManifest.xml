@@ -17,7 +17,8 @@
     <!-- Les points Sama et le bilan, partagés avec les Réglages (réglages globaux). -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
 
-    <application android:icon="@mipmap/ic_appli" android:label="Sugu" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+    <application
+        android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Sugu" android:supportsRtl="true" android:theme="@style/Theme.Appli">
         <activity android:name=".Sugu" android:exported="true" android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

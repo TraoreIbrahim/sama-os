@@ -88,6 +88,7 @@ import africa.samaos.banco.appli.EcranAppli
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
+import africa.samaos.banco.appli.PileDoigt
 import africa.samaos.banco.appli.NavFlottante
 import africa.samaos.banco.appli.GrandTitre
 import africa.samaos.banco.appli.BarreRetour
@@ -179,15 +180,17 @@ private fun Racine(pile: SnapshotStateList<Vue>) {
     }
     val aller: (Vue) -> Unit = { pile.add(it) }
     val retour: () -> Unit = { if (pile.size > 1) pile.removeAt(pile.lastIndex) }
-    BackHandler(enabled = pile.size > 1, onBack = retour)
     val morceaux by produceState(emptyList<Morceau>(), permis) { value = withContext(Dispatchers.IO) { Bibliotheque.morceaux(c) } }
     var version by remember { mutableIntStateOf(0) }
     val videos by produceState(emptyList<Video>(), permis, version) { value = withContext(Dispatchers.IO) { Bibliotheque.videos(c) } }
-    when (val vue = pile.last()) {
-        is Vue.Onglet -> Onglets(vue.n, morceaux, videos, aller) { pile.clear(); pile.add(Vue.Onglet(it)) }
-        Vue.Platine -> PagePlatine(retour)
-        is Vue.Film -> Film(vue.v) { version++; retour() }
-        is Vue.Dossier -> DossierMedias(vue.chemin, morceaux, videos, aller, retour)
+    // Une page arrive de la droite ; le retour suit le doigt.
+    PileDoigt(pile.toList(), retour) { vue ->
+        when (vue) {
+            is Vue.Onglet -> Onglets(vue.n, morceaux, videos, aller) { pile.clear(); pile.add(Vue.Onglet(it)) }
+            Vue.Platine -> PagePlatine(retour)
+            is Vue.Film -> Film(vue.v) { version++; retour() }
+            is Vue.Dossier -> DossierMedias(vue.chemin, morceaux, videos, aller, retour)
+        }
     }
 }
 

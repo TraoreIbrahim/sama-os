@@ -7,7 +7,8 @@
     <!-- « Près de vous » : la position approximative, arrondie encore à 10 km avant de partir. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <application android:icon="@mipmap/ic_appli" android:label="Météo" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+    <application
+        android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Météo" android:supportsRtl="true" android:theme="@style/Theme.Appli">
         <activity android:name=".Meteo" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

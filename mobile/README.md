@@ -201,7 +201,14 @@ autres se posent sur le champ), et la barre
 d'onglets flottante est une capsule serrée : l'onglet ouvert s'étale sur un galet avec son nom, les autres
 gardent leur icône ; et `banco/appli/Doux.kt` porte les pièces des applis refaites loin d'Android (grand titre,
 retour nommé « ‹ Messages », boutons ronds voilés, choix sur un galet, groupes de lignes sans ombre, lignes
-qu'on glisse à droite ou à gauche). Les visages sans photo portent leurs initiales sur une teinte pâle. Elles sont signées avec
+qu'on glisse à droite ou à gauche). Les visages sans photo portent leurs initiales sur une teinte pâle.
+**Le retour suit le doigt** (`banco/appli/Retour.kt`, depuis le 11 octobre) : avec le geste de retour d'Android (le bord
+de l'écran), la page qu'on quitte glisse avec le doigt et la page d'avant apparaît dessous, un peu en retrait et voilée ;
+lâchée assez loin, elle part, sinon elle revient d'un ressort. `PileDoigt` tient la pile des pages d'une appli (une page
+arrive de la droite, un formulaire monte du bas : `sens`), `PageDoigt` une page seule par-dessus l'écran ; les feuilles
+descendent et les dialogues reculent avec le doigt. Chaque manifeste porte `android:enableOnBackInvokedCallback="true"`.
+Branché dans Téléphone, Messages, Contacts, Mail, Notes, Photos, Fichiers, Lecteur, Sugu, Réglages, l'Agenda et l'Horloge
+(leurs éditeurs) et la Météo (ses pages) ; Griot garde son retour propre (celui des pages web). Elles sont signées avec
 la clé de test de la plateforme et installées comme des applis ordinaires par `outils/sama-systeme.sh`, qui
 leur donne leurs droits, leurs rôles (téléphone, SMS) et met de côté les applis d'Android qu'elles
 remplacent (sans les effacer : `pm enable` les remet). L'Accueil cache l'icône de ces dernières.

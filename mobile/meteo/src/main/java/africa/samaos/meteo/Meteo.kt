@@ -66,6 +66,8 @@ import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.BarreRetour
 import africa.samaos.banco.appli.GrandTitre
 import africa.samaos.banco.appli.Rond
+import africa.samaos.banco.appli.PageDoigt
+import africa.samaos.banco.appli.Sens
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -152,7 +154,8 @@ private fun Ecran(nuit: Boolean) {
                 menu = { menu = true },
             )
         }
-        if (menu && ville != null) {
+        // Les villes arrivent de la droite et repartent avec le doigt.
+        PageDoigt(menu && ville != null, fermer = { menu = false }, sens = Sens.DROITE) {
             PageVilles(
                 villes = villes, active = active, previsions = gardees, t = t,
                 fermer = { menu = false },
@@ -191,7 +194,8 @@ private fun Ecran(nuit: Boolean) {
                 )
             }
         }
-        if (ajout) {
+        // L'ajout d'une ville aussi ; sans aucune ville, le retour quitte l'appli.
+        PageDoigt(ajout, fermer = { ajout = false }, sens = Sens.DROITE, actif = ajout && villes.isNotEmpty()) {
             PageAjout(
                 premiere = villes.isEmpty(),
                 fermer = { ajout = false },
@@ -336,7 +340,6 @@ private fun PageAjout(premiere: Boolean, fermer: () -> Unit, choisie: (Ville) ->
     var recherche by remember { mutableStateOf("") }
     var resultats by remember { mutableStateOf<List<Ville>?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    if (!premiere) BackHandler(onBack = fermer)
 
     fun chercherPuis(nom: String, prendrePremiere: Boolean) {
         portee.launch {

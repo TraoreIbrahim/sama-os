@@ -6,6 +6,9 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.navigationBarsPadding
+import africa.samaos.banco.appli.NavFlottante
+import africa.samaos.banco.appli.PileDoigt
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
@@ -176,10 +179,12 @@ private fun Racine(pile: MutableList<Vue>) {
     }
     val aller: (Vue) -> Unit = { pile.add(it) }
     val retour: () -> Unit = { if (pile.size > 1) pile.removeAt(pile.lastIndex) }
-    BackHandler(enabled = pile.size > 1) { retour() }
     Box(Modifier.fillMaxSize()) {
-        when (val v = pile.last()) {
-            is Vue.Onglet -> Column(Modifier.fillMaxSize()) {
+        // Une page arrive de la droite ; le retour suit le doigt. Les onglets dans la capsule flottante.
+        PileDoigt(pile.toList(), retour) { v ->
+        when (v) {
+            is Vue.Onglet -> Box(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     when (v.i) {
                         DECOUVRIR -> PageDecouvrir(aller) { pile.clear(); pile.add(Vue.Onglet(AUTOUR)) }
@@ -188,8 +193,10 @@ private fun Racine(pile: MutableList<Vue>) {
                         else -> PageMesApplis(aller)
                     }
                 }
+                Spacer(Modifier.navigationBarsPadding().height(76.dp))
+                }
                 val maj = remember(reprise, Catalogue.points.size, Installations.fins) { Catalogue.misesAJour(c).size }
-                NavAppli(
+                NavFlottante(
                     listOf(
                         "Découvrir" to SAC,
                         "Autour" to Icones.PROXIMITE,
@@ -197,10 +204,13 @@ private fun Racine(pile: MutableList<Vue>) {
                         "Mes applis" to Icones.TELEPHONE,
                     ),
                     v.i,
-                ) { i -> pile.clear(); pile.add(Vue.Onglet(i)) }
+                    { i -> pile.clear(); pile.add(Vue.Onglet(i)) },
+                    Modifier.align(Alignment.BottomCenter),
+                )
             }
             is Vue.Fiche -> PageFiche(v.paquet, aller, retour)
             is Vue.Envoyer -> PageEnvoyer(v.paquet, retour)
+        }
         }
         Refus()
         PropositionRecue(aller)

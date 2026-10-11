@@ -143,6 +143,7 @@
         tools:ignore="ProtectedPermissions" />
 
     <application
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_reglages"
         android:label="Réglages"
         android:supportsRtl="true"

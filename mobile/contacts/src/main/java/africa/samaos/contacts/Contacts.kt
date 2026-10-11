@@ -112,6 +112,7 @@ import africa.samaos.banco.appli.InterAppli
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalFermerFeuille
 import africa.samaos.banco.appli.LocalIdentite
+import africa.samaos.banco.appli.PileDoigt
 import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.PuceSim
 import africa.samaos.banco.appli.Rub
@@ -153,33 +154,17 @@ class Contacts : ComponentActivity() {
             AvecIdentite(id) {
                 val aller: (Vue) -> Unit = { pile = pile + it }
                 val retour: () -> Unit = { if (pile.size > 1) pile = pile.dropLast(1) else finish() }
-                BackHandler(enabled = pile.size > 1) { retour() }
-                // Une page qui s'ouvre arrive de la droite, celle qu'on quitte recule un peu ; au retour, l'inverse.
-                AnimatedContent(
-                    pile,
-                    transitionSpec = {
-                        if (targetState.size >= initialState.size) {
-                            (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 500f)) { it } + fadeIn(tween(150))) togetherWith
-                                (slideOutHorizontally(tween(260)) { -it / 4 } + fadeOut(tween(220)))
-                        } else {
-                            (slideInHorizontally(tween(260)) { -it / 4 } + fadeIn(tween(200))) togetherWith
-                                (slideOutHorizontally(tween(240, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
-                        }.apply { targetContentZIndex = targetState.size.toFloat() }
-                    },
-                    contentKey = { it.size to it.last() },
-                    label = "page",
-                ) { p ->
-                    Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                        when (val v = p.last()) {
-                            Vue.Liste -> PageListe(reprise, aller)
-                            is Vue.Fiche -> PageFiche(v.id, reprise, aller, retour)
-                            is Vue.Modifier -> PageModifier(v.id, v.numero, v.nom, retour) { nouvel ->
-                                pile = pile.dropLast(1).let { q -> if (q.lastOrNull() is Vue.Fiche || nouvel == null) q else q + Vue.Fiche(nouvel) }
-                            }
-                            Vue.Import -> PageImport(retour)
-                            Vue.MaFiche -> PageMaFiche(reprise, aller, retour)
-                            Vue.ModifierMaFiche -> PageModifierMaFiche(retour)
+                // Une page qui s'ouvre arrive de la droite, celle qu'on quitte recule un peu ; au retour, l'inverse, en suivant le doigt.
+                PileDoigt(pile, retour) { v ->
+                    when (v) {
+                        Vue.Liste -> PageListe(reprise, aller)
+                        is Vue.Fiche -> PageFiche(v.id, reprise, aller, retour)
+                        is Vue.Modifier -> PageModifier(v.id, v.numero, v.nom, retour) { nouvel ->
+                            pile = pile.dropLast(1).let { q -> if (q.lastOrNull() is Vue.Fiche || nouvel == null) q else q + Vue.Fiche(nouvel) }
                         }
+                        Vue.Import -> PageImport(retour)
+                        Vue.MaFiche -> PageMaFiche(reprise, aller, retour)
+                        Vue.ModifierMaFiche -> PageModifierMaFiche(retour)
                     }
                 }
             }

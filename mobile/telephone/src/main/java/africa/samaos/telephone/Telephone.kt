@@ -107,6 +107,7 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.InterAppli
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.NavFlottante
+import africa.samaos.banco.appli.PileDoigt
 import africa.samaos.banco.appli.PuceSim
 import africa.samaos.banco.appli.Recherche
 import africa.samaos.banco.appli.Rond
@@ -155,47 +156,38 @@ class Telephone : ComponentActivity() {
                 }
             }
             AvecIdentite(id) {
-                BackHandler(enabled = page != null) { page = if (page == "accord-filtrage") "filtrage" else null }
                 Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                    // Une page ouverte depuis un onglet (un numéro, le filtrage, la messagerie…) arrive de la droite ; elle repart vers la droite.
-                    AnimatedContent(
-                        page,
-                        transitionSpec = {
-                            val profondeur = { x: String? -> when { x == null -> 0; x == "accord-filtrage" -> 2; else -> 1 } }
-                            if (profondeur(targetState) >= profondeur(initialState)) {
-                                (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 500f)) { it } + fadeIn(tween(150))) togetherWith (slideOutHorizontally(tween(260)) { -it / 4 } + fadeOut(tween(220)))
-                            } else {
-                                (slideInHorizontally(tween(260)) { -it / 4 } + fadeIn(tween(200))) togetherWith (slideOutHorizontally(tween(240, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
+                    // Une page ouverte depuis un onglet (un numéro, le filtrage, la messagerie…) arrive de la droite ; elle repart avec le doigt.
+                    val pileDePages = when (page) {
+                        null -> listOf("")
+                        "accord-filtrage" -> listOf("", "filtrage", "accord-filtrage")
+                        else -> listOf("", page!!)
+                    }
+                    PileDoigt(pileDePages, retour = { page = if (page == "accord-filtrage") "filtrage" else null }) { p ->
+                        when {
+                            p == "accord" -> PageAccord { page = null }
+                            p == "accord-filtrage" -> PageAccord { page = "filtrage" }
+                            p == "filtrage" -> PageFiltrage(reprise, { page = "accord-filtrage" }) { page = null }
+                            p == "messagerie" -> PageMessagerie { page = null }
+                            p.startsWith("ussd:") -> PageUssd(p.removePrefix("ussd:")) { page = null }
+                            // « numero:Récents:0708… » : la fiche d'un numéro, et le nom de l'onglet d'où l'on vient.
+                            p.startsWith("numero:") -> FicheNumero(p.substringAfterLast(':'), p.removePrefix("numero:").substringBefore(':'), reprise, retour = { page = null }) { n ->
+                                numero = n
+                                onglet = Onglet.CLAVIER
+                                page = null
                             }
-                        },
-                        label = "page",
-                    ) { p ->
-                        Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                            when {
-                                p == "accord" -> PageAccord { page = null }
-                                p == "accord-filtrage" -> PageAccord { page = "filtrage" }
-                                p == "filtrage" -> PageFiltrage(reprise, { page = "accord-filtrage" }) { page = null }
-                                p == "messagerie" -> PageMessagerie { page = null }
-                                p?.startsWith("ussd:") == true -> PageUssd(p.removePrefix("ussd:")) { page = null }
-                                // « numero:Récents:0708… » : la fiche d'un numéro, et le nom de l'onglet d'où l'on vient.
-                                p?.startsWith("numero:") == true -> FicheNumero(p.substringAfterLast(':'), p.removePrefix("numero:").substringBefore(':'), reprise, retour = { page = null }) { n ->
-                                    numero = n
-                                    onglet = Onglet.CLAVIER
-                                    page = null
-                                }
-                                else -> {
-                                    // D'un onglet à l'autre : un fondu.
-                                    AnimatedContent(onglet, transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(110)) }, label = "onglet") { o ->
-                                        val fiche: (String) -> Unit = { page = "numero:${o.nom}:$it" }
-                                        when (o) {
-                                            Onglet.FAVORIS -> PageFavoris(reprise, fiche) { numero = it; onglet = Onglet.CLAVIER }
-                                            Onglet.RECENTS -> PageRecents(reprise, fiche, { page = "filtrage" }) { page = "messagerie" }
-                                            Onglet.CLAVIER -> PageClavier(numero, reprise, { numero = it }) { code -> page = "ussd:$code" }
-                                            Onglet.CONTACTS -> PageContacts(reprise, fiche)
-                                        }
+                            else -> Box(Modifier.fillMaxSize()) {
+                                // D'un onglet à l'autre : un fondu.
+                                AnimatedContent(onglet, transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(110)) }, label = "onglet") { o ->
+                                    val fiche: (String) -> Unit = { page = "numero:${o.nom}:$it" }
+                                    when (o) {
+                                        Onglet.FAVORIS -> PageFavoris(reprise, fiche) { numero = it; onglet = Onglet.CLAVIER }
+                                        Onglet.RECENTS -> PageRecents(reprise, fiche, { page = "filtrage" }) { page = "messagerie" }
+                                        Onglet.CLAVIER -> PageClavier(numero, reprise, { numero = it }) { code -> page = "ussd:$code" }
+                                        Onglet.CONTACTS -> PageContacts(reprise, fiche)
                                     }
-                                    NavFlottante(Onglet.entries.map { it.nom to it.icone }, onglet.ordinal, { onglet = Onglet.entries[it] }, Modifier.align(Alignment.BottomCenter))
                                 }
+                                NavFlottante(Onglet.entries.map { it.nom to it.icone }, onglet.ordinal, { onglet = Onglet.entries[it] }, Modifier.align(Alignment.BottomCenter))
                             }
                         }
                     }

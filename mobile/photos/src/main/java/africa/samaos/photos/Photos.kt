@@ -100,6 +100,7 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.InterAppli
 import africa.samaos.banco.appli.LocalFermerFeuille
 import africa.samaos.banco.appli.LocalIdentite
+import africa.samaos.banco.appli.PileDoigt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -245,37 +246,25 @@ private fun Racine(pile: SnapshotStateList<Vue>, retour: () -> Unit) {
         version = version,
         changer = { version++ },
     )
-    // Retour : ce qui est par-dessus (la visionneuse) gère son propre retour, animé.
-    BackHandler(enabled = pile.size > 1 && !pile.last().dessus) { actions.retour() }
     CompositionLocalProvider(LocalActions provides actions, LocalTout provides tout) {
         Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
             val iPage = pile.indexOfLast { !it.dessus }.coerceAtLeast(0)
             val pages = pile.take(iPage + 1)
-            AnimatedContent(
-                pages,
-                transitionSpec = {
-                    val onglet = targetState.size == 1 && initialState.size == 1
-                    val avance = targetState.size > initialState.size
-                    when {
-                        onglet -> fadeIn(tween(220)) togetherWith fadeOut(tween(160))
-                        avance -> (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 480f)) { it } + fadeIn(tween(150))) togetherWith (slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut(tween(240)))
-                        else -> (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(220))) togetherWith (slideOutHorizontally(tween(250, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
-                    }.apply { targetContentZIndex = if (avance) targetState.size.toFloat() else -1f }
-                },
-                contentKey = { it.size to it.last() },
-                label = "page",
-            ) { p ->
-                Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                    when (val v = p.last()) {
-                        Vue.Pellicule -> PagePellicule()
-                        Vue.Collections -> PageCollections()
-                        is Vue.Liste -> PageListe(v)
-                        is Vue.Menage -> PageMenage(v.sorte)
-                        Vue.Corbeille -> PageCorbeille()
-                        Vue.Masquees -> PageMasquees()
-                        Vue.Recherche -> PageRecherche()
-                        else -> {}
-                    }
+            // Une page arrive de la droite ; d'un onglet à l'autre, un fondu ; le retour suit le doigt (ce qui est par-dessus, la visionneuse, gère le sien).
+            PileDoigt(
+                pages, actions.retour,
+                actif = pile.size > 1 && !pile.last().dessus,
+                transition = { avant, apres -> if (avant.size == 1 && apres.size == 1) fadeIn(tween(220)) togetherWith fadeOut(tween(160)) else null },
+            ) { v ->
+                when (v) {
+                    Vue.Pellicule -> PagePellicule()
+                    Vue.Collections -> PageCollections()
+                    is Vue.Liste -> PageListe(v)
+                    is Vue.Menage -> PageMenage(v.sorte)
+                    Vue.Corbeille -> PageCorbeille()
+                    Vue.Masquees -> PageMasquees()
+                    Vue.Recherche -> PageRecherche()
+                    else -> {}
                 }
             }
             // Par-dessus la page : la visionneuse, puis la retouche ; chacune garde son état sous la suivante.

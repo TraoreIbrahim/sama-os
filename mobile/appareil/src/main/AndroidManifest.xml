@@ -6,7 +6,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Noter qu'il s'est fermé à cause de la chaleur (réglages globaux) : signé avec la clé de la plateforme. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
-    <application android:icon="@mipmap/ic_appli" android:label="Appareil photo" android:supportsRtl="true" android:theme="@style/Theme.Appli">
+    <application
+        android:enableOnBackInvokedCallback="true" android:icon="@mipmap/ic_appli" android:label="Appareil photo" android:supportsRtl="true" android:theme="@style/Theme.Appli">
         <activity
             android:name=".Appareil"
             android:exported="true"

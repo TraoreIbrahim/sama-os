@@ -647,11 +647,19 @@ fun FeuilleAppli(fermer: () -> Unit, titre: String? = null, contenu: @Composable
     }
     // La feuille est redescendue : on la retire pour de bon.
     androidx.compose.runtime.LaunchedEffect(fermeture, etat.isIdle, etat.currentState) { if (fermeture && etat.isIdle && !etat.currentState) fermer() }
-    androidx.activity.compose.BackHandler(onBack = fermerAnime)
     val voile by androidx.compose.animation.core.animateFloatAsState(if (etat.targetState) 1f else 0f, androidx.compose.animation.core.tween(Mouvement.FONDU), label = "voile")
     var tire by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     val portee = androidx.compose.runtime.rememberCoroutineScope()
     val seuil = with(androidx.compose.ui.platform.LocalDensity.current) { 110.dp.toPx() }
+    // Le geste de retour tire la feuille vers le bas avec le doigt ; lâché, elle finit de descendre ; sinon elle remonte.
+    androidx.activity.compose.PredictiveBackHandler { progres ->
+        try {
+            progres.collect { e -> tire = e.progress * seuil * 1.5f }
+            fermerAnime()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            portee.launch { androidx.compose.animation.core.animate(tire, 0f, animationSpec = androidx.compose.animation.core.spring(stiffness = 600f)) { x, _ -> tire = x } }
+        }
+    }
     // La feuille remonte au-dessus du clavier (en plein écran, la fenêtre ne se redimensionne plus).
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f * voile))
@@ -726,7 +734,17 @@ fun DialogueAppli(titre: String, texte: String?, fermer: () -> Unit, contenu: @C
         etat.targetState = false
     }
     androidx.compose.runtime.LaunchedEffect(fermeture, etat.isIdle, etat.currentState) { if (fermeture && etat.isIdle && !etat.currentState) fermer() }
-    androidx.activity.compose.BackHandler(onBack = fermerAnime)
+    // Le geste de retour fait reculer le dialogue avec le doigt ; lâché, il s'en va ; sinon il revient.
+    var recul by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val porteeRecul = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.activity.compose.PredictiveBackHandler { progres ->
+        try {
+            progres.collect { e -> recul = e.progress }
+            fermerAnime()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            porteeRecul.launch { androidx.compose.animation.core.animate(recul, 0f, animationSpec = androidx.compose.animation.core.spring(stiffness = 600f)) { x, _ -> recul = x } }
+        }
+    }
     val voile by androidx.compose.animation.core.animateFloatAsState(if (etat.targetState) 1f else 0f, androidx.compose.animation.core.tween(Mouvement.FONDU), label = "voile")
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f * voile)).clickable(interactionSource = null, indication = null, onClickLabel = "Fermer", onClick = fermerAnime).imePadding().padding(24.dp),
@@ -738,7 +756,8 @@ fun DialogueAppli(titre: String, texte: String?, fermer: () -> Unit, contenu: @C
             exit = androidx.compose.animation.scaleOut(androidx.compose.animation.core.tween(Mouvement.SORTIE - 60), targetScale = 0.94f) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(Mouvement.SORTIE - 60)),
         ) {
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(a.fond).clickable(interactionSource = null, indication = null) {}.padding(24.dp),
+                Modifier.fillMaxWidth().graphicsLayer { val s = 1f - 0.08f * recul; scaleX = s; scaleY = s; alpha = 1f - 0.35f * recul }
+                    .clip(RoundedCornerShape(28.dp)).background(a.fond).clickable(interactionSource = null, indication = null) {}.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 BasicText(titre, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp, color = a.encre))

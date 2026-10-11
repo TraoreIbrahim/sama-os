@@ -98,6 +98,7 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.InterAppli
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
+import africa.samaos.banco.appli.PileDoigt
 import africa.samaos.banco.appli.NavFlottante
 import africa.samaos.banco.appli.BarreRetour
 import africa.samaos.banco.appli.GrandTitre
@@ -255,17 +256,19 @@ private fun Racine(pile: SnapshotStateList<Vue>) {
         },
         version = version,
     )
-    BackHandler(enabled = pile.size > 1) { actions.retour() }
     CompositionLocalProvider(LocalActions provides actions) {
         Box(Modifier.fillMaxSize()) {
-            when (vue) {
-                Vue.Parcourir -> Accueil()
-                Vue.Nettoyer -> Nettoyer()
-                is Vue.Dossier -> Dossier(File(vue.chemin))
-                is Vue.Sorte -> Sorte(vue.cat)
-                Vue.Recus -> Recus()
-                Vue.Corbeille -> Corbeille()
-                Vue.Recherche -> Recherche()
+            // Une page arrive de la droite ; le retour suit le doigt.
+            PileDoigt(pile.toList(), actions.retour) { v ->
+                when (v) {
+                    Vue.Parcourir -> Accueil()
+                    Vue.Nettoyer -> Nettoyer()
+                    is Vue.Dossier -> Dossier(File(v.chemin))
+                    is Vue.Sorte -> Sorte(v.cat)
+                    Vue.Recus -> Recus()
+                    Vue.Corbeille -> Corbeille()
+                    Vue.Recherche -> Recherche()
+                }
             }
             if (vue == Vue.Parcourir || vue == Vue.Nettoyer) {
                 NavFlottante(listOf("Parcourir" to Icones.DOSSIER, "Nettoyer" to Ic.BALAI), if (vue == Vue.Parcourir) 0 else 1, actions.onglet, Modifier.align(Alignment.BottomCenter))
