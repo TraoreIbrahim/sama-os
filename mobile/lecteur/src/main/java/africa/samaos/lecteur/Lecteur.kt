@@ -88,7 +88,9 @@ import africa.samaos.banco.appli.EcranAppli
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
-import africa.samaos.banco.appli.NavAppli
+import africa.samaos.banco.appli.NavFlottante
+import africa.samaos.banco.appli.GrandTitre
+import africa.samaos.banco.appli.BarreRetour
 import africa.samaos.banco.appli.Rub
 import africa.samaos.banco.appli.Tete
 import africa.samaos.banco.appli.AvecIdentite
@@ -192,24 +194,36 @@ private fun Racine(pile: SnapshotStateList<Vue>) {
 @Composable
 private fun Onglets(n: Int, morceaux: List<Morceau>, videos: List<Video>, aller: (Vue) -> Unit, choisir: (Int) -> Unit) {
     val a = LocalIdentite.current
-    EcranAppli {
-        Tete(listOf("Lecteur", "Musique", "Vidéos", "Dossiers")[n])
-        Box(Modifier.weight(1f)) {
-            when (n) {
-                0 -> AccueilLecteur(morceaux, videos, aller, choisir)
-                1 -> ListeMorceaux(morceaux)
-                2 -> GrilleVideos(videos, aller)
-                3 -> Dossiers(morceaux, videos, aller)
+    Box(Modifier.fillMaxSize()) {
+        EcranAppli {
+            GrandTitre(
+                listOf("Lecteur", "Musique", "Vidéos", "Dossiers")[n],
+                when (n) {
+                    1 -> if (morceaux.isEmpty()) "Aucun morceau" else "${morceaux.size} morceau${if (morceaux.size > 1) "x" else ""}"
+                    2 -> if (videos.isEmpty()) "Aucune vidéo" else "${videos.size} vidéo${if (videos.size > 1) "s" else ""}"
+                    else -> null
+                },
+                sousBarre = true,
+            )
+            Box(Modifier.weight(1f)) {
+                when (n) {
+                    0 -> AccueilLecteur(morceaux, videos, aller, choisir)
+                    1 -> ListeMorceaux(morceaux)
+                    2 -> GrilleVideos(videos, aller)
+                    3 -> Dossiers(morceaux, videos, aller)
+                }
+                if (morceaux.isEmpty() && videos.isEmpty()) {
+                    BasicText(
+                        "La musique et les vidéos du téléphone viendront ici : celles que vous recevez, celles de la carte SD. Le Lecteur marche sans connexion.",
+                        modifier = Modifier.padding(20.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 21.sp, color = a.encre2),
+                    )
+                }
             }
-            if (morceaux.isEmpty() && videos.isEmpty()) {
-                BasicText(
-                    "La musique et les vidéos du téléphone viendront ici : celles que vous recevez, celles de la carte SD. Le Lecteur marche sans connexion.",
-                    modifier = Modifier.padding(20.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 21.sp, color = a.encre2),
-                )
-            }
+            // Le mini-lecteur se pose au-dessus de la capsule des onglets.
+            MiniLecteur { aller(Vue.Platine) }
+            Spacer(Modifier.navigationBarsPadding().height(76.dp))
         }
-        MiniLecteur { aller(Vue.Platine) }
-        NavAppli(listOf("Accueil" to Ic.ACCUEIL, "Musique" to Ic.MUSIQUE, "Vidéos" to Icones.VIDEO, "Dossiers" to Icones.DOSSIER), n, choisir)
+        NavFlottante(listOf("Accueil" to Ic.ACCUEIL, "Musique" to Ic.MUSIQUE, "Vidéos" to Icones.VIDEO, "Dossiers" to Icones.DOSSIER), n, choisir, Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -346,7 +360,8 @@ private fun DossierMedias(chemin: String, morceaux: List<Morceau>, videos: List<
     val ms = morceaux.filter { it.dossier == chemin }
     val vs = videos.filter { it.dossier == chemin }
     EcranAppli {
-        Tete(chemin.trimEnd('/').substringAfterLast('/'), retour = retour, petit = true)
+        BarreRetour("Dossiers", retour, Modifier.padding(top = 0.dp))
+        GrandTitre(chemin.trimEnd('/').substringAfterLast('/'), sousBarre = true)
         LazyColumn(Modifier.weight(1f)) {
             items(vs, key = { "v${it.id}" }) { v ->
                 LigneAppli(v.titre, duree(v.duree), debut = { Pochette(v.uri, 48.dp) }) { aller(Vue.Film(v)) }
@@ -416,7 +431,7 @@ private fun PagePlatine(retour: () -> Unit) {
         }
     }
     EcranAppli {
-        Tete("", retour = retour)
+        BarreRetour("Lecteur", retour, Modifier.padding(top = 0.dp))
         Column(Modifier.weight(1f).padding(horizontal = 28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Pochette(m.uri, 96.dp, 28.dp, Modifier.fillMaxWidth().aspectRatio(1f))
             Column(Modifier.fillMaxWidth()) {

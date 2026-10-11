@@ -474,7 +474,7 @@ private fun Barre(o: Onglet?, ouvrir: (Panneau) -> Unit) {
                 BasicText("${Griot.onglets.size}", style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OR))
             }
         }
-        Bouton(Icones.OPTIONS, "Menu de Griot") { ouvrir(Panneau.MENU) }
+        Bouton("M6.5 12h.01 M12 12h.01 M17.5 12h.01", "Menu de Griot") { ouvrir(Panneau.MENU) }
     }
 }
 
@@ -483,7 +483,7 @@ private fun Bouton(icone: String, nom: String, actif: Boolean = true, taille: In
     Box(
         Modifier.size(taille.dp).clip(CircleShape).clickable(enabled = actif, onClickLabel = nom, role = Role.Button, onClick = onClick).semantics { contentDescription = nom },
         contentAlignment = Alignment.Center,
-    ) { IconeTrait(icone, 22.dp, if (actif) BLANC else Color(0x55FFFFFF)) }
+    ) { IconeTrait(icone, 22.dp, if (actif) BLANC else Color(0x55FFFFFF), epaisseur = if (icone.startsWith("M6.5 12h.01")) 2.6f else 1.75f) }
 }
 
 // ——— Un nouvel onglet ———

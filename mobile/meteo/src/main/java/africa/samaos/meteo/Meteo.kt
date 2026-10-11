@@ -64,7 +64,9 @@ import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.Rub
-import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.BarreRetour
+import africa.samaos.banco.appli.GrandTitre
+import africa.samaos.banco.appli.Rond
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -254,7 +256,7 @@ private fun PageVille(ville: Ville, prev: Previsions?, chargement: Boolean, erre
                 modifier = Modifier.weight(1f).padding(start = 8.dp),
                 style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, color = a.encre),
             )
-            BoutonAppli(Icones.OPTIONS, "Autres villes", onClick = menu)
+            Rond("M6.5 12h.01 M12 12h.01 M17.5 12h.01", "Autres villes", epaisseur = 2.6f, onClick = menu)
         }
         if (prev == null) {
             BasicText(
@@ -430,7 +432,8 @@ private fun PageAjout(premiere: Boolean, fermer: () -> Unit, choisie: (Ville) ->
 
     Box(Modifier.fillMaxSize().background(a.fond)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            Tete(if (premiere) "Votre ville" else "Ajouter une ville", retour = if (premiere) null else fermer)
+            if (!premiere) BarreRetour("Météo", fermer, Modifier.padding(top = 0.dp))
+            GrandTitre(if (premiere) "Votre ville" else "Ajouter une ville", sousBarre = true)
             ChampAppli(recherche, "Chercher une ville ou un village", { recherche = it })
             message?.let {
                 BasicText(it, modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2))

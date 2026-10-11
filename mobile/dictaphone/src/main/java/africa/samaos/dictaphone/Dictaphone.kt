@@ -88,7 +88,7 @@ import africa.samaos.banco.appli.FeuilleAppli
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.Rub
-import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.GrandTitre
 import africa.samaos.banco.appli.AvecIdentite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -233,7 +233,7 @@ private fun Ecran() {
     val e = enCours
     Box(Modifier.fillMaxSize()) {
         EcranAppli {
-            Tete("Dictaphone")
+            GrandTitre("Dictaphone", sousBarre = true)
             Column(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     Modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = e == null, onClickLabel = "Renommer") { renommer = true }.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -394,7 +394,9 @@ private fun Liste(pistes: List<Piste>, changer: () -> Unit, dire: (String) -> Un
                             style = TextStyle(fontFamily = Polices.corps, fontSize = 14.sp, color = a.encre2),
                         )
                     }
-                    BoutonAppli(Icones.OPTIONS, "Options de l'enregistrement") { options = p }
+                    Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClickLabel = "Options de l'enregistrement", role = Role.Button) { options = p }, contentAlignment = Alignment.Center) {
+                        IconeTrait("M6.5 12h.01 M12 12h.01 M17.5 12h.01", 22.dp, a.encre2, epaisseur = 2.6f)
+                    }
                 }
                 if (ici) {
                     // La barre de lecture : un appui y place la lecture ; les repères pour sauter au bon moment.
