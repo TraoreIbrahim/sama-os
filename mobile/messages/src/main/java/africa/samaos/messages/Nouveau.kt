@@ -94,7 +94,7 @@ internal fun PageNouveau(texte: String?, retour: () -> Unit, ouvrir: (Long, Stri
     }
     Column(Modifier.fillMaxSize().imePadding()) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().height(56.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            BasicText("Annuler", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClick = retour).padding(10.dp), style = texte(16f, a.encre2))
+            BasicText("Annuler", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClick = retour).padding(10.dp), style = texte(16.5f, a.accentTexte))
             BasicText("Nouveau message", modifier = Modifier.weight(1f), style = texte(17f, a.encre, FontWeight.Bold).copy(textAlign = TextAlign.Center))
             Box(Modifier.size(80.dp, 1.dp))
         }

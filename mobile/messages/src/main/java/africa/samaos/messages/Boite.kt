@@ -161,6 +161,19 @@ object Boite {
         c.getSystemService(NotificationManager::class.java).cancel(fil.toInt())
     }
 
+    /** Marquer non lue : le dernier message reçu de la conversation redevient « à lire » (glisser la ligne vers la droite). */
+    fun marquerNonLu(c: Context, fil: Long) {
+        try {
+            val dernier = c.contentResolver.query(
+                Telephony.Sms.CONTENT_URI, arrayOf(Telephony.Sms._ID),
+                "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.TYPE} = ?", arrayOf(fil.toString(), Telephony.Sms.MESSAGE_TYPE_INBOX.toString()),
+                "${Telephony.Sms.DATE} DESC LIMIT 1",
+            )?.use { if (it.moveToFirst()) it.getLong(0) else null } ?: return
+            c.contentResolver.update(Telephony.Sms.CONTENT_URI, ContentValues().apply { put(Telephony.Sms.READ, 0) }, "${Telephony.Sms._ID} = ?", arrayOf(dernier.toString()))
+        } catch (_: Exception) {
+        }
+    }
+
     fun supprimer(c: Context, fil: Long) {
         try {
             c.contentResolver.delete(Uri.parse("content://mms-sms/conversations/$fil"), null, null)

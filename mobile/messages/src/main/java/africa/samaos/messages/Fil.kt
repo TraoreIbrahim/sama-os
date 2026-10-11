@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Icones
-import africa.samaos.banco.appli.BoutonAppli
+import africa.samaos.banco.appli.BarreRetour
+import africa.samaos.banco.appli.Rond
 import africa.samaos.banco.appli.LocalIdentite
 import africa.samaos.banco.appli.PuceSim
 import africa.samaos.banco.appli.Visage
@@ -183,37 +183,39 @@ internal fun PageFil(fil: Long, adresse: String, version: Int, retour: () -> Uni
     }
 }
 
-/** Le haut d'une conversation : qui c'est, d'où ça vient, et l'appeler. */
+/** Le haut d'une conversation : « ‹ Messages », le visage et le nom au milieu, d'où ça vient, et l'appeler. */
 @Composable
 private fun EnTeteFil(adresse: String, qui: Correspondant?, service: Boolean, suspect: Boolean, retour: () -> Unit) {
     val a = LocalIdentite.current
     val c = LocalContext.current
     val rouge = if (a.sombre) Color(0xFFF08A70) else ARNAQUE
-    Column(Modifier.fillMaxWidth().background(a.fond).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp).heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically) {
-            BoutonAppli("M15 6l-6 6l6 6", "Retour", onClick = retour)
-            when {
-                suspect && qui == null -> Box(Modifier.size(42.dp).clip(CircleShape).background(rouge.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { IconeTrait(Icones.ALERTE, 20.dp, rouge) }
-                service -> Box(Modifier.size(42.dp).clip(CircleShape).background(a.voile), contentAlignment = Alignment.Center) {
-                    BasicText(adresse.filter { it.isLetterOrDigit() }.take(2).uppercase(), style = texte(14f, a.accentTexte, FontWeight.Bold))
-                }
-                else -> Visage(qui?.nom, qui?.photo, 42.dp)
-            }
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                BasicText(qui?.nom ?: Boite.formater(adresse), maxLines = 1, overflow = TextOverflow.Ellipsis, style = texte(17f, a.encre, FontWeight.SemiBold))
-                val op = Boite.operateurDe(adresse)
-                BasicText(
+    Column(Modifier.fillMaxWidth().background(a.fond)) {
+        BarreRetour(
+            "Messages", retour,
+            milieu = {
+                Column(Modifier.widthIn(max = 190.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     when {
-                        qui != null -> listOfNotNull(Boite.formater(adresse), op).joinToString(" · ")
-                        service -> "Opérateur ou service"
-                        else -> listOfNotNull("Pas dans vos contacts", op).joinToString(" · ")
-                    },
-                    style = texte(13f, if (suspect && qui == null) rouge else a.encre2),
-                )
-            }
-            if (!service) BoutonAppli(Icones.APPEL, "Appeler") { c.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", adresse, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                        suspect && qui == null -> VisageSuspect(34.dp)
+                        service -> VisageService(adresse, 34.dp)
+                        else -> Visage(qui?.nom, qui?.photo, 34.dp)
+                    }
+                    BasicText(
+                        qui?.nom ?: Boite.formater(adresse), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
+                        style = texte(12.5f, if (suspect && qui == null) rouge else a.encre, FontWeight.SemiBold).copy(lineHeight = 14.sp),
+                    )
+                }
+            },
+        ) {
+            if (!service) Rond(Icones.APPEL, "Appeler") { c.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", adresse, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(a.trait))
+        val op = Boite.operateurDe(adresse)
+        val sous = when {
+            qui != null -> listOfNotNull(Boite.formater(adresse), op).joinToString(" · ")
+            service -> "Opérateur ou service"
+            else -> listOfNotNull("Pas dans vos contacts", op).joinToString(" · ")
+        }
+        BasicText(sous, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), style = texte(12.5f, if (suspect && qui == null) rouge else a.encre2).copy(textAlign = TextAlign.Center))
+        Box(Modifier.fillMaxWidth().height(0.6.dp).background(a.trait))
     }
 }
 
@@ -223,7 +225,7 @@ private fun BanniereInconnu(adresse: String, bloque: Boolean, modifier: Modifier
     val a = LocalIdentite.current
     val rouge = if (a.sombre) Color(0xFFF08A70) else ARNAQUE
     Column(
-        modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(a.surface).border(1.dp, a.trait, RoundedCornerShape(22.dp)).padding(16.dp),
+        modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(a.surface).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -253,8 +255,7 @@ private fun AlerteArnaque(v: africa.samaos.bouclier.Verdict, solde: String?, blo
     var signale by remember { mutableStateOf(false) }
     val rouge = if (a.sombre) Color(0xFFF08A70) else ARNAQUE
     Column(
-        Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(rouge.copy(alpha = 0.1f))
-            .border(1.dp, rouge.copy(alpha = 0.25f), RoundedCornerShape(22.dp)).padding(16.dp),
+        Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(rouge.copy(alpha = 0.1f)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -296,7 +297,7 @@ private fun Bulle(m: Sms, premier: Boolean, dernier: Boolean, alerteDe: String?,
     val petit = 6.dp
     val forme = if (m.recu) RoundedCornerShape(if (premier) grand else petit, grand, grand, if (dernier) grand else petit)
     else RoundedCornerShape(grand, if (premier) grand else petit, if (dernier) grand else petit, grand)
-    val recue = if (a.sombre) a.surface else Color.White
+    val recue = if (a.sombre) a.surface else Color(0xFFEDE8DF)
     val envoyee = Brush.verticalGradient(listOf(lerp(a.accent, Color.White, if (a.sombre) 0.05f else 0.12f), a.accent))
     Column(
         Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = if (premier) 8.dp else 2.dp),
@@ -304,7 +305,7 @@ private fun Bulle(m: Sms, premier: Boolean, dernier: Boolean, alerteDe: String?,
     ) {
         Column(
             Modifier.widthIn(max = 296.dp).clip(forme)
-                .then(if (m.recu) Modifier.background(recue).border(1.dp, a.trait, forme) else Modifier.background(envoyee))
+                .then(if (m.recu) Modifier.background(recue) else Modifier.background(envoyee))
                 .then(if (rate) Modifier.clickable(onClickLabel = "Renvoyer", role = Role.Button, onClick = renvoyer) else Modifier)
                 .padding(horizontal = 14.dp, vertical = 9.dp),
         ) {
@@ -359,7 +360,7 @@ internal fun Composer(texteInitial: String? = null, envoyer: (String, SimSms?) -
             }
             Row(
                 Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).background(if (a.sombre) a.surface else Color.White)
-                    .border(1.dp, a.trait, RoundedCornerShape(24.dp)).padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 BasicTextField(
@@ -377,13 +378,10 @@ internal fun Composer(texteInitial: String? = null, envoyer: (String, SimSms?) -
                     },
                 )
                 AnimatedVisibility(texte.isNotBlank(), enter = scaleIn(spring(dampingRatio = 0.55f, stiffness = 700f)) + fadeIn(), exit = scaleOut() + fadeOut()) {
-                    Box(
-                        Modifier.appui("Envoyer") {
-                            envoyer(texte.trim(), sim)
-                            texte = ""
-                        }.size(40.dp).clip(CircleShape).background(a.accent),
-                        contentAlignment = Alignment.Center,
-                    ) { IconeTrait(Icones.ENVOYER, 18.dp, a.surAccent, epaisseur = 2f) }
+                    Rond(Icones.ENVOYER, "Envoyer", plein = true, taille = 40.dp, epaisseur = 2f) {
+                        envoyer(texte.trim(), sim)
+                        texte = ""
+                    }
                 }
             }
         }

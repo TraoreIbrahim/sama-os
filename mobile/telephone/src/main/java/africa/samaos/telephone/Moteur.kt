@@ -36,7 +36,12 @@ class Appel(
     val date: Long,
     val duree: Long,
     val sim: Sim?,
+    /** Les lignes du journal d'Android qu'elle regroupe (pour les effacer). */
+    val ids: List<Long> = emptyList(),
 )
+
+/** Une personne trouvée en tapant des chiffres : par les lettres de son nom (2 = ABC…), ou par son numéro. [de] et [a] bornent ce qui correspond dans le nom. */
+class Trouvee(val personne: Personne, val de: Int, val a: Int, val parNumero: Boolean)
 
 @SuppressLint("MissingPermission")
 object Moteur {
@@ -232,13 +237,13 @@ object Moteur {
         try {
             c.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
-                arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION, CallLog.Calls.PHONE_ACCOUNT_ID),
+                arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION, CallLog.Calls.PHONE_ACCOUNT_ID, CallLog.Calls._ID),
                 null, null, "${CallLog.Calls.DATE} DESC",
             )?.use { cur ->
                 while (cur.moveToNext() && bruts.size < limite) {
                     bruts += Appel(
                         cur.getString(0).orEmpty(), cur.getString(1)?.takeIf { it.isNotBlank() }, cur.getInt(2), 1,
-                        cur.getLong(3), cur.getLong(4), sims.firstOrNull { it.compte.id == cur.getString(5) },
+                        cur.getLong(3), cur.getLong(4), sims.firstOrNull { it.compte.id == cur.getString(5) }, listOf(cur.getLong(6)),
                     )
                 }
             }
@@ -249,12 +254,111 @@ object Moteur {
         bruts.forEach { a ->
             val dernier = groupes.lastOrNull()
             if (dernier != null && dernier.numero == a.numero && dernier.genre == a.genre && jour(dernier.date) == jour(a.date)) {
-                groupes[groupes.lastIndex] = Appel(dernier.numero, dernier.nom, dernier.genre, dernier.nombre + 1, dernier.date, dernier.duree, dernier.sim)
+                groupes[groupes.lastIndex] = Appel(dernier.numero, dernier.nom, dernier.genre, dernier.nombre + 1, dernier.date, dernier.duree, dernier.sim, dernier.ids + a.ids)
             } else {
                 groupes += a
             }
         }
         return groupes
+    }
+
+    /** Les appels échangés avec ce numéro, du plus récent au plus ancien (pour sa fiche dans les récents). */
+    fun historique(c: Context, numero: String, limite: Int = 12): List<Appel> {
+        val sims = sims(c)
+        val liste = mutableListOf<Appel>()
+        try {
+            c.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION, CallLog.Calls.PHONE_ACCOUNT_ID, CallLog.Calls._ID),
+                "${CallLog.Calls.NUMBER} = ?", arrayOf(numero), "${CallLog.Calls.DATE} DESC",
+            )?.use { cur ->
+                while (cur.moveToNext() && liste.size < limite) {
+                    liste += Appel(cur.getString(0).orEmpty(), cur.getString(1), cur.getInt(2), 1, cur.getLong(3), cur.getLong(4), sims.firstOrNull { it.compte.id == cur.getString(5) }, listOf(cur.getLong(6)))
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return liste
+    }
+
+    /** Efface ces lignes du journal (glisser une ligne des récents, « Effacer l'historique » d'un numéro). */
+    fun effacerAppels(c: Context, ids: List<Long>): Boolean = try {
+        ids.chunked(200).forEach { lot ->
+            c.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID} IN (${lot.joinToString(",")})", null)
+        }
+        true
+    } catch (_: Exception) {
+        false
+    }
+
+    /** Un numéro de l'étranger : il commence par + ou 00, sans l'indicatif de la Côte d'Ivoire. */
+    fun etranger(numero: String): Boolean {
+        val n = numero.filter { it.isDigit() || it == '+' }
+        return (n.startsWith("+") && !n.startsWith("+225")) || (n.startsWith("00") && !n.startsWith("00225"))
+    }
+
+    // Recherche au clavier
+
+    private val TOUCHES = mapOf(
+        'a' to '2', 'b' to '2', 'c' to '2', 'd' to '3', 'e' to '3', 'f' to '3', 'g' to '4', 'h' to '4', 'i' to '4',
+        'j' to '5', 'k' to '5', 'l' to '5', 'm' to '6', 'n' to '6', 'o' to '6', 'p' to '7', 'q' to '7', 'r' to '7', 's' to '7',
+        't' to '8', 'u' to '8', 'v' to '8', 'w' to '9', 'x' to '9', 'y' to '9', 'z' to '9',
+        'ɛ' to '3', 'ɔ' to '6', 'ɲ' to '6', 'ŋ' to '6',
+    )
+
+    private fun sansAccents(s: String) = java.text.Normalizer.normalize(s.lowercase(Locale.FRENCH), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}"), "")
+
+    @Volatile private var cacheTous: Pair<Long, List<Personne>>? = null
+
+    /**
+     * Les contacts qui répondent aux chiffres tapés : un mot du nom qui commence par ces touches (« 2547 » : Akissi),
+     * le nom entier tapé d'un trait, ou un numéro qui contient ces chiffres. Les noms d'abord.
+     */
+    fun chercherAuClavier(c: Context, chiffres: String): List<Trouvee> {
+        val d = chiffres.filter { it.isDigit() }
+        if (d.length < 2 || d.length != chiffres.length) return emptyList()
+        // La liste des contacts est relue au plus toutes les 30 secondes, pas à chaque touche.
+        val cache = cacheTous
+        val tous = if (cache != null && System.currentTimeMillis() - cache.first < 30_000) cache.second else tous(c).also { cacheTous = System.currentTimeMillis() to it }
+        val parNom = mutableListOf<Trouvee>()
+        val parNumero = mutableListOf<Trouvee>()
+        tous.forEach { p ->
+            val nom = sansAccents(p.nom)
+            // Chaque lettre du nom, sa touche ; les espaces et tirets coupent les mots.
+            var debutMot = 0
+            var trouve: Trouvee? = null
+            for (i in 0..nom.length) {
+                if (i == nom.length || nom[i] == ' ' || nom[i] == '-') {
+                    if (trouve == null && i > debutMot) {
+                        val mot = nom.substring(debutMot, i)
+                        val code = mot.map { TOUCHES[it] ?: if (it.isDigit()) it else '·' }.joinToString("")
+                        if (code.startsWith(d)) trouve = Trouvee(p, debutMot, debutMot + d.length, false)
+                    }
+                    debutMot = i + 1
+                }
+            }
+            if (trouve == null) {
+                // Le nom entier, tapé d'un trait sans l'espace : « Akissi Kouassi » = 2547745687724.
+                val lettres = nom.withIndex().filter { it.value != ' ' && it.value != '-' }
+                val code = lettres.map { TOUCHES[it.value] ?: '·' }.joinToString("")
+                if (d.length > 3 && code.startsWith(d)) trouve = Trouvee(p, 0, lettres[d.length - 1].index + 1, false)
+            }
+            when {
+                trouve != null -> parNom += trouve
+                d.length >= 3 && p.numero.filter { it.isDigit() }.contains(d) -> parNumero += Trouvee(p, 0, 0, true)
+            }
+        }
+        return (parNom.sortedWith(compareByDescending<Trouvee> { it.personne.favori }.thenBy { it.de }) + parNumero).distinctBy { it.personne.id }.take(12)
+    }
+
+    /** Marque une personne d'une étoile (ou la retire) : elle apparaît dans les favoris du Téléphone, des Contacts et de l'Accueil simplifié. */
+    fun favori(c: Context, p: Personne, oui: Boolean): Boolean = try {
+        c.contentResolver.update(
+            ContactsContract.Contacts.CONTENT_URI, ContentValues().apply { put(ContactsContract.Contacts.STARRED, if (oui) 1 else 0) },
+            "${ContactsContract.Contacts._ID} = ?", arrayOf(p.id.toString()),
+        ) > 0
+    } catch (_: Exception) {
+        false
     }
 
     /** Les numéros appelés le plus souvent ces 30 derniers jours (hors favoris). */

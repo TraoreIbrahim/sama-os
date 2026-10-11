@@ -2,12 +2,15 @@ package africa.samaos.messages
 
 import android.content.Context
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,6 +32,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -45,18 +49,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Icones
-import africa.samaos.banco.Polices
 import africa.samaos.banco.appli.Avis
-import africa.samaos.banco.appli.BoutonAppli
-import africa.samaos.banco.appli.ChampAppli
-import africa.samaos.banco.appli.Glissable
+import africa.samaos.banco.appli.BarreRetour
+import africa.samaos.banco.appli.Glisse
+import africa.samaos.banco.appli.GrandTitre
 import africa.samaos.banco.appli.LocalIdentite
-import africa.samaos.banco.appli.PuceFiltre
+import africa.samaos.banco.appli.Recherche
+import africa.samaos.banco.appli.Rond
+import africa.samaos.banco.appli.Segments
 import africa.samaos.banco.appli.Visage
 import africa.samaos.banco.appli.appui
+import africa.samaos.banco.appli.styleDoux
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -69,8 +74,7 @@ import java.text.Normalizer
 val ARNAQUE = Color(0xFFD9542F)
 
 /** Les textes de Messages. */
-fun texte(taille: Float, couleur: Color, poids: FontWeight = FontWeight.Normal) =
-    TextStyle(fontFamily = Polices.corps, fontWeight = poids, fontSize = taille.sp, lineHeight = (taille * 1.35f).sp, color = couleur)
+fun texte(taille: Float, couleur: Color, poids: FontWeight = FontWeight.Normal): TextStyle = styleDoux(taille, couleur, poids)
 
 /** Un message tel qu'on l'affiche en aperçu : sans le code des alertes du bouclier, sur une ligne. */
 fun apercu(corps: String) = corps.replace(Regex("\\s*#SA1\\.\\S+\\s*$"), "").replace('\n', ' ')
@@ -109,7 +113,9 @@ internal fun PageListe(version: Int, services: Boolean, aller: (Vue) -> Unit, re
     var liste by remember { mutableStateOf<List<Conversation>?>(null) }
     var recherche by remember { mutableStateOf("") }
     var filtre by remember { mutableStateOf(Filtre.TOUT) }
-    LaunchedEffect(version) { liste = withContext(Dispatchers.IO) { Boite.conversations(c) } }
+    // Lu ou non lu d'un glissement : la ligne change tout de suite, avant que la boîte ne se relise.
+    var lus by remember { mutableIntStateOf(0) }
+    LaunchedEffect(version, lus) { liste = withContext(Dispatchers.IO) { Boite.conversations(c) } }
     val toutes = liste.orEmpty().filter { it.fil !in Corbeille.enAttente }
     val (srv, gens) = toutes.partition { it.service }
     val base = if (services) srv else gens
@@ -128,43 +134,33 @@ internal fun PageListe(version: Int, services: Boolean, aller: (Vue) -> Unit, re
     // Les proches en haut : les favoris d'abord, puis ceux à qui on écrit le plus récemment.
     val proches = gens.filter { it.nom != null }.sortedWith(compareByDescending<Conversation> { it.favori }.thenByDescending { it.date }).take(8)
     val bord = !services && q.isEmpty() && filtre == Filtre.TOUT
+    val sous = when {
+        liste == null -> " "
+        nonLus == 0 -> "Tout est lu"
+        else -> "$nonLus conversation${if (nonLus > 1) "s" else ""} non lue${if (nonLus > 1) "s" else ""}"
+    }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = if (retour != null) 4.dp else 22.dp, end = 14.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (retour != null) BoutonAppli("M15 6l-6 6l6 6", "Retour", onClick = retour)
-            Column(Modifier.weight(1f)) {
-                BasicText(if (services) "Opérateurs et services" else "Messages", style = texte(if (services) 24f else 32f, a.encre, FontWeight.Bold).copy(lineHeight = 38.sp))
-                BasicText(
-                    when {
-                        liste == null -> " "
-                        nonLus == 0 -> "Tout est lu"
-                        else -> "$nonLus conversation${if (nonLus > 1) "s" else ""} non lue${if (nonLus > 1) "s" else ""}"
-                    },
-                    style = texte(15f, a.encre2),
-                )
-            }
-            if (!services) {
-                Box(
-                    Modifier.appui("Nouveau message") { aller(Vue.Nouveau()) }.size(52.dp).clip(CircleShape).background(a.accent),
-                    contentAlignment = Alignment.Center,
-                ) { IconeTrait(Icones.CRAYON, 22.dp, a.surAccent, epaisseur = 2f) }
+        if (retour != null) {
+            BarreRetour("Messages", retour)
+            GrandTitre("Opérateurs et services", sous, sousBarre = true)
+        } else {
+            GrandTitre("Messages", sous) {
+                Rond(Icones.CRAYON, "Nouveau message", plein = true, epaisseur = 2f) { aller(Vue.Nouveau()) }
             }
         }
-        ChampAppli(recherche, if (services) "Rechercher un expéditeur" else "Rechercher un nom, un numéro, un mot", { recherche = it }, Modifier.padding(top = 6.dp))
+        Recherche(recherche, if (services) "Un expéditeur, un mot" else "Un nom, un numéro, un mot", { recherche = it }, Modifier.padding(bottom = 6.dp))
+        if (!services) {
+            Segments(
+                listOf("Tout", if (nonLus > 0) "Non lus · $nonLus" else "Non lus", if (inconnus > 0) "Inconnus · $inconnus" else "Inconnus"),
+                filtre.ordinal, Modifier.padding(bottom = 2.dp),
+            ) { filtre = Filtre.entries[it] }
+        }
         // La liste n'apparaît qu'une fois lue : sinon la rangée des proches, arrivée après, resterait au-dessus de l'écran.
-        if (liste != null) LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 8.dp)) {
+        if (liste != null) LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 6.dp)) {
             if (bord && proches.size >= 2) {
                 item(key = "proches") {
                     Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         proches.forEach { cv -> Proche(cv) { aller(Vue.Fil(cv.fil, cv.adresse)) } }
-                    }
-                }
-            }
-            if (!services) {
-                item(key = "filtres") {
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PuceFiltre("Tout", filtre == Filtre.TOUT) { filtre = Filtre.TOUT }
-                        PuceFiltre(if (nonLus > 0) "Non lus · $nonLus" else "Non lus", filtre == Filtre.NON_LUS) { filtre = Filtre.NON_LUS }
-                        PuceFiltre(if (inconnus > 0) "Inconnus · $inconnus" else "Inconnus", filtre == Filtre.INCONNUS) { filtre = Filtre.INCONNUS }
                     }
                 }
             }
@@ -181,9 +177,18 @@ internal fun PageListe(version: Int, services: Boolean, aller: (Vue) -> Unit, re
                 }
             }
             items(vues, key = { it.fil }) { cv ->
-                Glissable(supprimer = { Corbeille.jeter(c, cv) }, modifier = Modifier.animateItem()) {
-                    LigneConversation(cv) { aller(Vue.Fil(cv.fil, cv.adresse)) }
-                }
+                val rouge = if (a.sombre) Color(0xFFF08A70) else ARNAQUE
+                val nonLu = cv.nonLus > 0
+                Glisse(
+                    modifier = Modifier.animateItem(),
+                    gauche = Triple(Icones.CORBEILLE, "Supprimer", rouge),
+                    faireGauche = { Corbeille.jeter(c, cv) },
+                    droite = Triple(if (nonLu) Icones.OEIL else Icones.OEIL_BARRE, if (nonLu) "Lu" else "Non lu", a.accent),
+                    faireDroite = {
+                        if (nonLu) Boite.marquerLu(c, cv.fil) else Boite.marquerNonLu(c, cv.fil)
+                        lus++
+                    },
+                ) { LigneConversation(cv) { aller(Vue.Fil(cv.fil, cv.adresse)) } }
             }
             if (liste != null && vues.isEmpty()) {
                 item(key = "vide") {
@@ -192,6 +197,7 @@ internal fun PageListe(version: Int, services: Boolean, aller: (Vue) -> Unit, re
                             q.isNotEmpty() -> "Rien ne correspond à « ${recherche.trim()} »."
                             filtre == Filtre.NON_LUS -> "Tout est lu."
                             filtre == Filtre.INCONNUS -> "Aucun message d'un numéro inconnu."
+                            services -> "Aucun message d'un opérateur ou d'un service."
                             else -> "Aucun message pour l'instant."
                         },
                         modifier = Modifier.fillMaxWidth().padding(32.dp).animateItem(),
@@ -201,7 +207,7 @@ internal fun PageListe(version: Int, services: Boolean, aller: (Vue) -> Unit, re
             }
             item(key = "pied") {
                 BasicText(
-                    if (vues.isNotEmpty()) "Glissez une conversation vers la gauche pour la supprimer." else "",
+                    if (vues.isNotEmpty()) "Glissez une conversation : vers la droite pour la marquer lue ou non lue, vers la gauche pour la supprimer." else "",
                     modifier = Modifier.padding(horizontal = 22.dp, vertical = 14.dp).navigationBarsPadding().padding(bottom = 60.dp),
                     style = texte(13f, a.encre2),
                 )
@@ -210,12 +216,19 @@ internal fun PageListe(version: Int, services: Boolean, aller: (Vue) -> Unit, re
     }
 }
 
-/** Un proche en haut de la liste : son visage, cerclé de l'accent s'il a écrit sans être lu. */
+/** Un proche en haut de la liste : son visage, cerclé de l'accent s'il a écrit sans être lu ; il s'enfonce un peu sous le doigt. */
 @Composable
 private fun Proche(cv: Conversation, ouvrir: () -> Unit) {
     val a = LocalIdentite.current
     val anneau by animateColorAsState(if (cv.nonLus > 0) a.accent else Color.Transparent, label = "anneau")
-    Column(Modifier.width(68.dp).appui("${cv.nom}, ouvrir la conversation", onClick = ouvrir), horizontalAlignment = Alignment.CenterHorizontally) {
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val presse by source.collectIsPressedAsState()
+    val s by animateFloatAsState(if (presse) 0.92f else 1f, spring(dampingRatio = 0.5f, stiffness = 800f), label = "appui")
+    Column(
+        Modifier.width(68.dp).graphicsLayer { scaleX = s; scaleY = s }
+            .clickable(interactionSource = source, indication = null, onClickLabel = "${cv.nom}, ouvrir la conversation", role = Role.Button, onClick = ouvrir),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Box(Modifier.size(66.dp).border(2.5.dp, anneau, CircleShape).padding(4.dp), contentAlignment = Alignment.Center) {
             Visage(cv.nom, cv.photo, 58.dp)
         }
@@ -226,7 +239,7 @@ private fun Proche(cv: Conversation, ouvrir: () -> Unit) {
     }
 }
 
-/** Les opérateurs et services, rangés à part dans une seule carte. */
+/** Les opérateurs et services, rangés à part dans une seule ligne, comme un dossier. */
 @Composable
 private fun CarteServices(srv: List<Conversation>, modifier: Modifier, ouvrir: () -> Unit) {
     val a = LocalIdentite.current
@@ -234,10 +247,10 @@ private fun CarteServices(srv: List<Conversation>, modifier: Modifier, ouvrir: (
     val nonLus = srv.count { it.nonLus > 0 }
     Row(
         modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(a.surface)
-            .clickable(onClickLabel = "Opérateurs et services", role = Role.Button, onClick = ouvrir).padding(14.dp),
+            .clickable(onClickLabel = "Opérateurs et services", role = Role.Button, onClick = ouvrir).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(a.voile), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(a.voile), contentAlignment = Alignment.Center) {
             IconeTrait(Icones.DOSSIER, 24.dp, a.accentTexte)
         }
         Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
@@ -251,6 +264,25 @@ private fun CarteServices(srv: List<Conversation>, modifier: Modifier, ouvrir: (
             )
         }
         IconeTrait(Icones.CHEVRON, 16.dp, a.encre2)
+    }
+}
+
+/** Le visage d'un expéditeur qui n'est pas une personne : ses deux premières lettres sur l'accent voilé. */
+@Composable
+internal fun VisageService(adresse: String, taille: androidx.compose.ui.unit.Dp) {
+    val a = LocalIdentite.current
+    Box(Modifier.size(taille).clip(CircleShape).background(a.voile), contentAlignment = Alignment.Center) {
+        BasicText(adresse.filter { it.isLetterOrDigit() }.take(2).uppercase(), style = texte(taille.value * 0.3f, a.accentTexte, FontWeight.Bold))
+    }
+}
+
+/** Le visage d'un numéro signalé par le bouclier. */
+@Composable
+internal fun VisageSuspect(taille: androidx.compose.ui.unit.Dp) {
+    val a = LocalIdentite.current
+    val rouge = if (a.sombre) Color(0xFFF08A70) else ARNAQUE
+    Box(Modifier.size(taille).clip(CircleShape).background(rouge.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+        IconeTrait(Icones.ALERTE, taille * 0.46f, rouge)
     }
 }
 
@@ -269,12 +301,8 @@ private fun LigneConversation(cv: Conversation, ouvrir: () -> Unit) {
                 androidx.compose.animation.AnimatedVisibility(nonLu, enter = scaleIn(), exit = scaleOut()) { Box(Modifier.size(9.dp).clip(CircleShape).background(a.accent)) }
             }
             when {
-                cv.suspect != null -> Box(Modifier.size(52.dp).clip(CircleShape).background(rouge.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-                    IconeTrait(Icones.ALERTE, 24.dp, rouge)
-                }
-                cv.service -> Box(Modifier.size(52.dp).clip(CircleShape).background(a.voile), contentAlignment = Alignment.Center) {
-                    BasicText(cv.adresse.filter { it.isLetterOrDigit() }.take(2).uppercase(), style = texte(16f, a.accentTexte, FontWeight.Bold))
-                }
+                cv.suspect != null -> VisageSuspect(52.dp)
+                cv.service -> VisageService(cv.adresse, 52.dp)
                 else -> Visage(cv.nom, cv.photo, 52.dp)
             }
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
@@ -297,6 +325,6 @@ private fun LigneConversation(cv: Conversation, ouvrir: () -> Unit) {
                 )
             }
         }
-        Box(Modifier.padding(start = 86.dp).fillMaxWidth().height(1.dp).background(a.trait))
+        Box(Modifier.padding(start = 86.dp).fillMaxWidth().height(0.6.dp).background(a.trait))
     }
 }

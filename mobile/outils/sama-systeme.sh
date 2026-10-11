@@ -122,7 +122,7 @@ echo "• Applis de Sama : Téléphone, Contacts, Messages, Horloge, Calculatric
 for appli in telephone contacts messages horloge calculatrice notes agenda fichiers photos dictaphone lecteur griot mail clavier meteo; do
     $ADB install -r "$MOBILE/$appli/build/outputs/apk/release/$appli-release.apk" >/dev/null
 done
-for droit in CALL_PHONE READ_CALL_LOG WRITE_CALL_LOG READ_CONTACTS READ_PHONE_STATE READ_PHONE_NUMBERS POST_NOTIFICATIONS; do
+for droit in CALL_PHONE READ_CALL_LOG WRITE_CALL_LOG READ_CONTACTS WRITE_CONTACTS READ_PHONE_STATE READ_PHONE_NUMBERS POST_NOTIFICATIONS; do
     $ADB shell pm grant africa.samaos.telephone android.permission.$droit
 done
 for droit in READ_CONTACTS WRITE_CONTACTS READ_PHONE_STATE CALL_PHONE; do

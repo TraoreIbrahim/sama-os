@@ -1,6 +1,7 @@
 package africa.samaos.banco.appli
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -450,10 +452,15 @@ fun CacherBarreFlottante() {
     }
 }
 
-/** Les onglets d'une appli en barre flottante (Téléphone, Agenda) : l'onglet courant voilé de l'accent. */
+/**
+ * Les onglets d'une appli en barre flottante (Téléphone, Agenda, Horloge) : une capsule posée au-dessus de la page.
+ * L'onglet courant s'ouvre sur un galet voilé de l'accent, avec son nom ; les autres ne gardent que leur icône.
+ * D'un onglet à l'autre, le galet se referme d'un côté et s'ouvre de l'autre.
+ */
 @Composable
 fun NavFlottante(pages: List<Pair<String, String>>, courante: Int, choisir: (Int) -> Unit, modifier: Modifier = Modifier) {
     val a = LocalIdentite.current
+    val retour = androidx.compose.ui.platform.LocalHapticFeedback.current
     // Elle glisse vers le bas quand une feuille s'ouvre, et remonte quand elle se referme.
     androidx.compose.animation.AnimatedVisibility(
         BarreFlottante.cachee == 0,
@@ -464,30 +471,42 @@ fun NavFlottante(pages: List<Pair<String, String>>, courante: Int, choisir: (Int
         Row(
             Modifier
                 .navigationBarsPadding()
-                .padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
-                .fillMaxWidth()
-                .height(64.dp)
-                .clip(RoundedCornerShape(32.dp))
-                .background(if (a.sombre) a.surface else a.fond)
-                .border(1.dp, a.trait, RoundedCornerShape(32.dp)),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .padding(bottom = 12.dp)
+                .height(58.dp)
+                .clip(RoundedCornerShape(29.dp))
+                .background(if (a.sombre) a.surface else Color.White)
+                .border(1.dp, a.trait, RoundedCornerShape(29.dp))
+                .padding(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             pages.forEachIndexed { i, (nom, icone) ->
                 val ici = i == courante
-                Column(
-                    Modifier.width(if (pages.size > 4) 70.dp else 78.dp).clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = nom, role = Role.Tab) { choisir(i) }.semantics { selected = ici }.padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                val galet by androidx.compose.animation.animateColorAsState(if (ici) a.voile else a.voile.copy(alpha = 0f), androidx.compose.animation.core.tween(220), label = "galet")
+                val trait by androidx.compose.animation.animateColorAsState(if (ici) a.accentTexte else a.encre2, label = "icone")
+                val texte by androidx.compose.animation.core.animateFloatAsState(if (ici) 1f else 0f, androidx.compose.animation.core.tween(if (ici) 260 else 120, delayMillis = if (ici) 60 else 0), label = "nom")
+                Row(
+                    Modifier
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(galet)
+                        .clickable(onClickLabel = nom, role = Role.Tab) {
+                            if (!ici) retour.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
+                            choisir(i)
+                        }
+                        .semantics { selected = ici; contentDescription = nom }
+                        .animateContentSize(androidx.compose.animation.core.spring(dampingRatio = 0.78f, stiffness = 520f))
+                        .padding(horizontal = if (pages.size > 4) 13.dp else 15.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val pastille by androidx.compose.animation.animateColorAsState(if (ici) a.voile else a.voile.copy(alpha = 0f), label = "pastille")
-                    val trait by androidx.compose.animation.animateColorAsState(if (ici) a.accentTexte else a.encre2, label = "icone")
-                    val large by androidx.compose.animation.core.animateDpAsState(if (ici) 52.dp else 34.dp, androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 600f), label = "large")
-                    Box(Modifier.size(52.dp, 28.dp), contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(large.coerceAtLeast(0.dp), 28.dp).clip(RoundedCornerShape(14.dp)).background(pastille))
-                        IconeTrait(icone, 21.dp, trait)
+                    IconeTrait(icone, 22.dp, trait, epaisseur = if (ici) 2f else 1.75f)
+                    if (ici) {
+                        BasicText(
+                            nom, maxLines = 1, softWrap = false,
+                            modifier = Modifier.padding(start = 8.dp).graphicsLayer { alpha = texte },
+                            style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp, color = a.accentTexte),
+                        )
                     }
-                    BasicText(nom, maxLines = 1, softWrap = false, style = TextStyle(fontFamily = Polices.corps, fontWeight = if (ici) FontWeight.Bold else FontWeight.Medium, fontSize = if (pages.size > 4) 11.sp else 11.5.sp, letterSpacing = if (pages.size > 4) (-0.1).sp else 0.sp, color = if (ici) a.encre else a.encre2))
                 }
             }
         }

@@ -23,14 +23,15 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +44,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,8 +56,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,12 +69,18 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,32 +92,47 @@ import africa.samaos.banco.IconeTrait
 import africa.samaos.banco.Icones
 import africa.samaos.banco.Polices
 import africa.samaos.banco.appli.AvecIdentite
+import africa.samaos.banco.appli.Avis
+import africa.samaos.banco.appli.BarreAvis
+import africa.samaos.banco.appli.BarreRetour
 import africa.samaos.banco.appli.BlocAppli
-import africa.samaos.banco.appli.BoutonAppli
 import africa.samaos.banco.appli.BoutonTexteAppli
-import africa.samaos.banco.appli.ChampAppli
+import africa.samaos.banco.appli.DialogueAppli
 import africa.samaos.banco.appli.EcranAppli
 import africa.samaos.banco.appli.FiletBloc
+import africa.samaos.banco.appli.Glisse
+import africa.samaos.banco.appli.GrandTitre
+import africa.samaos.banco.appli.Groupe
 import africa.samaos.banco.appli.Identites
 import africa.samaos.banco.appli.InterAppli
-import africa.samaos.banco.appli.LigneAppli
 import africa.samaos.banco.appli.LocalIdentite
-import africa.samaos.banco.appli.Visage
 import africa.samaos.banco.appli.NavFlottante
-import africa.samaos.banco.appli.PuceFiltre
 import africa.samaos.banco.appli.PuceSim
+import africa.samaos.banco.appli.Recherche
+import africa.samaos.banco.appli.Rond
+import africa.samaos.banco.appli.Section
+import africa.samaos.banco.appli.Segments
+import africa.samaos.banco.appli.Separateur
 import africa.samaos.banco.appli.Tete
+import africa.samaos.banco.appli.Visage
+import africa.samaos.banco.appli.styleDoux
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val ICONE_ETOILE = "M12 4l2.4 5l5.4.6l-4 3.7l1.1 5.3L12 16l-4.9 2.6l1.1-5.3l-4-3.7l5.4-.6z"
+
 private enum class Onglet(val nom: String, val icone: String) {
-    FAVORIS("Favoris", "M12 4l2.4 5l5.4.6l-4 3.7l1.1 5.3L12 16l-4.9 2.6l1.1-5.3l-4-3.7l5.4-.6z"),
+    FAVORIS("Favoris", ICONE_ETOILE),
     RECENTS("Récents", Icones.HORLOGE),
     CLAVIER("Clavier", "M6 6h.01 M12 6h.01 M18 6h.01 M6 12h.01 M12 12h.01 M18 12h.01 M6 18h.01 M12 18h.01 M18 18h.01"),
-    CONTACTS("Contacts", "M12 8a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z M5 20c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5"),
+    CONTACTS("Contacts", Icones.PERSONNE),
 }
 
-/** Le Téléphone de Sama (maquettes l2-tel, refonte du 7 octobre 2026 : telephone-1 à 4). */
+/** Le Téléphone de Sama (maquettes l2-tel ; refonte du 7 octobre 2026, puis du 11 octobre, loin d'Android). */
 class Telephone : ComponentActivity() {
     private var onglet by mutableStateOf(Onglet.CLAVIER)
     private var numero by mutableStateOf("")
@@ -131,40 +156,50 @@ class Telephone : ComponentActivity() {
             }
             AvecIdentite(id) {
                 BackHandler(enabled = page != null) { page = if (page == "accord-filtrage") "filtrage" else null }
-                // Une page ouverte depuis un onglet (filtrage, messagerie…) arrive de la droite ; elle repart vers la droite.
-                AnimatedContent(
-                    page,
-                    transitionSpec = {
-                        val profondeur = { x: String? -> when { x == null -> 0; x == "accord-filtrage" -> 2; else -> 1 } }
-                        if (profondeur(targetState) >= profondeur(initialState)) {
-                            (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 500f)) { it } + fadeIn(tween(150))) togetherWith (slideOutHorizontally(tween(260)) { -it / 4 } + fadeOut(tween(220)))
-                        } else {
-                            (slideInHorizontally(tween(260)) { -it / 4 } + fadeIn(tween(200))) togetherWith (slideOutHorizontally(tween(240, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
-                        }
-                    },
-                    label = "page",
-                ) { p ->
-                    Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
-                        when {
-                            p == "accord" -> PageAccord { page = null }
-                            p == "accord-filtrage" -> PageAccord { page = "filtrage" }
-                            p == "filtrage" -> PageFiltrage(reprise, { page = "accord-filtrage" }) { page = null }
-                            p == "messagerie" -> PageMessagerie { page = null }
-                            p?.startsWith("ussd:") == true -> PageUssd(p.removePrefix("ussd:")) { page = null }
-                            else -> {
-                                // D'un onglet à l'autre : un fondu.
-                                AnimatedContent(onglet, transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(110)) }, label = "onglet") { o ->
-                                    when (o) {
-                                        Onglet.FAVORIS -> PageFavoris(reprise) { numero = it; onglet = Onglet.CLAVIER }
-                                        Onglet.RECENTS -> PageRecents(reprise, { page = "filtrage" }) { page = "messagerie" }
-                                        Onglet.CLAVIER -> PageClavier(numero, reprise, { numero = it }) { code -> page = "ussd:$code" }
-                                        Onglet.CONTACTS -> PageContacts(reprise)
-                                    }
+                Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
+                    // Une page ouverte depuis un onglet (un numéro, le filtrage, la messagerie…) arrive de la droite ; elle repart vers la droite.
+                    AnimatedContent(
+                        page,
+                        transitionSpec = {
+                            val profondeur = { x: String? -> when { x == null -> 0; x == "accord-filtrage" -> 2; else -> 1 } }
+                            if (profondeur(targetState) >= profondeur(initialState)) {
+                                (slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 500f)) { it } + fadeIn(tween(150))) togetherWith (slideOutHorizontally(tween(260)) { -it / 4 } + fadeOut(tween(220)))
+                            } else {
+                                (slideInHorizontally(tween(260)) { -it / 4 } + fadeIn(tween(200))) togetherWith (slideOutHorizontally(tween(240, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(200, delayMillis = 60)))
+                            }
+                        },
+                        label = "page",
+                    ) { p ->
+                        Box(Modifier.fillMaxSize().background(LocalIdentite.current.fond)) {
+                            when {
+                                p == "accord" -> PageAccord { page = null }
+                                p == "accord-filtrage" -> PageAccord { page = "filtrage" }
+                                p == "filtrage" -> PageFiltrage(reprise, { page = "accord-filtrage" }) { page = null }
+                                p == "messagerie" -> PageMessagerie { page = null }
+                                p?.startsWith("ussd:") == true -> PageUssd(p.removePrefix("ussd:")) { page = null }
+                                // « numero:Récents:0708… » : la fiche d'un numéro, et le nom de l'onglet d'où l'on vient.
+                                p?.startsWith("numero:") == true -> FicheNumero(p.substringAfterLast(':'), p.removePrefix("numero:").substringBefore(':'), reprise, retour = { page = null }) { n ->
+                                    numero = n
+                                    onglet = Onglet.CLAVIER
+                                    page = null
                                 }
-                                NavFlottante(Onglet.entries.map { it.nom to it.icone }, onglet.ordinal, { onglet = Onglet.entries[it] }, Modifier.align(Alignment.BottomCenter))
+                                else -> {
+                                    // D'un onglet à l'autre : un fondu.
+                                    AnimatedContent(onglet, transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(110)) }, label = "onglet") { o ->
+                                        val fiche: (String) -> Unit = { page = "numero:${o.nom}:$it" }
+                                        when (o) {
+                                            Onglet.FAVORIS -> PageFavoris(reprise, fiche) { numero = it; onglet = Onglet.CLAVIER }
+                                            Onglet.RECENTS -> PageRecents(reprise, fiche, { page = "filtrage" }) { page = "messagerie" }
+                                            Onglet.CLAVIER -> PageClavier(numero, reprise, { numero = it }) { code -> page = "ussd:$code" }
+                                            Onglet.CONTACTS -> PageContacts(reprise, fiche)
+                                        }
+                                    }
+                                    NavFlottante(Onglet.entries.map { it.nom to it.icone }, onglet.ordinal, { onglet = Onglet.entries[it] }, Modifier.align(Alignment.BottomCenter))
+                                }
                             }
                         }
                     }
+                    BarreAvis(Modifier.align(Alignment.BottomCenter), bas = if (page == null) 84.dp else 20.dp)
                 }
             }
         }
@@ -193,26 +228,22 @@ class Telephone : ComponentActivity() {
     }
 }
 
+/** Le titre d'une section dans une page déjà bordée de 16 dp (la messagerie, le filtrage, les appelés souvent). */
+@Composable
+private fun Rubrique(texte: String) = BasicText(texte, modifier = Modifier.padding(start = 10.dp, top = 20.dp, bottom = 8.dp), style = styleDoux(15f, LocalIdentite.current.encre, FontWeight.SemiBold))
+
 /** La place que prend la barre d'onglets flottante, à garder libre en bas des pages. */
 @Composable
 private fun PiedOnglets() = Spacer(Modifier.navigationBarsPadding().height(88.dp))
 
+/** Un bouton rond avec son nom dessous (Appeler, Message, Favori…). */
 @Composable
-private fun TitrePage(texte: String, actions: @Composable () -> Unit = {}) {
+private fun Action(icone: String, texte: String, plein: Boolean = false, actif: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val a = LocalIdentite.current
-    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 10.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        BasicText(texte, modifier = Modifier.weight(1f), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp, color = a.encre))
-        actions()
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Rond(icone, texte, plein = plein, taille = 54.dp, actif = actif, onClick = onClick)
+        BasicText(texte, maxLines = 1, style = styleDoux(12.5f, if (actif) a.encre2 else a.encre2.copy(alpha = 0.5f), FontWeight.Medium, 1.1f))
     }
-}
-
-@Composable
-private fun Rubrique(texte: String) {
-    val a = LocalIdentite.current
-    BasicText(
-        texte, modifier = Modifier.padding(start = 6.dp, top = 18.dp, bottom = 8.dp),
-        style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 0.4.sp, color = a.encre2),
-    )
 }
 
 // ——— Clavier (maquette telephone-1) ———
@@ -224,6 +255,7 @@ private val LETTRES = mapOf('2' to "ABC", '3' to "DEF", '4' to "GHI", '5' to "JK
 @Composable
 fun Pave(compact: Boolean = false, fond: Color? = null, taper: (Char) -> Unit) {
     val a = LocalIdentite.current
+    val retour = LocalHapticFeedback.current
     val taille = if (compact) 64.dp else 72.dp
     val touches = listOf('1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#')
     Column(Modifier.fillMaxWidth().padding(horizontal = 40.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp)) {
@@ -236,7 +268,10 @@ fun Pave(compact: Boolean = false, fond: Color? = null, taper: (Char) -> Unit) {
                                 .size(taille)
                                 .clip(CircleShape)
                                 .background(fond ?: a.champ)
-                                .combinedClickable(onClickLabel = "$t", role = Role.Button, onLongClick = { if (t == '0') taper('+') else taper(t) }) { taper(t) }
+                                .combinedClickable(onClickLabel = "$t", role = Role.Button, onLongClick = { if (t == '0') taper('+') else taper(t) }) {
+                                    retour.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                                    taper(t)
+                                }
                                 .semantics { contentDescription = "$t" },
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
@@ -281,16 +316,29 @@ private fun EtiquetteIdentite(fiche: Identification.Fiche?) {
     }
 }
 
+/** Le nom d'une personne trouvée au clavier, les lettres qui répondent aux touches en couleur. */
+@Composable
+private fun NomTrouve(t: Trouvee) {
+    val a = LocalIdentite.current
+    val nom = t.personne.nom
+    val texte = buildAnnotatedString {
+        append(nom)
+        if (!t.parNumero && t.a > t.de) addStyle(SpanStyle(color = a.accentTexte, fontWeight = FontWeight.Bold), t.de.coerceIn(0, nom.length), t.a.coerceIn(0, nom.length))
+    }
+    BasicText(texte, maxLines = 1, overflow = TextOverflow.Ellipsis, style = styleDoux(15.5f, a.encre, FontWeight.SemiBold, 1.2f))
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PageClavier(numero: String, reprise: Int, changer: (String) -> Unit, ussd: (String) -> Unit) {
     val a = LocalIdentite.current
     val c = LocalContext.current
     val sims = remember { Moteur.sims(c) }
-    var suggestions by remember { mutableStateOf(emptyList<Personne>()) }
-    LaunchedEffect(numero) { suggestions = withContext(Dispatchers.IO) { Moteur.chercher(c, numero) } }
+    var trouves by remember { mutableStateOf(emptyList<Trouvee>()) }
+    LaunchedEffect(numero, reprise) { trouves = withContext(Dispatchers.IO) { Moteur.chercherAuClavier(c, numero) } }
     val code = Moteur.estUssd(numero)
-    val operateur = if (code) null else Moteur.operateurDe(numero)
+    // L'opérateur ne se devine qu'à partir d'un numéro presque complet : deux chiffres tapés pour un nom ne disent rien.
+    val operateur = if (code || numero.count { it.isDigit() } < 8) null else Moteur.operateurDe(numero)
     val identifier = remember(reprise) { Identification.actif(c) }
     val fiche = remember(numero, reprise) { if (!code && Identification.cle(numero).length == 10) Identification.chercher(c, numero) else null }
     // Avec deux SIM : celle du même opérateur que le numéro (l'appel coûte moins cher), qu'on peut changer d'un toucher.
@@ -320,54 +368,82 @@ private fun PageClavier(numero: String, reprise: Int, changer: (String) -> Unit,
     }
     val compact = LocalConfiguration.current.screenHeightDp < 760
     val sol = Sol.sol()
+    val chiffres = numero.filter { it.isDigit() }
+    // Un numéro complet que personne n'a : on propose de l'enregistrer.
+    val nouveau = !code && chiffres.length >= 8 && trouves.none { it.parNumero }
     Column(Modifier.fillMaxSize().background(a.fond)) {
-        Column(Modifier.fillMaxWidth().weight(1f).statusBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            // Le numéro, en grand ; un appui long colle un numéro copié.
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 24.dp).heightIn(min = 52.dp).combinedClickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null,
-                    onLongClickLabel = "Coller un numéro",
-                    onLongClick = {
-                        val copie = c.getSystemService(ClipboardManager::class.java).primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
-                        val chiffres = copie.filter { it.isDigit() || it in "+*#" }
-                        if (chiffres.length >= 3) changer(chiffres)
-                    },
-                ) {},
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BasicText(
-                    Moteur.formater(numero),
-                    maxLines = 1,
-                    modifier = Modifier.semantics { contentDescription = "Numéro ${numero}" },
-                    style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Light, fontSize = if (numero.length > 12) 30.sp else 40.sp, letterSpacing = 0.6.sp, color = a.encre),
-                )
-                if (numero.isNotEmpty()) Box(Modifier.padding(start = 2.dp).size(2.dp, 34.dp).background(a.accent))
-            }
-            Row(Modifier.padding(top = 10.dp).height(30.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                when {
-                    code -> Etiquette("Code opérateur · la réponse s'affiche ici", a.champ, a.encre2)
-                    operateur != null -> {
-                        EtiquetteOperateur(operateur)
-                        if (identifier && Identification.cle(numero).length == 10) EtiquetteIdentite(fiche)
+        Column(Modifier.fillMaxWidth().weight(1f).statusBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Le numéro, en grand ; un appui long colle un numéro copié.
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 24.dp).heightIn(min = 52.dp).combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() }, indication = null,
+                            onLongClickLabel = "Coller un numéro",
+                            onLongClick = {
+                                val copie = c.getSystemService(ClipboardManager::class.java).primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
+                                val colle = copie.filter { it.isDigit() || it in "+*#" }
+                                if (colle.length >= 3) changer(colle)
+                            },
+                        ) {},
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BasicText(
+                            Moteur.formater(numero),
+                            maxLines = 1,
+                            modifier = Modifier.semantics { contentDescription = "Numéro ${numero}" },
+                            style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Light, fontSize = if (numero.length > 12) 30.sp else 40.sp, letterSpacing = 0.6.sp, color = a.encre),
+                        )
+                        if (numero.isNotEmpty()) Box(Modifier.padding(start = 2.dp).size(2.dp, 34.dp).background(a.accent))
+                    }
+                    Row(Modifier.padding(top = 10.dp).height(30.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        when {
+                            code -> Etiquette("Code opérateur · la réponse s'affiche ici", a.champ, a.encre2)
+                            Moteur.etranger(numero) -> Etiquette("Numéro de l'étranger", a.champ, a.encre2, icone = Icones.GLOBE)
+                            operateur != null -> {
+                                EtiquetteOperateur(operateur)
+                                if (identifier && Identification.cle(numero).length == 10) EtiquetteIdentite(fiche)
+                            }
+                        }
                     }
                 }
             }
-            val s = suggestions.firstOrNull()
-            Box(Modifier.height(78.dp).padding(top = 12.dp)) {
-                if (s != null) {
-                    Row(
-                        Modifier.padding(horizontal = 22.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(sol).border(1.dp, a.trait, RoundedCornerShape(18.dp))
-                            .clickable(onClickLabel = "Composer le numéro de ${s.nom}", role = Role.Button) { changer(s.numero.filter { it.isDigit() || it == '+' }) }
-                            .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Visage(s.nom, s.photo, 40.dp)
-                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            BasicText(s.nom, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 15.5.sp, color = a.encre))
-                            BasicText("${Moteur.formater(s.numero)} · ${s.type.lowercase()}", style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = a.encre2))
+            // Qui répond aux touches : les noms (2 = ABC…) ou les numéros ; sinon, enregistrer ce numéro.
+            AnimatedContent(
+                if (trouves.isEmpty() && !nouveau) null else trouves.take(3).map { it.personne.id } to nouveau,
+                transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(120)) },
+                contentKey = { it?.first?.size },
+                label = "trouves",
+            ) { cle ->
+                if (cle == null) Spacer(Modifier.height(12.dp)) else Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(sol)) {
+                    trouves.take(3).forEachIndexed { i, t ->
+                        if (i > 0) Separateur(66.dp)
+                        val p = t.personne
+                        Row(
+                            Modifier.fillMaxWidth().clickable(onClickLabel = "Composer le numéro de ${p.nom}", role = Role.Button) { changer(p.numero.filter { it.isDigit() || it == '+' }) }
+                                .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Visage(p.nom, p.photo, 40.dp)
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                NomTrouve(t)
+                                BasicText("${Moteur.formater(p.numero)} · ${p.type.lowercase()}", maxLines = 1, style = styleDoux(13f, a.encre2, interligne = 1.2f))
+                            }
+                            Rond(Icones.APPEL, "Appeler ${p.nom}", taille = 38.dp) { Moteur.appeler(c, p.numero, simChoisie) }
                         }
-                        BoutonAppli(Icones.APPEL, "Appeler ${s.nom}") { Moteur.appeler(c, s.numero, simChoisie) }
+                    }
+                    if (nouveau) {
+                        if (trouves.isNotEmpty()) Separateur(66.dp)
+                        Row(
+                            Modifier.fillMaxWidth().clickable(onClickLabel = "Enregistrer ce numéro dans les contacts", role = Role.Button) {
+                                c.startActivity(Intent(Intent.ACTION_INSERT_OR_EDIT).setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE).putExtra(ContactsContract.Intents.Insert.PHONE, numero).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            }.padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(a.voile), contentAlignment = Alignment.Center) { IconeTrait(Icones.PLUS, 20.dp, a.accentTexte, epaisseur = 2f) }
+                            BasicText("Enregistrer ce numéro", modifier = Modifier.padding(start = 12.dp), style = styleDoux(15.5f, a.accentTexte, FontWeight.SemiBold, 1.2f))
+                        }
                     }
                 }
             }
@@ -406,7 +482,7 @@ private fun PageClavier(numero: String, reprise: Int, changer: (String) -> Unit,
                     ) { IconeTrait(Icones.APPEL, 30.dp, Color.White, epaisseur = 2.2f) }
                 }
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    if (numero.isNotEmpty()) {
+                    androidx.compose.animation.AnimatedVisibility(numero.isNotEmpty(), enter = fadeIn(tween(150)), exit = fadeOut(tween(120))) {
                         Box(
                             Modifier.size(56.dp).clip(CircleShape)
                                 .combinedClickable(onClickLabel = "Effacer", role = Role.Button, onLongClick = { changer("") }) { changer(numero.dropLast(1)) },
@@ -425,11 +501,56 @@ private fun PageClavier(numero: String, reprise: Int, changer: (String) -> Unit,
 /** Ce qu'on sait d'un numéro des récents : la personne des contacts, ou la fiche de l'identification. */
 private class Qui(val personne: Personne?, val fiche: Identification.Fiche?)
 
+/**
+ * Un appel glissé hors des récents disparaît tout de suite mais n'est effacé que 6 secondes et demie plus tard :
+ * « Annuler » le fait revenir. Si l'appli se ferme avant, rien n'est effacé.
+ */
+private object CorbeilleAppels {
+    val enAttente = mutableStateListOf<Long>()
+    private val portee = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    fun jeter(c: android.content.Context, ids: List<Long>, quoi: String) {
+        enAttente += ids
+        Avis.dire(quoi) { enAttente.removeAll(ids) }
+        portee.launch {
+            delay(6500)
+            if (ids.any { it in enAttente }) {
+                withContext(Dispatchers.IO) { Moteur.effacerAppels(c.applicationContext, ids) }
+                enAttente.removeAll(ids)
+            }
+        }
+    }
+}
+
+private fun genreAppel(genre: Int) = when (genre) {
+    CallLog.Calls.MISSED_TYPE -> "Manqué"
+    CallLog.Calls.INCOMING_TYPE -> "Entrant"
+    CallLog.Calls.OUTGOING_TYPE -> "Sortant"
+    CallLog.Calls.REJECTED_TYPE -> "Refusé"
+    CallLog.Calls.BLOCKED_TYPE -> "Filtré"
+    CallLog.Calls.VOICEMAIL_TYPE -> "Messagerie"
+    else -> "Appel"
+}
+
+/** La petite flèche d'un appel : entrant, sortant, manqué (en latérite). */
 @Composable
-private fun PageRecents(reprise: Int, filtrage: () -> Unit, messagerie: () -> Unit) {
+private fun FlecheAppel(genre: Int, taille: Dp = 14.dp) {
+    val a = LocalIdentite.current
+    val rouge = if (a.sombre) Color(0xFFF08A70) else Color(0xFFC2412D)
+    val (chemin, couleur) = when (genre) {
+        CallLog.Calls.OUTGOING_TYPE -> "M7 17L17 7 M9 7h8v8" to a.encre2
+        CallLog.Calls.MISSED_TYPE, CallLog.Calls.REJECTED_TYPE -> "M17 7L7 17 M15 17H7V9" to rouge
+        CallLog.Calls.BLOCKED_TYPE -> ICONE_BLOQUER to a.encre2
+        else -> "M17 7L7 17 M15 17H7V9" to a.encre2
+    }
+    IconeTrait(chemin, taille, couleur, epaisseur = 2f)
+}
+
+@Composable
+private fun PageRecents(reprise: Int, fiche: (String) -> Unit, filtrage: () -> Unit, messagerie: () -> Unit) {
     val a = LocalIdentite.current
     val c = LocalContext.current
-    var appels by remember { mutableStateOf(emptyList<Appel>()) }
+    var appels by remember { mutableStateOf<List<Appel>?>(null) }
     var qui by remember { mutableStateOf(emptyMap<String, Qui>()) }
     var filtre by remember { mutableIntStateOf(0) }
     val sims = remember { Moteur.sims(c) }
@@ -448,7 +569,8 @@ private fun PageRecents(reprise: Int, filtrage: () -> Unit, messagerie: () -> Un
         } catch (_: Exception) {
         }
     }
-    val vus = appels.filter { ap ->
+    val tous = appels.orEmpty().filter { ap -> ap.ids.none { it in CorbeilleAppels.enAttente } }
+    val vus = tous.filter { ap ->
         when (filtre) {
             0 -> true
             1 -> ap.genre == CallLog.Calls.MISSED_TYPE
@@ -456,27 +578,40 @@ private fun PageRecents(reprise: Int, filtrage: () -> Unit, messagerie: () -> Un
         }
     }
     val parJour = remember(vus) { vus.groupBy { Moteur.titreJour(it.date) } }
+    val manquesAuj = tous.filter { it.genre == CallLog.Calls.MISSED_TYPE && System.currentTimeMillis() - it.date < 24 * 3600_000L }.sumOf { it.nombre }
     Column(Modifier.fillMaxSize()) {
-        TitrePage("Récents") {
-            BoutonAppli(ICONE_MESSAGERIE, "Messagerie", onClick = messagerie)
-            BoutonAppli(ICONE_BOUCLIER, "Filtrage et identification des appels", onClick = filtrage)
+        GrandTitre(
+            "Récents",
+            when {
+                appels == null -> " "
+                manquesAuj == 0 -> "Aucun appel manqué aujourd'hui"
+                else -> "$manquesAuj appel${if (manquesAuj > 1) "s" else ""} manqué${if (manquesAuj > 1) "s" else ""} aujourd'hui"
+            },
+        ) {
+            Rond(ICONE_MESSAGERIE, "Messagerie", onClick = messagerie)
+            Rond(ICONE_BOUCLIER, "Filtrage et identification des appels", onClick = filtrage)
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PuceFiltre("Tous", filtre == 0) { filtre = 0 }
-            PuceFiltre("Manqués", filtre == 1) { filtre = 1 }
-            if (sims.size > 1) sims.forEach { s -> PuceFiltre(s.operateur, filtre == s.fente + 1, debut = { PuceSim(s.fente, s.operateur) }) { filtre = s.fente + 1 } }
-        }
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Segments(listOf("Tous", "Manqués") + (if (sims.size > 1) sims.map { it.operateur.substringBefore(' ') } else emptyList()), filtre, Modifier.padding(bottom = 4.dp)) { filtre = it }
+        if (appels != null) LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 4.dp)) {
             if (vus.isEmpty()) {
-                item { BasicText(if (filtre == 1) "Aucun appel manqué." else "Aucun appel.", modifier = Modifier.padding(vertical = 20.dp, horizontal = 4.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2)) }
+                item {
+                    BasicText(
+                        if (filtre == 1) "Aucun appel manqué." else "Aucun appel pour l'instant.",
+                        modifier = Modifier.fillMaxWidth().padding(32.dp), style = styleDoux(15f, a.encre2).copy(textAlign = TextAlign.Center),
+                    )
+                }
             }
             parJour.forEach { (jour, l) ->
-                item(key = "j$jour") { Rubrique(jour) }
+                item(key = "j$jour") { Section(jour, Modifier.animateItem()) }
                 item(key = "b$jour") {
-                    BlocAppli {
+                    Groupe(Modifier.animateItem()) {
                         l.forEachIndexed { i, ap ->
-                            if (i > 0) FiletBloc(70.dp)
-                            LigneRecent(ap, qui[ap.numero], sims.size > 1)
+                            if (i > 0) Separateur(74.dp)
+                            val rouge = if (a.sombre) Color(0xFFF08A70) else Color(0xFFC2412D)
+                            Glisse(
+                                gauche = Triple(Icones.CORBEILLE, "Effacer", rouge),
+                                faireGauche = { CorbeilleAppels.jeter(c, ap.ids, if (ap.nombre > 1) "${ap.nombre} appels effacés" else "Appel effacé") },
+                            ) { LigneRecent(ap, qui[ap.numero], sims.size > 1) { fiche(ap.numero) } }
                         }
                     }
                 }
@@ -486,9 +621,8 @@ private fun PageRecents(reprise: Int, filtrage: () -> Unit, messagerie: () -> Un
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LigneRecent(ap: Appel, qui: Qui?, plusieursSims: Boolean) {
+private fun LigneRecent(ap: Appel, qui: Qui?, plusieursSims: Boolean, ouvrir: () -> Unit) {
     val a = LocalIdentite.current
     val c = LocalContext.current
     val masque = ap.numero.isBlank()
@@ -497,100 +631,278 @@ private fun LigneRecent(ap: Appel, qui: Qui?, plusieursSims: Boolean) {
     val nom = p?.nom ?: f?.nom ?: ap.nom ?: Moteur.secours(ap.numero) ?: if (masque) "Numéro masqué" else Moteur.formater(ap.numero)
     val manque = ap.genre == CallLog.Calls.MISSED_TYPE
     val rouge = if (a.sombre) Color(0xFFF08A70) else Color(0xFFC2412D)
-    val genre = when (ap.genre) {
-        CallLog.Calls.MISSED_TYPE -> "Manqué"
-        CallLog.Calls.INCOMING_TYPE -> "Entrant"
-        CallLog.Calls.OUTGOING_TYPE -> "Sortant"
-        CallLog.Calls.REJECTED_TYPE -> "Refusé"
-        CallLog.Calls.BLOCKED_TYPE -> "Filtré"
-        CallLog.Calls.VOICEMAIL_TYPE -> "Messagerie"
-        else -> "Appel"
-    }
     val second = listOfNotNull(
         when (f?.genre) {
             Identification.Genre.ARNAQUE -> "Arnaque signalée"
             Identification.Genre.ENTREPRISE -> "Entreprise vérifiée"
-            null -> null
+            null -> if (p == null && !masque && Moteur.secours(ap.numero) == null) Moteur.operateurDe(ap.numero) else p?.type?.lowercase()
         },
-        genre,
         if (plusieursSims) ap.sim?.let { "SIM ${it.fente}" } else null,
         Moteur.heure(ap.date),
         Moteur.duree(ap.duree).ifBlank { null },
     ).joinToString(" · ")
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 62.dp)
-            .combinedClickable(
-                enabled = !masque,
-                onClickLabel = if (p != null) "Voir la fiche" else "Rappeler",
-                onLongClickLabel = "Ajouter aux contacts",
-                onLongClick = {
-                    c.startActivity(Intent(Intent.ACTION_INSERT_OR_EDIT).setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE).putExtra(ContactsContract.Intents.Insert.PHONE, ap.numero).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                },
-            ) {
-                if (p != null) c.startActivity(Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.getLookupUri(p.id, p.cle)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                else Moteur.appeler(c, ap.numero, ap.sim)
-            }
-            .padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        Modifier.fillMaxWidth().background(a.surface).heightIn(min = 64.dp)
+            .clickable(enabled = !masque, onClickLabel = "Voir ce numéro", role = Role.Button, onClick = ouvrir)
+            .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (f?.genre == Identification.Genre.ARNAQUE) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(rouge.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { IconeTrait(ICONE_ALERTE, 20.dp, rouge) }
+            Box(Modifier.size(46.dp).clip(CircleShape).background(rouge.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { IconeTrait(ICONE_ALERTE, 22.dp, rouge) }
         } else if (f?.genre == Identification.Genre.ENTREPRISE) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(VERT_APPEL), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(VERT_APPEL), contentAlignment = Alignment.Center) {
                 BasicText(f.symbole ?: f.nom.orEmpty().take(1), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Light, fontSize = 22.sp, color = Color.White))
             }
         } else {
-            Visage(p?.nom ?: f?.nom, p?.photo, 42.dp)
+            Visage(p?.nom ?: f?.nom, p?.photo, 46.dp)
         }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             BasicText(
                 nom + if (ap.nombre > 1) " (${ap.nombre})" else "", maxLines = 1, overflow = TextOverflow.Ellipsis,
-                style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = if (manque || f?.genre == Identification.Genre.ARNAQUE) rouge else a.encre),
+                style = styleDoux(16.5f, if (manque || f?.genre == Identification.Genre.ARNAQUE) rouge else a.encre, if (manque) FontWeight.SemiBold else FontWeight.Medium, 1.25f),
             )
-            BasicText(second, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = a.encre2))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                FlecheAppel(ap.genre)
+                BasicText(second, maxLines = 1, overflow = TextOverflow.Ellipsis, style = styleDoux(13.5f, a.encre2, interligne = 1.25f))
+            }
         }
-        if (!masque) BoutonAppli(Icones.APPEL, "Rappeler") { Moteur.appeler(c, ap.numero, ap.sim) }
+        if (!masque) Rond(Icones.APPEL, "Rappeler", taille = 40.dp) { Moteur.appeler(c, ap.numero, ap.sim) }
+    }
+}
+
+// ——— La fiche d'un numéro (depuis les récents, les favoris ou les contacts) ———
+
+@Composable
+private fun FicheNumero(numero: String, origine: String, reprise: Int, retour: () -> Unit, composer: (String) -> Unit) {
+    val a = LocalIdentite.current
+    val c = LocalContext.current
+    var version by remember { mutableIntStateOf(0) }
+    var personne by remember { mutableStateOf<Personne?>(null) }
+    var fiche by remember { mutableStateOf<Identification.Fiche?>(null) }
+    var historique by remember { mutableStateOf(emptyList<Appel>()) }
+    var bloque by remember { mutableStateOf(false) }
+    var charge by remember { mutableStateOf(false) }
+    var effacer by remember { mutableStateOf(false) }
+    LaunchedEffect(numero, reprise, version) {
+        withContext(Dispatchers.IO) {
+            personne = Moteur.personne(c, numero)
+            fiche = if (personne == null) Identification.chercher(c, numero) else null
+            historique = Moteur.historique(c, numero).filter { ap -> ap.ids.none { it in CorbeilleAppels.enAttente } }
+            bloque = Moteur.estBloque(c, numero)
+        }
+        charge = true
+    }
+    val p = personne
+    val f = fiche
+    val rouge = if (a.sombre) Color(0xFFF08A70) else Color(0xFFC2412D)
+    val arnaque = f?.genre == Identification.Genre.ARNAQUE
+    val nom = p?.nom ?: f?.nom ?: Moteur.secours(numero) ?: Moteur.formater(numero)
+    val operateur = Moteur.operateurDe(numero)
+    val sims = remember { Moteur.sims(c) }
+    Column(Modifier.fillMaxSize().background(a.fond)) {
+        BarreRetour(origine, retour)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            // Qui c'est, en grand.
+            Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                when {
+                    arnaque -> Box(Modifier.size(92.dp).clip(CircleShape).background(rouge.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { IconeTrait(ICONE_ALERTE, 44.dp, rouge) }
+                    f?.genre == Identification.Genre.ENTREPRISE -> Box(Modifier.size(92.dp).clip(RoundedCornerShape(28.dp)).background(VERT_APPEL), contentAlignment = Alignment.Center) {
+                        BasicText(f.symbole ?: f.nom.orEmpty().take(1), style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Light, fontSize = 42.sp, color = Color.White))
+                    }
+                    else -> Visage(p?.nom ?: f?.nom, p?.photo, 92.dp)
+                }
+                BasicText(
+                    nom, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp, start = 24.dp, end = 24.dp),
+                    style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 31.sp, color = if (arnaque) rouge else a.encre, textAlign = TextAlign.Center),
+                )
+                if (nom != Moteur.formater(numero)) BasicText(
+                    listOfNotNull(Moteur.formater(numero), p?.type?.lowercase()).joinToString(" · "), modifier = Modifier.padding(top = 3.dp),
+                    style = styleDoux(15f, a.encre2),
+                )
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    when {
+                        Moteur.etranger(numero) -> Etiquette("Numéro de l'étranger", a.champ, a.encre2, icone = Icones.GLOBE)
+                        operateur != null -> EtiquetteOperateur(operateur)
+                    }
+                    if (p == null && Identification.actif(c) && Identification.cle(numero).length == 10) EtiquetteIdentite(f)
+                    if (bloque) Etiquette("Bloqué", a.champ, a.encre2, icone = ICONE_BLOQUER)
+                }
+            }
+            // Les actions, d'un toucher.
+            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                Action(Icones.APPEL, "Appeler", plein = true) { Moteur.appeler(c, numero) }
+                Action(Icones.MESSAGE, "Message") { c.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", numero, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                if (p != null) {
+                    Action(ICONE_ETOILE, if (p.favori) "Favori" else "Favori", plein = p.favori) {
+                        if (Moteur.favori(c, p, !p.favori)) {
+                            Avis.dire(if (p.favori) "${p.nom.substringBefore(' ')} n'est plus dans vos favoris" else "${p.nom.substringBefore(' ')} est dans vos favoris")
+                            version++
+                        }
+                    }
+                    Action(Icones.PERSONNE, "Fiche") { c.startActivity(Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.getLookupUri(p.id, p.cle)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                } else if (Moteur.secours(numero) == null) {
+                    Action(Icones.PLUS, "Enregistrer") {
+                        c.startActivity(Intent(Intent.ACTION_INSERT_OR_EDIT).setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE).putExtra(ContactsContract.Intents.Insert.PHONE, numero).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                    Action(Icones.CLAVIER, "Clavier") { composer(numero) }
+                } else {
+                    Action(Icones.CLAVIER, "Clavier") { composer(numero) }
+                }
+            }
+            // Le bouclier : un numéro signalé, ou ce qu'il faut savoir d'un inconnu.
+            if (arnaque) {
+                Column(
+                    Modifier.padding(horizontal = 16.dp).padding(top = 20.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(rouge.copy(alpha = 0.1f)).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    BasicText(
+                        if (f?.parVous != null) "Signalé par vous" else "Arnaque signalée" + (f?.signalements?.takeIf { it > 1 }?.let { " · $it signalements" } ?: ""),
+                        style = styleDoux(16f, rouge, FontWeight.Bold),
+                    )
+                    f?.motif?.let { BasicText(it.replaceFirstChar { ch -> ch.uppercase() }, style = styleDoux(14.5f, a.encre)) }
+                    BasicText("Ne rappelez pas, et ne donnez jamais un code reçu par SMS, même à un « agent ».", style = styleDoux(14f, a.encre2))
+                }
+            } else if (p == null && f == null && charge && Moteur.secours(numero) == null) {
+                BasicText(
+                    "Un numéro absent de vos contacts. Un vrai agent de votre opérateur ou de votre banque ne vous demandera jamais votre code secret.",
+                    modifier = Modifier.padding(horizontal = 26.dp).padding(top = 18.dp), style = styleDoux(14f, a.encre2),
+                )
+            }
+            // Les appels échangés.
+            if (historique.isNotEmpty()) {
+                Section("Appels", droite = if (historique.size >= 12) "les 12 derniers" else null)
+                Groupe {
+                    historique.forEachIndexed { i, ap ->
+                        if (i > 0) Separateur(50.dp)
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) { FlecheAppel(ap.genre, 18.dp) }
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                BasicText(genreAppel(ap.genre), style = styleDoux(15.5f, if (ap.genre == CallLog.Calls.MISSED_TYPE) rouge else a.encre, FontWeight.Medium, 1.25f))
+                                BasicText(
+                                    listOfNotNull(Moteur.titreJour(ap.date), Moteur.heure(ap.date), if (sims.size > 1) ap.sim?.let { "SIM ${it.fente}" } else null).joinToString(" · "),
+                                    style = styleDoux(13f, a.encre2, interligne = 1.25f),
+                                )
+                            }
+                            BasicText(Moteur.duree(ap.duree), style = styleDoux(14f, a.encre2))
+                        }
+                    }
+                }
+            }
+            // Ce qu'on peut en faire (un numéro de secours ne se bloque pas).
+            val secours = Moteur.secours(numero) != null
+            if (!secours || historique.isNotEmpty()) Section("Ce numéro")
+            if (!secours || historique.isNotEmpty()) Groupe {
+                val encreDanger = if (a.sombre) Color(0xFFEE9A78) else Color(0xFFB5532F)
+                if (!secours) Row(
+                    Modifier.fillMaxWidth().clickable(role = Role.Button) {
+                        if (bloque) {
+                            Moteur.debloquer(c, numero)
+                            Identification.retirerSignalement(c, numero)
+                            Avis.dire("Numéro débloqué")
+                        } else {
+                            Moteur.bloquer(c, numero)
+                            Avis.dire("Numéro bloqué : il ne fera plus sonner le téléphone")
+                        }
+                        version++
+                    }.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    IconeTrait(ICONE_BLOQUER, 22.dp, if (bloque) a.encre2 else encreDanger)
+                    Column(Modifier.weight(1f)) {
+                        BasicText(if (bloque) "Débloquer" else "Bloquer ce numéro", style = styleDoux(16f, if (bloque) a.encre else encreDanger, FontWeight.Medium, 1.25f))
+                        BasicText(if (bloque) "Il pourra de nouveau vous appeler" else "Ses appels seront filtrés, sans sonner", style = styleDoux(13f, a.encre2, interligne = 1.25f))
+                    }
+                }
+                if (p == null && !arnaque && !secours && Identification.cle(numero).length == 10) {
+                    Separateur(52.dp)
+                    Row(
+                        Modifier.fillMaxWidth().clickable(role = Role.Button) {
+                            Moteur.bloquer(c, numero)
+                            Identification.signaler(c, numero)
+                            Avis.dire("Bloqué et signalé. Le signalement reste sur ce téléphone jusqu'au service Sama.")
+                            version++
+                        }.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        IconeTrait(ICONE_ALERTE, 22.dp, encreDanger)
+                        Column(Modifier.weight(1f)) {
+                            BasicText("Bloquer et signaler comme arnaque", style = styleDoux(16f, encreDanger, FontWeight.Medium, 1.25f))
+                            BasicText("Seuls le numéro et le type d'arnaque partiront, de façon anonyme", style = styleDoux(13f, a.encre2, interligne = 1.25f))
+                        }
+                    }
+                }
+                if (historique.isNotEmpty()) {
+                    if (!secours) Separateur(52.dp)
+                    Row(
+                        Modifier.fillMaxWidth().clickable(role = Role.Button) { effacer = true }.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        IconeTrait(Icones.CORBEILLE, 22.dp, a.encre2)
+                        BasicText("Effacer les appels avec ce numéro", modifier = Modifier.weight(1f), style = styleDoux(16f, a.encre, FontWeight.Medium, 1.25f))
+                    }
+                }
+            }
+            Spacer(Modifier.navigationBarsPadding().height(24.dp))
+        }
+    }
+    if (effacer) {
+        DialogueAppli("Effacer ces appels ?", "Les ${historique.size} appel${if (historique.size > 1) "s" else ""} avec $nom quitteront les récents. Le numéro reste dans vos contacts.", fermer = { effacer = false }) {
+            BoutonTexteAppli("Annuler", style = 't') { effacer = false }
+            BoutonTexteAppli("Effacer") {
+                val ids = historique.flatMap { it.ids }
+                effacer = false
+                CorbeilleAppels.jeter(c, ids, "Appels avec $nom effacés")
+                historique = emptyList()
+            }
+        }
     }
 }
 
 // ——— Favoris ———
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PageFavoris(reprise: Int, composer: (String) -> Unit) {
+private fun PageFavoris(reprise: Int, fiche: (String) -> Unit, composer: (String) -> Unit) {
     val a = LocalIdentite.current
     val c = LocalContext.current
-    var favoris by remember { mutableStateOf(emptyList<Personne>()) }
+    var favoris by remember { mutableStateOf<List<Personne>?>(null) }
     var souvent by remember { mutableStateOf(emptyList<Pair<String, Int>>()) }
     var qui by remember { mutableStateOf(emptyMap<String, Qui>()) }
     LaunchedEffect(reprise) {
         withContext(Dispatchers.IO) {
-            favoris = Moteur.favoris(c)
-            val s = Moteur.souvent(c, favoris.map { it.numero }.toSet())
+            val fav = Moteur.favoris(c)
+            val s = Moteur.souvent(c, fav.map { it.numero }.toSet())
             qui = s.associate { (n, _) -> n to Moteur.personne(c, n).let { p -> Qui(p, if (p == null) Identification.chercher(c, n) else null) } }
             // Un numéro signalé comme arnaque n'est jamais proposé, même s'il a beaucoup appelé.
             souvent = s.filter { (n, _) -> qui[n]?.fiche?.genre != Identification.Genre.ARNAQUE }
+            favoris = fav
         }
     }
+    val fav = favoris.orEmpty()
     Column(Modifier.fillMaxSize()) {
-        TitrePage("Favoris")
+        GrandTitre("Favoris", when { favoris == null -> " "; fav.isEmpty() -> "Vos proches, à une touche"; else -> "${fav.size} proche${if (fav.size > 1) "s" else ""} · un toucher appelle" })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            if (favoris.isEmpty()) {
-                BasicText(
-                    "Marquez vos proches d'une étoile dans Contacts : ils apparaîtront ici, à une touche.",
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                    style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, lineHeight = 21.sp, color = a.encre2),
-                )
+            if (favoris != null && fav.isEmpty()) {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(a.surface).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(56.dp).clip(CircleShape).background(a.voile), contentAlignment = Alignment.Center) { IconeTrait(ICONE_ETOILE, 26.dp, a.accentTexte, epaisseur = 2f) }
+                    BasicText(
+                        "Marquez vos proches d'une étoile : depuis un numéro des récents, ou dans Contacts. Ils apparaîtront ici, à une touche.",
+                        modifier = Modifier.padding(top = 12.dp), style = styleDoux(14.5f, a.encre2).copy(textAlign = TextAlign.Center),
+                    )
+                }
             }
-            favoris.chunked(3).forEach { rangee ->
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            fav.chunked(3).forEach { rangee ->
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     rangee.forEach { p ->
                         Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = "Appeler ${p.nom}", role = Role.Button) { Moteur.appeler(c, p.numero) }.padding(vertical = 10.dp),
+                            Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                                .combinedClickable(onClickLabel = "Appeler ${p.nom}", onLongClickLabel = "Voir ${p.nom}", role = Role.Button, onLongClick = { fiche(p.numero) }) { Moteur.appeler(c, p.numero) }
+                                .padding(vertical = 10.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Visage(p.nom, p.photo, 74.dp)
-                            BasicText(p.nom.substringBefore(' '), modifier = Modifier.padding(top = 8.dp), maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp, color = a.encre))
-                            BasicText(p.type.lowercase(), style = TextStyle(fontFamily = Polices.corps, fontSize = 12.5.sp, color = a.encre2))
+                            BasicText(p.nom.substringBefore(' '), modifier = Modifier.padding(top = 8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, style = styleDoux(14.5f, a.encre, FontWeight.SemiBold, 1.2f))
+                            BasicText(p.type.lowercase(), style = styleDoux(12.5f, a.encre2, interligne = 1.2f))
                         }
                     }
                     repeat(3 - rangee.size) { Spacer(Modifier.weight(1f)) }
@@ -598,21 +910,21 @@ private fun PageFavoris(reprise: Int, composer: (String) -> Unit) {
             }
             if (souvent.isNotEmpty()) {
                 Rubrique("Appelés souvent")
-                BlocAppli {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(a.surface)) {
                     souvent.forEachIndexed { i, (numero, n) ->
-                        if (i > 0) FiletBloc(70.dp)
+                        if (i > 0) Separateur(74.dp)
                         val p = qui[numero]?.personne
                         val f = qui[numero]?.fiche
                         Row(
-                            Modifier.fillMaxWidth().clickable(role = Role.Button) { composer(numero) }.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                            Modifier.fillMaxWidth().clickable(onClickLabel = "Voir ce numéro", role = Role.Button) { fiche(numero) }.padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Visage(p?.nom, p?.photo, 42.dp)
+                            Visage(p?.nom ?: f?.nom, p?.photo, 46.dp)
                             Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                                BasicText(p?.nom ?: f?.nom ?: Moteur.secours(numero) ?: Moteur.formater(numero), maxLines = 1, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = a.encre))
-                                BasicText(listOfNotNull(p?.type ?: f?.categorie ?: Moteur.operateurDe(numero), "$n appel${if (n > 1) "s" else ""} ce mois-ci").joinToString(" · "), style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = a.encre2))
+                                BasicText(p?.nom ?: f?.nom ?: Moteur.secours(numero) ?: Moteur.formater(numero), maxLines = 1, overflow = TextOverflow.Ellipsis, style = styleDoux(16f, a.encre, FontWeight.Medium, 1.25f))
+                                BasicText(listOfNotNull(p?.type?.lowercase() ?: f?.categorie ?: Moteur.operateurDe(numero), "$n appel${if (n > 1) "s" else ""} ce mois-ci").joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis, style = styleDoux(13.5f, a.encre2, interligne = 1.25f))
                             }
-                            BoutonAppli(Icones.APPEL, "Appeler") { Moteur.appeler(c, numero) }
+                            Rond(Icones.APPEL, "Appeler", taille = 40.dp) { Moteur.appeler(c, numero) }
                         }
                     }
                 }
@@ -625,53 +937,98 @@ private fun PageFavoris(reprise: Int, composer: (String) -> Unit) {
 // ——— Contacts ———
 
 @Composable
-private fun PageContacts(reprise: Int) {
+private fun PageContacts(reprise: Int, fiche: (String) -> Unit) {
     val a = LocalIdentite.current
     val c = LocalContext.current
-    var tous by remember { mutableStateOf(emptyList<Personne>()) }
+    var tous by remember { mutableStateOf<List<Personne>?>(null) }
     var recherche by remember { mutableStateOf("") }
     LaunchedEffect(reprise) { tous = withContext(Dispatchers.IO) { Moteur.tous(c) } }
     fun simple(s: String) = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase()
     val chiffres = recherche.filter { it.isDigit() }
-    val vus = tous.filter {
+    val liste = tous.orEmpty()
+    val vus = liste.filter {
         recherche.isBlank() || simple(it.nom).contains(simple(recherche)) || (chiffres.length >= 3 && it.numero.filter { ch -> ch.isDigit() }.contains(chiffres))
     }
     val parLettre = remember(vus) { vus.groupBy { simple(it.nom).firstOrNull()?.takeIf { ch -> ch.isLetter() }?.uppercase() ?: "#" } }
+    val lettres = parLettre.keys.toList()
+    val etat = rememberLazyListState()
+    val portee = rememberCoroutineScope()
+    val retour = LocalHapticFeedback.current
     Column(Modifier.fillMaxSize()) {
-        TitrePage("Contacts") {
-            BoutonAppli(Icones.PLUS, "Nouveau contact") {
+        GrandTitre("Contacts", if (tous == null) " " else "${liste.size} contact${if (liste.size > 1) "s" else ""}") {
+            Rond(Icones.PLUS, "Nouveau contact", epaisseur = 2.2f) {
                 c.startActivity(Intent(Intent.ACTION_INSERT).setType(ContactsContract.Contacts.CONTENT_TYPE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
         }
-        ChampAppli(recherche, "Nom ou numéro", { recherche = it })
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-            if (tous.isEmpty()) {
-                item { BasicText("Aucun contact avec un numéro.", modifier = Modifier.padding(vertical = 20.dp, horizontal = 4.dp), style = TextStyle(fontFamily = Polices.corps, fontSize = 15.sp, color = a.encre2)) }
-            }
-            parLettre.forEach { (lettre, l) ->
-                item(key = "l$lettre") { Rubrique(lettre) }
-                item(key = "b$lettre") {
-                    BlocAppli {
-                        l.forEachIndexed { i, p ->
-                            if (i > 0) FiletBloc(68.dp)
-                            Row(
-                                Modifier.fillMaxWidth().clickable(onClickLabel = "Voir la fiche de ${p.nom}", role = Role.Button) {
-                                    c.startActivity(Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.getLookupUri(p.id, p.cle)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                }.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Visage(p.nom, p.photo, 40.dp)
-                                Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                                    BasicText(p.nom, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Polices.corps, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = a.encre))
-                                    BasicText("${Moteur.formater(p.numero)} · ${p.type.lowercase()}", style = TextStyle(fontFamily = Polices.corps, fontSize = 13.sp, color = a.encre2))
+        Recherche(recherche, "Un nom ou un numéro", { recherche = it }, Modifier.padding(bottom = 4.dp))
+        Box(Modifier.fillMaxSize()) {
+            if (tous != null) LazyColumn(Modifier.fillMaxSize(), state = etat, contentPadding = PaddingValues(top = 4.dp, end = if (lettres.size > 3 && recherche.isBlank()) 18.dp else 0.dp)) {
+                if (vus.isEmpty()) {
+                    item {
+                        BasicText(
+                            if (recherche.isBlank()) "Aucun contact avec un numéro." else "Rien ne correspond à « ${recherche.trim()} ».",
+                            modifier = Modifier.fillMaxWidth().padding(32.dp), style = styleDoux(15f, a.encre2).copy(textAlign = TextAlign.Center),
+                        )
+                    }
+                }
+                parLettre.forEach { (lettre, l) ->
+                    item(key = "l$lettre") { Section(lettre, Modifier.animateItem()) }
+                    item(key = "b$lettre") {
+                        Groupe(Modifier.animateItem()) {
+                            l.forEachIndexed { i, p ->
+                                if (i > 0) Separateur(70.dp)
+                                Row(
+                                    Modifier.fillMaxWidth().clickable(onClickLabel = "Voir ${p.nom}", role = Role.Button) { fiche(p.numero) }.padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Visage(p.nom, p.photo, 42.dp)
+                                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                                        BasicText(p.nom, maxLines = 1, overflow = TextOverflow.Ellipsis, style = styleDoux(16f, a.encre, FontWeight.Medium, 1.25f))
+                                        BasicText("${Moteur.formater(p.numero)} · ${p.type.lowercase()}", maxLines = 1, overflow = TextOverflow.Ellipsis, style = styleDoux(13.5f, a.encre2, interligne = 1.25f))
+                                    }
+                                    Rond(Icones.APPEL, "Appeler ${p.nom}", taille = 40.dp) { Moteur.appeler(c, p.numero) }
                                 }
-                                BoutonAppli(Icones.APPEL, "Appeler ${p.nom}") { Moteur.appeler(c, p.numero) }
                             }
                         }
                     }
                 }
+                item { PiedOnglets() }
             }
-            item { PiedOnglets() }
+            // L'index des lettres, à droite : on le touche ou on y glisse le doigt pour sauter à une lettre.
+            if (lettres.size > 3 && recherche.isBlank()) {
+                var courante by remember { mutableStateOf<String?>(null) }
+                var hauteur by remember { mutableIntStateOf(1) }
+                fun aller(y: Float) {
+                    val i = ((y / hauteur) * lettres.size).toInt().coerceIn(0, lettres.lastIndex)
+                    val l = lettres[i]
+                    if (l != courante) {
+                        courante = l
+                        retour.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        portee.launch { etat.scrollToItem(parLettre.keys.indexOf(l) * 2) }
+                    }
+                }
+                Column(
+                    Modifier.align(Alignment.CenterEnd).padding(end = 2.dp).width(22.dp)
+                        .pointerInput(lettres) {
+                            detectVerticalDragGestures(
+                                onDragStart = { aller(it.y) },
+                                onDragEnd = { courante = null },
+                                onDragCancel = { courante = null },
+                            ) { change, _ -> aller(change.position.y) }
+                        }
+                        .onSizeChanged { hauteur = it.height.coerceAtLeast(1) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    lettres.forEach { l ->
+                        BasicText(
+                            l, modifier = Modifier.clickable(interactionSource = null, indication = null, onClickLabel = "Aller à $l") {
+                                portee.launch { etat.scrollToItem(parLettre.keys.indexOf(l) * 2) }
+                            }.padding(vertical = 1.dp),
+                            style = styleDoux(11f, if (l == courante) a.accentTexte else a.encre2, FontWeight.SemiBold, 1.15f),
+                        )
+                    }
+                }
+            }
         }
     }
 }
