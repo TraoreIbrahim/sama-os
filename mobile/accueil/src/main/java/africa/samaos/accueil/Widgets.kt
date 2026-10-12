@@ -181,12 +181,17 @@ fun ZoneWidgets(widgets: List<WidgetPose>, retirerAbsent: (Int) -> Unit, modifie
     }
 }
 
-/** Donne au widget sa taille en dp, par les deux voies qu'Android connaît (anciennes options et tailles exactes). */
+/**
+ * Donne au widget sa taille en dp, par les deux voies qu'Android connaît (anciennes options et tailles exactes).
+ * Android en retire sa marge par défaut (8 dp de chaque côté) ; Sama pose ses widgets bord à bord, on la rajoute
+ * donc d'abord, sinon chaque widget se croirait plus petit qu'il n'est (une ligne de moins, un rendez-vous de moins).
+ */
 private fun direLaTaille(vue: AppWidgetHostView, largeurPx: Int, hauteurPx: Int) {
     if (largeurPx <= 0 || hauteurPx <= 0) return
     val d = vue.resources.displayMetrics.density
-    val l = largeurPx / d
-    val h = hauteurPx / d
+    val marge = vue.appWidgetInfo?.provider?.let { AppWidgetHostView.getDefaultPaddingForWidget(vue.context, it, null) } ?: android.graphics.Rect()
+    val l = (largeurPx + marge.left + marge.right) / d
+    val h = (hauteurPx + marge.top + marge.bottom) / d
     if (Build.VERSION.SDK_INT >= 31) {
         vue.updateAppWidgetSize(Bundle(), listOf(SizeF(l, h)))
     } else {

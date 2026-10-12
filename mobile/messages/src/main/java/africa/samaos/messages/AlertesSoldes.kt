@@ -41,6 +41,11 @@ object AlertesSoldes {
     fun recu(c: Context, sub: Int, corps: String) {
         val x = Soldes.analyser(corps)
         if (x.vide) return
+        // Le widget « Mes SIM » des Réglages reprend le nouveau solde.
+        try {
+            c.sendBroadcast(Intent("africa.samaos.action.SOLDES_CHANGES").setPackage("africa.samaos.reglages"))
+        } catch (_: Exception) {
+        }
         val reste = x.dataReste
         val total = x.dataTotal
         if (Soldes.alerte(c, "data") && reste != null && total != null && total > 0 && reste > 0 && reste / total < 0.2) {

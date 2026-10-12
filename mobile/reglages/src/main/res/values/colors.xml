@@ -2,4 +2,8 @@
 <resources>
     <color name="ciel">#F3ECE2</color>
     <color name="laterite">#B5532F</color>
+    <!-- Le widget « Mes SIM » de l'Accueil, le jour ; la nuit dans values-night. -->
+    <color name="widget_fond">#FFFBF6</color>
+    <color name="widget_encre">#2A2018</color>
+    <color name="widget_encre2">#6E6154</color>
 </resources>

@@ -165,6 +165,8 @@ object Carnet {
         val tmp = File(f.parentFile, f.name + ".tmp")
         tmp.writeText(o.toString())
         tmp.renameTo(f)
+        // Le widget de l'Accueil reprend la note.
+        WidgetsNotes.annoncer(c)
     }
 
     fun note(id: Long) = notes.firstOrNull { it.id == id }

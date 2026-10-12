@@ -200,9 +200,10 @@ class Photos : ComponentActivity() {
         }
     }
 
-    /** Quitter l'appli referme l'album Masquées. */
+    /** Quitter l'appli referme l'album Masquées ; le souvenir de l'Accueil reprend la pellicule. */
     override fun onStop() {
         Coffre.ouvert = false
+        WidgetsPhotos.annoncer(this)
         super.onStop()
     }
 

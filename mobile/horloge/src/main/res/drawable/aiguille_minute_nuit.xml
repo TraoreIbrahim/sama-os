@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une aiguille d'horloge du monde : elle part du centre vers midi ; l'horloge la fait tourner. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="100" android:viewportHeight="100">
+    <path android:pathData="M48.0,56 L48.0,14.0 A2.0,2.0 0 0,1 52.0,14.0 L52.0,56 A2.0,2.0 0 0,1 48.0,56 z" android:fillColor="#A3D6C1" />
+</vector>

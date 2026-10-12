@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rien de lu : d'où viendront les soldes. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontVariationSettings="'wght' 600"
+        android:text="Mes SIM"
+        android:textColor="@color/widget_encre"
+        android:textSize="15sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Vos soldes viendront des SMS de vos opérateurs. Touchez pour les demander."
+        android:textColor="@color/widget_encre2"
+        android:textSize="13sp" />
+</LinearLayout>

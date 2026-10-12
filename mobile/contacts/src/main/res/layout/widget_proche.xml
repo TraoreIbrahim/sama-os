@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Un proche : son rond (photo ou initiales, et le combiné), son prénom ; un toucher l'appelle. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/proche"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <ImageView
+        android:id="@+id/rond"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
+        android:importantForAccessibility="no" />
+
+    <TextView
+        android:id="@+id/nom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:fontVariationSettings="'wght' 550"
+        android:maxWidth="76dp"
+        android:singleLine="true"
+        android:textColor="@color/widget_encre"
+        android:textSize="12.5sp" />
+</LinearLayout>

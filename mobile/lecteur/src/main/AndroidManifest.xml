@@ -29,5 +29,14 @@
             </intent-filter>
         </activity>
         <service android:name=".Musique" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Le widget de l'Accueil, et ses boutons (précédent, lecture ou pause, suivant). -->
+        <receiver android:name=".WidgetLecture" android:exported="false" android:label="@string/widget_lecture">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_lecture" />
+        </receiver>
+        <receiver android:name=".CommandeLecteur" android:exported="false" />
     </application>
 </manifest>

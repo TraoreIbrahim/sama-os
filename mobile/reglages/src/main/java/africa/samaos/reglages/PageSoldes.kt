@@ -93,6 +93,7 @@ object MoteurSoldes {
                 object : TelephonyManager.UssdResponseCallback() {
                     override fun onReceiveUssdResponse(t: TelephonyManager, requete: String, reponse: CharSequence) {
                         Soldes.noterUssd(c, sub, reponse.toString())
+                        WidgetsSims.annoncer(c)
                         fini(reponse.toString())
                     }
 
@@ -146,6 +147,7 @@ fun PageSoldes(nav: Nav) {
         sims = withContext(Dispatchers.IO) { MoteurReseau.sims(c) }
         releves = withContext(Dispatchers.IO) { Soldes.releves(c) }
         jours = withContext(Dispatchers.IO) { MoteurSoldes.septJours(c) }
+        WidgetsSims.annoncer(c)
     }
     PageReglages(titre = "Soldes et forfaits", sousTitre = "Plus besoin de taper #…# pour savoir ce qui reste", retour = nav.retour) {
         if (sims.isEmpty()) {

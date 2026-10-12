@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le fond du souvenir, le temps que la photo arrive (ou sans photo) : le crépuscule de l'icône de Photos. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="24dp" />
+    <gradient android:angle="270" android:startColor="#F6C99A" android:endColor="#C8613A" />
+</shape>

@@ -98,7 +98,13 @@ private fun villes(c: Context): List<Ville> {
     }
 }
 
-private fun garderVilles(c: Context, l: List<Ville>) = c.getSharedPreferences("horloge", 0).edit().putString("villes2", l.joinToString(",") { "${it.nom}|${it.zone}" }).apply()
+private fun garderVilles(c: Context, l: List<Ville>) {
+    c.getSharedPreferences("horloge", 0).edit().putString("villes2", l.joinToString(",") { "${it.nom}|${it.zone}" }).apply()
+    WidgetsHorloge.annoncer(c)
+}
+
+/** Les villes de l'horloge du monde, pour les widgets. */
+internal fun villesDuMonde(c: Context) = villes(c)
 
 private fun simple(s: String) = Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD).replace(Regex("\\p{M}"), "")
 

@@ -110,6 +110,8 @@ object Alarmes {
 
     /** Programme auprès d'Android la plus proche des alarmes allumées. */
     fun programmer(c: Context) {
+        // Les widgets de l'Accueil montrent la prochaine alarme.
+        WidgetsHorloge.annoncer(c)
         val am = c.getSystemService(AlarmManager::class.java)
         val suivante = liste(c).filter { it.active }.minByOrNull { prochaine(it).toInstant() }
         val operation = PendingIntent.getBroadcast(c, 1, Intent(c, Reveil::class.java).setAction(ALARME), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -129,6 +131,7 @@ object Alarmes {
     fun lancerMinuteur(c: Context, nom: String, ms: Long, duree: Long = ms) {
         val fin = System.currentTimeMillis() + ms
         prefs(c).edit().putLong("minuteur_fin", fin).putString("minuteur_nom", nom).putLong("minuteur_duree", duree).remove("minuteur_pause").apply()
+        WidgetsHorloge.annoncer(c)
         val operation = PendingIntent.getBroadcast(c, 3, Intent(c, Reveil::class.java).setAction(MINUTEUR), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         try {
             c.getSystemService(AlarmManager::class.java).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fin, operation)
@@ -138,6 +141,7 @@ object Alarmes {
 
     fun arreterMinuteur(c: Context) {
         prefs(c).edit().remove("minuteur_fin").remove("minuteur_pause").apply()
+        WidgetsHorloge.annoncer(c)
         val operation = PendingIntent.getBroadcast(c, 3, Intent(c, Reveil::class.java).setAction(MINUTEUR), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         c.getSystemService(AlarmManager::class.java).cancel(operation)
     }
@@ -146,6 +150,7 @@ object Alarmes {
         val reste = finMinuteur(c)?.let { it - System.currentTimeMillis() } ?: return
         arreterMinuteur(c)
         prefs(c).edit().putLong("minuteur_pause", reste).apply()
+        WidgetsHorloge.annoncer(c)
     }
 
     fun finMinuteur(c: Context) = prefs(c).getLong("minuteur_fin", 0).takeIf { it > 0 }

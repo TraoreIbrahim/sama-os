@@ -174,6 +174,7 @@ object Pistes {
 class Dictaphone : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lire(intent)
         enableEdgeToEdge()
         setContent {
             val id = if (isSystemInDarkTheme()) Identites.DictaphoneNuit else Identites.Dictaphone
@@ -184,6 +185,19 @@ class Dictaphone : ComponentActivity() {
                 }
             }
             AvecIdentite(id) { Ecran() }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        lire(intent)
+    }
+
+    /** Le grand bouton du widget : enregistrer tout de suite. */
+    private fun lire(i: Intent?) {
+        if (i?.getBooleanExtra(DemandeEnregistrer.EXTRA, false) == true) {
+            i.removeExtra(DemandeEnregistrer.EXTRA)
+            DemandeEnregistrer.flot.value = true
         }
     }
 }
@@ -228,6 +242,14 @@ private fun Ecran() {
             Dicta.commander(c, Dicta.DEMARRER, nom.trim().ifBlank { nomParDefaut() })
         } else {
             demander.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
+        }
+    }
+    // Demandé depuis le widget de l'Accueil : on enregistre dès l'ouverture.
+    val demande by DemandeEnregistrer.flot.collectAsState()
+    LaunchedEffect(demande) {
+        if (demande) {
+            DemandeEnregistrer.flot.value = false
+            if (Dicta.etat.value == null) enregistrer()
         }
     }
     val e = enCours

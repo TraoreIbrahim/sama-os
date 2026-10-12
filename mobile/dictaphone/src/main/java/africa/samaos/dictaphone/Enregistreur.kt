@@ -101,6 +101,8 @@ class Enregistreur : Service() {
             Dicta.REPERE -> Dicta.etat.value?.let { e -> Dicta.etat.value = e.copy(reperes = e.reperes + e.duree()) }
             Dicta.ARRETER -> arreter()
         }
+        // Le widget de l'Accueil suit l'enregistrement.
+        WidgetsDictaphone.annoncer(this)
         return START_NOT_STICKY
     }
 

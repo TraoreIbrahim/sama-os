@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une ville : son cadran (les aiguilles tournent seules, à l'heure de son fuseau), son nom, son écart. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <AnalogClock
+        android:id="@+id/cadran"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:dial="@drawable/cadran_jour"
+        android:hand_hour="@drawable/aiguille_heure_jour"
+        android:hand_minute="@drawable/aiguille_minute_jour" />
+
+    <TextView
+        android:id="@+id/ville"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:fontVariationSettings="'wght' 600"
+        android:maxWidth="88dp"
+        android:singleLine="true"
+        android:textColor="#EEF1F6"
+        android:textSize="12.5sp" />
+
+    <TextView
+        android:id="@+id/ecart"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:singleLine="true"
+        android:textColor="#A9B2C7"
+        android:textSize="11sp" />
+</LinearLayout>

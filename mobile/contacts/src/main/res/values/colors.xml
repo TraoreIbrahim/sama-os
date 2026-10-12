@@ -2,4 +2,8 @@
 <resources>
     <color name="fond">#FAF6F1</color>
     <color name="accent">#7D624B</color>
+    <!-- Le widget de l'Accueil, le jour ; la nuit dans values-night. -->
+    <color name="widget_fond">#FFFCF8</color>
+    <color name="widget_encre">#231B14</color>
+    <color name="widget_encre2">#6B5E52</color>
 </resources>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le widget « En cours » (une rangée) : la pochette, le titre et l'artiste, précédent, lecture ou pause, suivant. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/racine"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_page"
+    android:clipToOutline="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="14dp"
+    android:paddingEnd="12dp">
+
+    <ImageView
+        android:id="@+id/pochette"
+        android:layout_width="62dp"
+        android:layout_height="62dp"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/titre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontVariationSettings="'wght' 600"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/artiste"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/widget_encre2"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/precedent"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:contentDescription="Précédent"
+        android:padding="9dp"
+        android:src="@drawable/ic_precedent"
+        android:tint="@color/widget_encre" />
+
+    <ImageView
+        android:id="@+id/lecture"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="2dp"
+        android:layout_marginEnd="2dp"
+        android:background="@drawable/widget_rond"
+        android:contentDescription="Lecture"
+        android:padding="12dp"
+        android:src="@drawable/ic_lecture"
+        android:tint="@color/widget_sur_accent" />
+
+    <ImageView
+        android:id="@+id/suivant"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:contentDescription="Suivant"
+        android:padding="9dp"
+        android:src="@drawable/ic_suivant"
+        android:tint="@color/widget_encre" />
+</LinearLayout>

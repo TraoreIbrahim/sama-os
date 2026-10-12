@@ -176,6 +176,12 @@ class Contacts : ComponentActivity() {
         lire(intent)
     }
 
+    /** En partant, le widget « Mes proches » reprend les étoiles et les photos. */
+    override fun onStop() {
+        super.onStop()
+        WidgetsContacts.annoncer(this)
+    }
+
     override fun onResume() {
         super.onResume()
         reprise++

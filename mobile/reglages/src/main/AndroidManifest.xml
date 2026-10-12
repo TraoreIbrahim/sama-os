@@ -388,6 +388,21 @@
              preuves. Exporté, mais chaque appel vérifie que l'appli est signée comme le système. -->
         <!-- Le bouclier annonce une arnaque arrêtée : les Réglages préviennent le proche choisi (« un proche veille sur
              vous »). Seules les applis qui écrivent le journal du bouclier (droit du système) peuvent l'annoncer. -->
+        <!-- Le widget « Mes SIM » de l'Accueil, et Messages qui annonce un SMS d'opérateur (droit du système). -->
+        <receiver android:name=".WidgetSims" android:exported="false" android:label="@string/widget_sims">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_sims" />
+        </receiver>
+        <receiver
+            android:name=".SoldesChanges"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS">
+            <intent-filter>
+                <action android:name="africa.samaos.action.SOLDES_CHANGES" />
+            </intent-filter>
+        </receiver>
         <receiver
             android:name=".AlerteBouclier"
             android:exported="true"

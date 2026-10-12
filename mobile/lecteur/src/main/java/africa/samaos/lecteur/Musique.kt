@@ -239,11 +239,16 @@ class Musique : Service() {
         focus?.let { audio.abandonAudioFocusRequest(it) }
         Platine.etat.value = null
         session.isActive = false
+        WidgetsLecteur.pochette = null
+        WidgetsLecteur.annoncer(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     private fun publier() {
+        // Le widget de l'Accueil suit ce qui joue.
+        WidgetsLecteur.pochette = pochette
+        WidgetsLecteur.annoncer(this)
         val joue = Platine.lecteur?.isPlaying == true
         session.setPlaybackState(
             PlaybackState.Builder()
@@ -286,6 +291,8 @@ class Musique : Service() {
         Platine.lecteur?.release()
         Platine.lecteur = null
         Platine.etat.value = null
+        WidgetsLecteur.pochette = null
+        WidgetsLecteur.annoncer(this)
         super.onDestroy()
     }
 

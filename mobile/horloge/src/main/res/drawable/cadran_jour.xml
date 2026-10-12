@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le cadran d'une horloge du monde (widget). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="100" android:viewportHeight="100">
+    <path android:pathData="M50,1 a49,49 0 1,0 0.01,0 z" android:fillColor="#F1EDE4" />
+    <path android:pathData="M50.00,10.00 L50.00,3.00 M72.00,11.89 L73.50,9.30 M88.11,28.00 L90.70,26.50 M90.00,50.00 L97.00,50.00 M88.11,72.00 L90.70,73.50 M72.00,88.11 L73.50,90.70 M50.00,90.00 L50.00,97.00 M28.00,88.11 L26.50,90.70 M11.89,72.00 L9.30,73.50 M10.00,50.00 L3.00,50.00 M11.89,28.00 L9.30,26.50 M28.00,11.89 L26.50,9.30" android:strokeColor="#1E2640" android:strokeAlpha="0.45" android:strokeWidth="2.6" android:strokeLineCap="round" />
+</vector>

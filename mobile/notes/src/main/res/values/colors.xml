@@ -2,4 +2,9 @@
 <resources>
     <color name="fond">#F7F3EC</color>
     <color name="accent">#E0A63A</color>
+    <!-- Le widget de l'Accueil : le papier le jour, le carnet sombre la nuit (values-night). -->
+    <color name="widget_fond">#FFFAEA</color>
+    <color name="widget_encre">#2B2316</color>
+    <color name="widget_encre2">#6F6350</color>
+    <color name="widget_accent">#B5532F</color>
 </resources>
